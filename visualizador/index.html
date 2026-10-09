@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AC Telemetry Lab</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.min.css" />
+  <link rel="stylesheet" href="estilos.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="marca">
+      <span class="logo">◈</span>
+      <div>
+        <h1>AC Telemetry Lab</h1>
+        <p>Análisis y comparación de telemetría de Assetto Corsa</p>
+      </div>
+    </div>
+    <div class="estado-carga">
+      <button id="btn-abrir" class="btn primario">Cargar CSV o replay</button>
+      <input id="input-archivos" type="file" accept=".csv,.acreplay" multiple hidden />
+      <button id="btn-limpiar" class="btn fantasma" disabled>Limpiar</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="zona-carga" class="zona-carga">
+      <div class="drop-inner">
+        <div class="drop-icono">⇪</div>
+        <h2>Arrastrá tus telemetrías acá</h2>
+        <p>CSV (como los que exporta el core) <strong>o</strong> replays <code>.acreplay</code> (se parsean solos). Tras un replay podés elegir, entre el listado, cuál vuelta comparar.</p>
+        <p class="hint">
+          Columnas esperadas (se detectan por nombre): <code>distance</code>,
+          <code>timestamp</code>/<code>t</code>, <code>speed</code>/<code>velocidad_kmh</code>,
+          <code>throttle</code>/<code>gas</code>, <code>brake</code>/<code>freno</code>,
+          <code>gear</code>/<code>marcha</code>, <code>x</code>/<code>pos_x</code>,
+          <code>z</code>/<code>pos_z</code>. Si no hay <code>distance</code>, se calcula desde x/z.
+        </p>
+      </div>
+    </section>
+
+    <section id="dashboard" class="dashboard oculto">
+      <aside class="panel lateral">
+        <div class="panel-titulo">Vueltas cargadas</div>
+        <ul id="lista-vueltas" class="lista-vueltas"></ul>
+
+        <div class="panel-titulo">Reproductor</div>
+        <div class="reproductor">
+          <button id="btn-play" class="btn icono" title="Play/Pausa (espacio)">▶</button>
+          <input id="scrub" type="range" min="0" max="1000" value="0" step="1" />
+          <span id="scrub-dist" class="mono">0 m</span>
+        </div>
+        <div class="velocidad-repro">
+          <label>Velocidad
+            <select id="sel-velocidad">
+              <option value="0.25">0.25×</option>
+              <option value="0.5">0.5×</option>
+              <option value="1" selected>1×</option>
+              <option value="2">2×</option>
+              <option value="4">4×</option>
+            </select>
+          </label>
+          <label class="check">
+            <input id="chk-loop" type="checkbox" checked /> Loop
+          </label>
+        </div>
+
+        <div class="panel-titulo">Lectura actual</div>
+        <div id="readouts" class="readouts"></div>
+      </aside>
+
+      <section class="contenido">
+        <div id="graficos" class="graficos">
+          <div class="grafico-card">
+            <div class="grafico-titulo">Velocidad <span class="unidad">km/h</span></div>
+            <div id="chart-speed" class="plot"></div>
+          </div>
+        </div>
+
+        <div class="mapa-card">
+          <div class="grafico-titulo">Mapa de pista <span class="unidad">X / Z</span></div>
+          <canvas id="mapa"></canvas>
+        </div>
+
+        <div class="grafico-card">
+          <div class="grafico-titulo">Acelerador / Freno por vuelta <span class="unidad">0–1</span></div>
+          <div id="chart-inputs" class="plot"></div>
+        </div>
+      </section>
+    </section>
+
+    <section id="error-aviso" class="aviso oculto"></section>
+  </main>
+
+  <section id="modal-selector" class="modal oculto" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-cab">
+        <h2>Elegí qué vueltas comparar</h2>
+        <p id="modal-archivo" class="mono"></p>
+        <p class="hint">Vienen marcadas las <strong>rápidas</strong> (≤103% de la mejor). Desmarcá lo que no quieras.</p>
+      </div>
+      <div id="modal-lista" class="modal-lista"></div>
+      <div class="modal-acciones">
+        <label class="check">
+          <input id="chk-todas" type="checkbox" /> Todas
+        </label>
+        <button id="btn-solo-rapidas" class="btn fantasma">Solo rápidas (≤103%)</button>
+        <span class="spacer"></span>
+        <button id="btn-modal-cancelar" class="btn fantasma">Cancelar</button>
+        <button id="btn-modal-aceptar" class="btn primario">Agregar seleccionadas</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
