@@ -41,8 +41,18 @@ medida que se implemente cada fase.
 El CLI ya está implementado. Interfaz:
 
 ```bash
-python -m telemetria <archivo> --out <carpeta>
+python -m telemetria <archivo> --out <carpeta> [opciones]
 ```
+
+Opciones:
+
+| Opción | Descripción |
+|---|---|
+| `--out <carpeta>` | Carpeta de salida de los CSV (obligatoria) |
+| `--json` | Imprime el resultado como JSON en vez del resumen |
+| `--auto <n>` | Índice del auto a exportar (por defecto `0`, el primero) |
+| `--solo-rapidas` | Exporta solo las vueltas marcadas como rápidas |
+| `--pct <n>` | Umbral de vuelta rápida en % del mejor tiempo (por defecto `103`) |
 
 Ejemplo:
 
@@ -50,20 +60,22 @@ Ejemplo:
 python -m telemetria "Paquetes de telemetria/monza.acreplay" --out salida/
 ```
 
-Resultado: un CSV por vuelta en la carpeta `salida/`.
+Resultado: un CSV por vuelta **y** un `salida/monza_resumen.csv` con una fila por
+vuelta (tiempo, válida, rápida).
 
 Salida esperada por consola:
 
 ```
-Archivo: monza.acreplay (12.4 MB)
+Archivo: monza.acreplay (28.5 MB)
 Formato: acreplay v16
 Pista:   monza
-Auto:    ferrari_458_gt2
-Piloto:  Matias
-Vueltas: 5  (4 válidas)
+Auto:    fw_audi_rs3_tcr_2024
+Piloto:  #7 | mati fel
+Vueltas: 5  (3 válidas, 2 rápidas)
+ -> salida/monza_vuelta_01.csv
  -> salida/monza_vuelta_02.csv
- -> salida/monza_vuelta_03.csv
  ...
+ -> salida/monza_resumen.csv
 ```
 
 ---
@@ -90,23 +102,26 @@ aparte).
 
 ## 5. Qué contiene el CSV
 
-Un archivo por vuelta. Columnas principales (nombres finales a definir):
+Un archivo por vuelta (85 columnas) más un `*_resumen.csv`. Por cada frame:
 
-| Columna | Descripción |
-|---|---|
-| `t` | Tiempo desde el inicio de la vuelta (s) |
-| `speed` | Velocidad (km/h) |
-| `rpm` | Revoluciones del motor |
-| `gear` | Marcha |
-| `gas` | Acelerador (0–100 %) |
-| `brake` | Freno (0–100 %) |
-| `steer` | Ángulo de dirección |
-| `lap_time` | Tiempo de vuelta (ms) |
-| `fuel` | Combustible |
-| `boost` | Turbo/boost |
-| `slip_angle_FL/FR/RL/RR` | Ángulo de deslizamiento por rueda |
-| `slip_ratio_FL/FR/RL/RR` | Relación de deslizamiento por rueda |
-| `load_FL/FR/RL/RR` | Carga por rueda |
+| Grupo | Columnas | Descripción |
+|---|---|---|
+| Tiempo | `t` | Segundos desde el inicio de la grabación |
+| Movimiento | `velocidad_kmh`, `vel_x`, `vel_y`, `vel_z` | Rapidez y vector de velocidad |
+| Derivadas | `acc_x`, `acc_y`, `acc_z`, `acc_total` | Aceleración (m/s²) en ejes del mundo |
+| Motor | `rpm`, `marcha`, `gas`, `freno`, `steer_angle`, `boost` | Estado de conducción |
+| Posición | `pos_x`, `pos_y`, `pos_z`, `rot_x`, `rot_y`, `rot_z` | Posición y rotación del auto |
+| Tiempos | `numero_vuelta`, `tiempo_vuelta_ms`, `ultima_vuelta_ms`, `mejor_vuelta_ms` | Contadores de vuelta |
+| Consumibles | `fuel`, `fuel_por_vuelta`, `dirt`, `engine_health` | Combustible, suciedad, salud motor |
+| Daños | `damage_front_deformation`, `damage_rear`, `damage_left`, `damage_right`, `damage_front`, `status` | Daños y bits de estado |
+| Ruido | `bodywork_noise`, `drivetrain_speed` | Señales auxiliares |
+| Ruedas (×4) | `pos_*`, `rot_*`, `vel_angular_*`, `slip_angle_*`, `slip_ratio_*`, `nd_slip_*`, `carga_*`, `dirt_*` | Por rueda (`FL`, `FR`, `RL`, `RR`) |
+
+En el resumen: una fila por vuelta con `vuelta`, `tiempo_ms`, `tiempo`,
+`valida`, `rapida`, `frames`, `auto`, `piloto`, `pista`.
+
+El detalle completo de cada columna (unidad, origen y notas) está en
+`doc/Columnas_CSV.md`.
 
 ---
 

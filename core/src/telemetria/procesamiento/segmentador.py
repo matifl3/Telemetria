@@ -38,8 +38,19 @@ def _tiempo_vuelta_ms(grupo: List[Frame]) -> int:
     return int((ultimo.t - grupo[0].t) * 1000)
 
 
-def segmentar(sesion: Sesion, auto_indice: int = 0) -> List[Vuelta]:
-    """Devuelve las vueltas del auto indicado."""
+def _marcar_rapidas(vueltas: List[Vuelta], pct: float) -> None:
+    """Marca `es_rapida` en las vueltas validas dentro del `pct`% del mejor tiempo."""
+    validas = [v for v in vueltas if v.es_valida and v.tiempo_ms > 0]
+    if not validas:
+        return
+    mejor = min(v.tiempo_ms for v in validas)
+    umbral = mejor * pct / 100.0
+    for vuelta in vueltas:
+        vuelta.es_rapida = vuelta.es_valida and 0 < vuelta.tiempo_ms <= umbral
+
+
+def segmentar(sesion: Sesion, auto_indice: int = 0, pct: float = 103.0) -> List[Vuelta]:
+    """Devuelve las vueltas del auto indicado, con la marca de vueltas rapidas."""
     if not sesion.autos or auto_indice >= len(sesion.autos):
         return []
 
@@ -58,4 +69,5 @@ def segmentar(sesion: Sesion, auto_indice: int = 0) -> List[Vuelta]:
                 frames=grupo,
             )
         )
+    _marcar_rapidas(vueltas, pct)
     return vueltas

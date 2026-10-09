@@ -56,39 +56,74 @@ class _Lector:
         return self.bytes(largo).decode("utf-8", errors="replace")
 
 
+def _normalizar_rotacion(valores) -> tuple:
+    """El archivo guarda la rotacion en orden Y-X-Z; se normaliza a X-Y-Z."""
+    if len(valores) < 3:
+        return (0.0, 0.0, 0.0)
+    return (valores[1], valores[0], valores[2])
+
+
 def _leer_frame(bruto: bytes, indice: int, intervalo_ms: float) -> Frame:
     """Decodifica un CarFrame de 256 bytes (ver doc/FormatoTelemetria.md 2.4)."""
+    car_pos = struct.unpack_from("<3f", bruto, 0)
+    car_rot = struct.unpack_from("<3f", bruto, 12)
+    wheel_pos = struct.unpack_from("<12f", bruto, 92)
+    wheel_rot = struct.unpack_from("<12e", bruto, 140)
     velocidad = struct.unpack_from("<3e", bruto, 164)
     rapidez = math.sqrt(sum(v * v for v in velocidad)) * 3.6  # m/s -> km/h
 
-    ruedas = [Rueda() for _ in range(4)]
+    vel_angular = struct.unpack_from("<4e", bruto, 172)
     slip_angle = struct.unpack_from("<4e", bruto, 180)
     slip_ratio = struct.unpack_from("<4e", bruto, 188)
     nd_slip = struct.unpack_from("<4e", bruto, 196)
     carga = struct.unpack_from("<4e", bruto, 204)
     dirt = bruto[235:239]
-    for i, rueda in enumerate(ruedas):
-        rueda.slip_angle = slip_angle[i]
-        rueda.slip_ratio = slip_ratio[i]
-        rueda.nd_slip = nd_slip[i]
-        rueda.carga = carga[i]
-        rueda.dirt = dirt[i]
+
+    ruedas = []
+    for i in range(4):
+        base = 3 * i
+        ruedas.append(
+            Rueda(
+                posicion=tuple(wheel_pos[base:base + 3]),
+                rotacion=_normalizar_rotacion(wheel_rot[base:base + 3]),
+                vel_angular=vel_angular[i],
+                slip_angle=slip_angle[i],
+                slip_ratio=slip_ratio[i],
+                nd_slip=nd_slip[i],
+                carga=carga[i],
+                dirt=dirt[i],
+            )
+        )
 
     return Frame(
         indice=indice,
         t=indice * intervalo_ms / 1000.0,
         velocidad=rapidez,
+        vel_vector=tuple(velocidad),
+        posicion=tuple(car_pos),
+        rotacion=_normalizar_rotacion(car_rot),
         rpm=struct.unpack_from("<e", bruto, 170)[0],
         marcha=bruto[234],
         gas=bruto[244],
         freno=bruto[245],
         steer_angle=struct.unpack_from("<e", bruto, 212)[0],
+        bodywork_noise=struct.unpack_from("<e", bruto, 214)[0],
+        drivetrain_speed=struct.unpack_from("<e", bruto, 216)[0],
         numero_vuelta=bruto[246],
         tiempo_vuelta_ms=struct.unpack_from("<I", bruto, 220)[0],
         ultima_vuelta_ms=struct.unpack_from("<I", bruto, 224)[0],
         mejor_vuelta_ms=struct.unpack_from("<I", bruto, 228)[0],
         fuel=bruto[232],
+        fuel_por_vuelta=bruto[233],
         boost=bruto[254],
+        dirt=bruto[252],
+        engine_health=bruto[253],
+        damage_front_deformation=bruto[239],
+        damage_rear=bruto[240],
+        damage_left=bruto[241],
+        damage_right=bruto[242],
+        damage_front=bruto[243],
+        status=struct.unpack_from("<H", bruto, 248)[0],
         ruedas=ruedas,
     )
 

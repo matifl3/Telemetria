@@ -123,7 +123,7 @@ El CLI expone el mismo flujo y, opcionalmente, una salida **JSON** en `stdout`
 **Comando:**
 
 ```
-python -m telemetria <archivo> --out <dir> [--json]
+python -m telemetria <archivo> --out <dir> [--json] [--auto N] [--solo-rapidas] [--pct P]
 ```
 
 **Salida `--json` (stdout, código 0):**
@@ -142,9 +142,10 @@ python -m telemetria <archivo> --out <dir> [--json]
   "autos": [
     { "id": "ferrari_458_gt2", "piloto": "Matias", "equipo": "", "skin": "" }
   ],
+  "resumen": "monza_resumen.csv",
   "vueltas": [
-    { "numero": 2, "tiempo_ms": 105432, "valida": true,  "archivo": "monza_vuelta_02.csv" },
-    { "numero": 3, "tiempo_ms": 104871, "valida": true,  "archivo": "monza_vuelta_03.csv" }
+    { "numero": 2, "tiempo_ms": 105432, "valida": true, "rapida": true, "archivo": "monza_vuelta_02.csv" },
+    { "numero": 3, "tiempo_ms": 104871, "valida": true, "rapida": true, "archivo": "monza_vuelta_03.csv" }
   ]
 }
 ```
@@ -158,6 +159,8 @@ python -m telemetria <archivo> --out <dir> [--json]
 Reglas:
 - `archivo` es relativo a la carpeta `--out` indicada.
 - `valida=false` marca outlap/inlap (ver §6).
+- `rapida=true` si la vuelta válida está dentro del `--pct`% del mejor tiempo
+  (por defecto 103); se usa para filtrar con `--solo-rapidas`.
 
 ## 5. Endpoints web (Flask)
 

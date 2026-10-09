@@ -52,6 +52,7 @@ Telemetria/
 │   ├── Requisitos.txt            # requisitos funcionales y no funcionales
 │   ├── Arquitectura.md           # diseño de capas e integración
 │   ├── FormatoTelemetria.md      # referencia de .acreplay v16 y .nkt
+│   ├── Columnas_CSV.md           # diccionario de datos del CSV exportado
 │   ├── Manual_Usuario.md         # guía de uso
 │   └── Plan_Trabajo.md           # fases y roadmap
 ├── Paquetes de telemetria/       # archivos de muestra (.acreplay / .nkt)
@@ -86,5 +87,6 @@ Detalle paso a paso en `doc/Manual_Usuario.md`.
 - [`doc/Requisitos.txt`](doc/Requisitos.txt) — qué debe hacer la app.
 - [`doc/Arquitectura.md`](doc/Arquitectura.md) — cómo está construida.
 - [`doc/FormatoTelemetria.md`](doc/FormatoTelemetria.md) — formato de los archivos.
+- [`doc/Columnas_CSV.md`](doc/Columnas_CSV.md) — qué contiene cada columna del CSV.
 - [`doc/Manual_Usuario.md`](doc/Manual_Usuario.md) — uso.
 - [`doc/Plan_Trabajo.md`](doc/Plan_Trabajo.md) — plan por fases.

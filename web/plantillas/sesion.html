@@ -10,7 +10,7 @@
 
 <table>
   <thead>
-    <tr><th>Vuelta</th><th>Tiempo</th><th>Valida</th><th>CSV</th></tr>
+    <tr><th>Vuelta</th><th>Tiempo</th><th>Valida</th><th>Rapida</th><th>CSV</th></tr>
   </thead>
   <tbody>
     {% for vuelta in resultado.vueltas %}
@@ -18,6 +18,7 @@
       <td>{{ vuelta.numero }}</td>
       <td>{{ vuelta.tiempo_ms | tiempo }}</td>
       <td>{{ "si" if vuelta.valida else "no" }}</td>
+      <td>{{ "si" if vuelta.rapida else "no" }}</td>
       <td><a href="{{ url_for('telemetria.descargar_vuelta', numero=vuelta.numero) }}">Descargar</a></td>
     </tr>
     {% endfor %}
