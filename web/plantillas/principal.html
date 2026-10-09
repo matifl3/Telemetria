@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1>Convertir telemetria a CSV por vuelta</h1>
+<p>Subi un archivo de Assetto Corsa: <code>.acreplay</code> (v16) o <code>.nkt</code>.</p>
+
+<form action="{{ url_for('telemetria.subir') }}" method="post" enctype="multipart/form-data">
+  <input type="file" name="archivo" accept=".acreplay,.nkt" required>
+  <button type="submit">Convertir</button>
+</form>
+{% endblock %}

@@ -1,0 +1,2 @@
+# Fase 1 (core + CLI). El parseo usa solo la libreria estandar.
+pytest>=8.0
