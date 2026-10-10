@@ -113,5 +113,13 @@ Fase 4  extras         ->  Hito E: mejoras                         [opcional]
 La v1 (core + web) funciona de punta a punta sobre `.acreplay`. Pendientes:
 
 1. **Fase 2:** soporte de `.nkt` (o import del CSV de AiM Race Studio).
-2. Afinar la validacion de vueltas (outlap/inlap) con datos reales.
-3. Fase 4 (opcional): graficos por vuelta y comparacion.
+2. ✔ Afinar la validacion de vueltas (outlap/inlap) con datos reales.
+   Heuristica implementada en el core y el visualizador y validada con los
+   7 replays de `Paquetes de telemetria/temp/`: no cuentan salida/largada,
+   entrada ni cortadas/incompletas (motivo en resumen CSV, JSON y web).
+3. ✔ UX del selector: el modal abre sin vueltas preseleccionadas (las no
+   válidas llevan su motivo), exige elegir al menos una y el panel lateral
+   permite mostrar/ocultar cada vuelta con su ojo (fila tachada = oculta).
+4. ✔ Trazadas: la banda de pista se centra en la posición media de las vueltas
+   visibles (no en la REF), así cada trazada queda donde se condujo realmente.
+5. Fase 4 (opcional): graficos por vuelta y comparacion.

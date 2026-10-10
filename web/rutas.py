@@ -83,6 +83,7 @@ def subir():
                 "tiempo_ms": vuelta.tiempo_ms,
                 "valida": vuelta.es_valida,
                 "rapida": vuelta.es_rapida,
+                "motivo": vuelta.motivo_invalida,
                 "archivo": os.path.basename(ruta),
             }
             for vuelta, ruta in zip(vueltas, archivos)

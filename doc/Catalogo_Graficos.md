@@ -61,6 +61,12 @@ pruebas (offset a confirmar).
 | Marcadores de frenada | Puntos donde se frena fuerte | `freno`, `pos_x/z` | 🟢 | Media |
 | Marcadores de cambio | ↑↓ de marcha sobre el trazado | `marcha` | 🟢 | Baja |
 
+> **Trazada por vuelta**: cada vuelta se dibuja en su propio mini-mapa sobre una
+> banda gris que es la **silueta de todas las vueltas visibles**. La banda se
+> centra en la **posición media** de las vueltas (no en la REF), así cada trazada
+> — incluida la de referencia — queda donde se condujo realmente y no forzada al
+> centro de la pista.
+
 ### 1.3 Dinámica y ruedas
 
 | Gráfico | Qué muestra | Datos | Estado | Prioridad |

@@ -10,6 +10,8 @@ const SYNC_KEY = 'ac-tele-lab';
 const PALETA = ['#38bdf8', '#f472b6', '#4ade80', '#facc15', '#a78bfa', '#fb923c', '#22d3ee', '#f87171', '#c084fc', '#fde047'];
 const G = 9.80665;
 const N_SECTORES = 10;
+const ICONO_OJO = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+const ICONO_OJO_TACHADO = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
 
 const ALIAS = {
   distance: ['distance', 'dist', 'distancia', 'lap_distance', 'distance_m', 'lapdist', 'dist_m'],
@@ -184,6 +186,18 @@ function unwrap(rads) {
   return out;
 }
 
+/** Rumbo a partir de posiciones (x, z), para CSVs sin columna de yaw. */
+function rumboDePosiciones(x, z) {
+  const n = Math.min(x.length, z.length);
+  const out = new Array(n);
+  for (let i = 0; i < n; i++) {
+    if (i === 0) { out[i] = 0; continue; }
+    if (!Number.isFinite(x[i]) || !Number.isFinite(x[i - 1]) || !Number.isFinite(z[i]) || !Number.isFinite(z[i - 1])) { out[i] = out[i - 1] || 0; continue; }
+    out[i] = Math.atan2(x[i] - x[i - 1], z[i] - z[i - 1]);
+  }
+  return out;
+}
+
 /** Construye una "vuelta" común a partir de series crudas. */
 function crearLap(name, s, visible = true) {
   const n = s.x.length;
@@ -205,19 +219,24 @@ function crearLap(name, s, visible = true) {
   }
 
   const speedMs = s.speed.map((v) => (Number.isFinite(v) ? v / 3.6 : NaN));
-  const yaw = unwrap(s.yaw || dist.map(() => 0));
+  const yaw = unwrap(s.yaw && s.yaw.some((v) => Number.isFinite(v) && Math.abs(v) > 0.001)
+    ? s.yaw
+    : rumboDePosiciones(s.x, s.z));
 
   const accLong = new Array(n);
   const accLat = new Array(n);
   const accTotal = new Array(n);
+  const MAX_G = 4;
   for (let i = 0; i < n; i++) {
     if (i === 0) { accLong[i] = 0; accLat[i] = 0; accTotal[i] = 0; continue; }
     const dv = speedMs[i] - speedMs[i - 1];
     const dY = yaw[i] - yaw[i - 1];
-    accLong[i] = Number.isFinite(dv) ? dv / dt[i] : NaN;
-    accLat[i] = Number.isFinite(speedMs[i]) ? speedMs[i] * (dY / dt[i]) : NaN;
-    const a = Number.isFinite(accLong[i]) ? accLong[i] : 0;
-    const b = Number.isFinite(accLat[i]) ? accLat[i] : 0;
+    const ax = Number.isFinite(dv) ? dv / dt[i] : NaN;
+    const ay = Number.isFinite(speedMs[i]) ? speedMs[i] * (dY / dt[i]) : NaN;
+    accLong[i] = clamp(ax, -MAX_G * G, MAX_G * G);
+    accLat[i] = clamp(ay, -MAX_G * G, MAX_G * G);
+    const a = Number.isFinite(ax) ? ax : 0;
+    const b = Number.isFinite(ay) ? ay : 0;
     accTotal[i] = Math.hypot(a, b);
   }
 
@@ -263,6 +282,30 @@ function construirVueltaCSV({ file, rows, fields }) {
   };
   if (cols.distance !== undefined) series.dist = col('distance');
   return crearLap(file.name.replace(/\.csv$/i, ''), series);
+}
+
+/* ---------- validez de vueltas ---------- */
+
+const MOTIVO_ETIQUETA = { salida: 'salida', entrada: 'entrada', cortada: 'cortada', incompleta: 'incompleta' };
+
+/** Clasifica (in situ) cada vuelta como valida o no, con su motivo.
+ *  No cuentan: la salida/largada y la entrada a pits (primera/ultima lenta),
+ *  ni las cortadas (recorrido < 90% de la distancia mediana). Cada item debe
+ *  traer `dist` (m) y `vmedia` (m/s). Ver doc/Arquitectura.md, seccion 6. */
+function clasificarVueltas(vueltas) {
+  const n = vueltas.length;
+  if (n < 2) { vueltas.forEach((v) => { v.valida = true; v.motivo = ''; }); return; }
+  const mediana = (a) => { const s = a.filter(Number.isFinite).slice().sort((x, y) => x - y); return s[s.length >> 1] ?? 0; };
+  const refDist = mediana(vueltas.map((v) => v.dist));
+  const velRef = Math.max(0, ...vueltas.filter((v) => refDist > 0 && v.dist >= 0.9 * refDist).map((v) => v.vmedia));
+  vueltas.forEach((v, i) => {
+    const cortada = refDist > 0 && v.dist < 0.9 * refDist;
+    const borde = i === 0 || i === n - 1;
+    const lenta = borde && velRef > 0 && v.vmedia < 0.75 * velRef;
+    if (lenta) { v.valida = false; v.motivo = i === 0 ? 'salida' : 'entrada'; }
+    else if (cortada) { v.valida = false; v.motivo = borde ? 'incompleta' : 'cortada'; }
+    else { v.valida = true; v.motivo = ''; }
+  });
 }
 
 /* ---------- parser .acreplay v16 (navegador) ---------- */
@@ -331,7 +374,7 @@ async function parsearReplay(file) {
       X.push(dv.getFloat32(o, true));
       Y.push(dv.getFloat32(o + 4, true));
       Z.push(dv.getFloat32(o + 8, true));
-      YAW.push(dv.getFloat32(o + 12, true)); // rotación: orden Y-X-Z → slot 0 es Y
+      YAW.push(halfToFloat(dv.getUint16(o + 12, true))); // rotación: 3×f16 (yaw, pitch, roll) en orden Y-X-Z
       const vx = halfToFloat(dv.getUint16(o + 164, true));
       const vy = halfToFloat(dv.getUint16(o + 166, true));
       const vz = halfToFloat(dv.getUint16(o + 168, true));
@@ -376,10 +419,13 @@ async function parsearReplay(file) {
         serie.loadFL.push(LF[i]); serie.loadFR.push(RF[i]); serie.loadRL.push(LR[i]); serie.loadRR.push(RR[i]);
         serie.fuel.push(FUEL[i]);
       }
+      const distArr = distanciaAcumulada(serie.x, serie.z);
       const t = serie.time;
       const dur = t.length > 1 ? Math.max(...t) - Math.min(...t) : NaN;
-      vueltas.push({ name: `${piloto} · ${carId} · V${lap.lap}`, nVuelta: lap.lap, frames: idxs.length, tiempo: dur, serie });
+      const dist = distArr.length ? distArr[distArr.length - 1] : NaN;
+      vueltas.push({ name: `${piloto} · ${carId} · V${lap.lap}`, nVuelta: lap.lap, frames: idxs.length, tiempo: dur, dist, vmedia: dur > 0 && Number.isFinite(dist) ? dist / dur : 0, serie });
     }
+    clasificarVueltas(vueltas);
     result = vueltas;
     break;
   }
@@ -395,7 +441,9 @@ async function cargarArchivos(fileList) {
     const nuevas = [];
     for (const f of files) {
       if (/\.csv$/i.test(f.name)) {
-        nuevas.push(construirVueltaCSV(await parsearArchivoCSV(f)));
+        const lap = construirVueltaCSV(await parsearArchivoCSV(f));
+        lap.csv = true;
+        nuevas.push(lap);
       } else if (/\.acreplay$/i.test(f.name)) {
         const candidatas = await parsearReplay(f);
         const elegidas = await preguntarVueltas(f.name, candidatas); // Set de índices
@@ -404,6 +452,14 @@ async function cargarArchivos(fileList) {
         throw new Error(`"${f.name}": extensión no soportada (CSV o .acreplay).`);
       }
     }
+    for (const l of nuevas) {
+      const dist = l.raw.dist[l.raw.dist.length - 1];
+      l.dist = Number.isFinite(dist) ? dist : NaN;
+      const dur = tiempoDeVuelta(l);
+      l.vmedia = dur > 0 && Number.isFinite(l.dist) ? l.dist / dur : 0;
+    }
+    clasificarVueltas(nuevas);
+    for (const l of nuevas) if (l.csv) l.visible = l.valida;
     if (!nuevas.length) return;
     state.laps.push(...nuevas);
     const vs = visibleLaps();
@@ -426,26 +482,33 @@ function preguntarVueltas(nombreArchivo, vueltas) {
     lista.innerHTML = vueltas
       .map((v, i) =>
         `<label class="fila-vuelta">
-           <input type="checkbox" data-i="${i}" checked />
+           <input type="checkbox" data-i="${i}" />
            <span class="nombre">${v.name}</span>
            <span class="tiempo mono">${fmtTiempo(v.tiempo)}</span>
            <span class="frames mono">${v.frames} fr</span>
+           ${v.motivo ? `<span class="badge-no" title="No cuenta (vuelta ${MOTIVO_ETIQUETA[v.motivo] || v.motivo})">${MOTIVO_ETIQUETA[v.motivo] || v.motivo}</span>` : ''}
          </label>`)
       .join('');
+
+    const aviso = $('modal-aviso');
+    aviso.textContent = '';
 
     const chkTodas = $('chk-todas');
     chkTodas.checked = false;
     const marcarRapidas = () => {
-      const tiempos = vueltas.map((v) => v.tiempo).filter(Number.isFinite);
-      if (!tiempos.length) return;
-      const mejor = Math.min(...tiempos);
+      const validas = vueltas.filter((v) => v.valida);
+      const tiempos = validas.map((v) => v.tiempo).filter(Number.isFinite);
+      const mejor = tiempos.length ? Math.min(...tiempos) : NaN;
       lista.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
         const v = vueltas[Number(cb.dataset.i)];
-        cb.checked = Number.isFinite(v.tiempo) && v.tiempo <= mejor * 1.03;
+        cb.checked = Number.isFinite(mejor) && v.valida && Number.isFinite(v.tiempo) && v.tiempo <= mejor * 1.03;
       });
+      aviso.textContent = '';
     };
-    marcarRapidas();
-    chkTodas.onchange = () => lista.querySelectorAll('input[type="checkbox"]').forEach((cb) => (cb.checked = chkTodas.checked));
+    chkTodas.onchange = () => lista.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+      const v = vueltas[Number(cb.dataset.i)];
+      cb.checked = chkTodas.checked && !!v.valida;
+    });
     $('btn-solo-rapidas').onclick = () => { marcarRapidas(); chkTodas.checked = false; };
 
     const cerrar = (elegidas) => {
@@ -466,7 +529,11 @@ function preguntarVueltas(nombreArchivo, vueltas) {
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
       }
     };
-    $('btn-modal-aceptar').onclick = () => cerrar(new Set(Array.from(lista.querySelectorAll('input[data-i]')).filter((cb) => cb.checked).map((cb) => Number(cb.dataset.i))));
+    $('btn-modal-aceptar').onclick = () => {
+      const elegidas = new Set(Array.from(lista.querySelectorAll('input[data-i]')).filter((cb) => cb.checked).map((cb) => Number(cb.dataset.i)));
+      if (elegidas.size === 0) { aviso.textContent = 'Elegí al menos una vuelta (o Cancelar) para continuar.'; return; }
+      cerrar(elegidas);
+    };
     $('btn-modal-cancelar').onclick = () => cerrar(new Set());
 
     document.addEventListener('keydown', onKey);
@@ -532,7 +599,7 @@ function renderListaVueltas() {
   ul.innerHTML = '';
   state.laps.forEach((l) => {
     const li = document.createElement('li');
-    li.className = 'vuelta-item' + (l.id === state.refId ? ' ref' : '');
+    li.className = 'vuelta-item' + (l.id === state.refId ? ' ref' : '') + (l.visible ? '' : ' oculta');
     const tMeta = fmtTiempo(tiempoDeVuelta(l));
     li.innerHTML =
       `<span class="vuelta-color" style="background:${l.color}"></span>` +
@@ -541,7 +608,8 @@ function renderListaVueltas() {
          <span class="vuelta-meta">${tMeta ? tMeta + ' · ' : ''}${l.raw.x.length} pts · ${l.raw.dist[l.raw.dist.length - 1].toFixed(0)} m</span>
        </span>` +
       (l.id === state.refId ? '<span class="ref-badge">REF</span>' : '') +
-      `<button class="vuelta-eye ${l.visible ? 'on' : ''}" title="Mostrar/ocultar en las pestañas Vuelta, Mapa y Comparación (Conjunto siempre usa todas)">●</button>`;
+      (l.motivo ? `<span class="badge-no" title="No cuenta (vuelta ${MOTIVO_ETIQUETA[l.motivo] || l.motivo})">${MOTIVO_ETIQUETA[l.motivo] || l.motivo}</span>` : '') +
+      `<button class="vuelta-eye ${l.visible ? 'on' : ''}" title="${l.visible ? 'Ocultar la vuelta' : 'Mostrar la vuelta'}" aria-label="${l.visible ? 'Ocultar la vuelta' : 'Mostrar la vuelta'}" aria-pressed="${!!l.visible}">${l.visible ? ICONO_OJO : ICONO_OJO_TACHADO}</button>`;
     li.querySelector('.vuelta-info').addEventListener('click', () => {
       state.refId = l.id; renderListaVueltas(); renderReadoutsBase(); updateUI();
     });
@@ -647,7 +715,10 @@ function renderTabActiva() {
   _ultimoCursorPx = -1;
   if (!state.laps.length) return;
   if (state.tab === 'conjunto') {
-    renderConjunto(state.laps); // el conjunto siempre usa todas las vueltas cargadas
+    // No cuentan las vueltas de salida/largada ni las cortadas/incompletas.
+    const lapsValidas = state.laps.filter((l) => l.valida);
+    if (!lapsValidas.length) return;
+    renderConjunto(lapsValidas);
     return;
   }
   const laps = visibleLaps();
@@ -764,18 +835,19 @@ function drawTraction(laps) {
   if (!c) return;
   const { ctx, w, h } = c;
   const pts = [];
-  let maxG = 1;
   for (const l of laps) {
     const { accLong, accLat } = l.raw;
     const step = Math.max(1, Math.floor(accLong.length / 1500));
     for (let i = 0; i < accLong.length; i += step) {
       if (!Number.isFinite(accLong[i]) || !Number.isFinite(accLat[i])) continue;
-      const x = accLong[i] / G, y = accLat[i] / G;
-      maxG = Math.max(maxG, Math.abs(x), Math.abs(y));
-      pts.push([x, y, l.color]);
+      pts.push([accLong[i] / G, accLat[i] / G, l.color]);
     }
   }
-  maxG = Math.ceil(maxG);
+  let maxG = 1;
+  if (pts.length) {
+    const esc = pts.flatMap(([x, y]) => [Math.abs(x), Math.abs(y)]).sort((a, b) => a - b);
+    maxG = Math.max(1, Math.ceil(esc[Math.floor(esc.length * 0.99)]));
+  }
   const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 24;
   const sx = (v) => cx + (v / maxG) * R;
   const sy = (v) => cy - (v / maxG) * R;
@@ -783,8 +855,8 @@ function drawTraction(laps) {
   for (const r of [0.5, 1]) { ctx.beginPath(); ctx.arc(cx, cy, (r * R), 0, Math.PI * 2); ctx.stroke(); }
   ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '11px "Segoe UI"';
-  ctx.fillText('acel.', cx + R - 30, cy - 6); ctx.fillText('frena', cx + R - 34, cy + 14);
-  ctx.fillText('izq.', cx - R + 2, cy + 12); ctx.fillText('der.', cx + R - 26, cy + 12);
+  ctx.fillText('acel.', cx + R - 34, cy - 8); ctx.fillText('frena', cx - R + 6, cy - 8);
+  ctx.fillText('izq.', cx - 16, cy + R - 8); ctx.fillText('der.', cx - 18, cy - R + 16);
   for (const [x, y, color] of pts) { ctx.fillStyle = hexA(color, 0.25); ctx.fillRect(sx(x) - 1, sy(y) - 1, 2, 2); }
   ctx.fillStyle = '#8b97a8'; ctx.fillText(`escala ±${maxG} g`, 8, 14);
 }
@@ -1268,17 +1340,29 @@ function normalTrazado(nx, nz, i) {
   return [-dz / m, dx / m];
 }
 
-/* Silueta de la pista: banda formada por los bordes extremos reales de todas las trazadas. */
-function envolventePista(laps, ref) {
+/* Silueta de la pista: banda formada por los bordes extremos reales de todas las trazadas.
+   La línea base es la posición media de todas las vueltas visibles, NO la de referencia:
+   así cada trazada (incluida la REF) queda donde pasa en realidad y no forzada al medio. */
+function envolventePista(laps) {
   const n = state.grid.length;
-  const base = (ref && ref.grid) || (laps[0] && laps[0].grid);
-  if (!base || n < 3) return null;
-  const nx = new Array(n), nz = new Array(n), ny = new Array(n);
-  const wl = new Array(n).fill(0), wr = new Array(n).fill(0);
-  for (let i = 0; i < n; i++) { nx[i] = base.x[i]; nz[i] = base.z[i]; ny[i] = base.y[i]; }
-  for (const l of laps) {
+  const validas = laps.filter((l) => l && l.grid);
+  if (!validas.length || n < 3) return null;
+  const nx = new Array(n).fill(0), nz = new Array(n).fill(0), ny = new Array(n).fill(0);
+  const cnt = new Array(n).fill(0);
+  for (const l of validas) {
     const g = l.grid;
-    if (!g) continue;
+    for (let i = 0; i < n; i++) {
+      if (!Number.isFinite(g.x[i]) || !Number.isFinite(g.z[i])) continue;
+      nx[i] += g.x[i]; nz[i] += g.z[i]; cnt[i]++;
+      if (Number.isFinite(g.y[i])) ny[i] += g.y[i];
+    }
+  }
+  for (let i = 0; i < n; i++) {
+    if (cnt[i]) { nx[i] /= cnt[i]; nz[i] /= cnt[i]; if (ny[i]) ny[i] /= cnt[i]; }
+  }
+  const wl = new Array(n).fill(0), wr = new Array(n).fill(0);
+  for (const l of validas) {
+    const g = l.grid;
     for (let i = 1; i < n - 1; i++) {
       const dx = g.x[i] - nx[i], dz = g.z[i] - nz[i];
       if (!Number.isFinite(dx) || !Number.isFinite(dz)) continue;
@@ -1582,7 +1666,7 @@ function renderTrazadas() {
   const cv0 = canvases[0];
   if (!cv0) return;
   construirVista(laps, cv0, p);
-  const env = state.mapa.bordes ? envolventePista(laps, lapRef()) : null;
+  const env = state.mapa.bordes ? envolventePista(laps) : null;
   const view = { proj: p.proj, cache: p.cache, env };
   laps.forEach((l, i) => {
     const cv = canvases[i];

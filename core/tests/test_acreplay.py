@@ -13,7 +13,7 @@ from telemetria.errores import ErrorTelemetria
 from telemetria.lector.acreplay import leer_acreplay
 from telemetria.lector.detector import leer
 from telemetria.procesamiento.exportador import exportar_resumen, exportar_vueltas
-from telemetria.procesamiento.segmentador import segmentar
+from telemetria.procesamiento.segmentador import _motivo_vuelta, segmentar
 
 
 @pytest.fixture(scope="session")
@@ -57,6 +57,36 @@ def test_marca_vueltas_rapidas(sesion):
         assert any(vuelta.es_rapida for vuelta in vueltas)
     estricto = segmentar(sesion, pct=100.0)
     assert sum(v.es_rapida for v in estricto) <= sum(v.es_rapida for v in vueltas)
+
+
+def test_motivo_vuelta_clasifica():
+    casos = [
+        # (dist, vel, indice, total, ref_dist, ref_vel) -> motivo
+        (5579, 121, 0, 7, 5737, 173, "salida"),  # outlap lenta al inicio
+        (492, 73, 6, 7, 5737, 173, "entrada"),  # inlap lenta al final
+        (3343, 171, 0, 15, 5742, 171, "incompleta"),  # arranca a mitad de vuelta
+        (2000, 176, 1, 7, 5747, 171, "cortada"),  # corte de pista en el medio
+        (5742, 163, 1, 15, 5742, 171, ""),  # vuelta completa normal
+        (5742, 133, 5, 16, 5737, 171, ""),  # lenta por trafico pero completa
+        (5742, 171, 0, 1, 5742, 171, ""),  # archivo de una sola vuelta completa
+    ]
+    for dist, vel, indice, total, ref_dist, ref_vel, esperado in casos:
+        assert _motivo_vuelta(dist, vel, indice, total, ref_dist, ref_vel) == esperado
+
+
+def test_clasifica_salida_largada_y_cortada(sesion):
+    vueltas = segmentar(sesion)
+    if len(vueltas) < 3:
+        pytest.skip("Se necesita un replay con varias vueltas")
+    # La primera vuelta (salida o incompleta) no cuenta nunca.
+    assert not vueltas[0].es_valida
+    assert vueltas[0].motivo_invalida in ("salida", "incompleta")
+    # La ultima (entrada o incompleta) tampoco.
+    assert vueltas[-1].es_valida is False
+    assert vueltas[-1].motivo_invalida in ("entrada", "incompleta")
+    # Las del medio son validas salvo que haya un corte.
+    for vuelta in vueltas[1:-1]:
+        assert vuelta.es_valida == (vuelta.motivo_invalida == "")
 
 
 def test_segmenta_por_vuelta(sesion):
@@ -128,6 +158,7 @@ def test_cli_json(ruta_muestra, tmp_path, capsys):
     assert salida["resumen"].endswith("_resumen.csv")
     assert all("archivo" in vuelta for vuelta in salida["vueltas"])
     assert all("rapida" in vuelta for vuelta in salida["vueltas"])
+    assert all("motivo" in vuelta for vuelta in salida["vueltas"])
 
 
 def test_cli_solo_rapidas(ruta_muestra, tmp_path, capsys):

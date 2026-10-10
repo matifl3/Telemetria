@@ -97,7 +97,7 @@ Orden de ruedas: **FL, FR, RL, RR** (delantera izq./der., trasera izq./der.).
 | Offset | Campo | Tipo |
 |---|---|---|
 | 0 | `position` (x, y, z) | 3 × `f32` |
-| 12 | `rotation` (x, y, z) | 3 × `f32` |
+| 12 | `rotation` (yaw, pitch, roll) | 3 × `f16` |
 | 20 | `static_position` × 4 ruedas | 4 × 3 × `f32` |
 | 68 | `static_rotation` × 4 ruedas | 4 × 3 × `f16` |
 | 92 | `position` (rueda) × 4 | 4 × 3 × `f32` |

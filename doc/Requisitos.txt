@@ -141,6 +141,10 @@ para analizarlos, graficarlos o usarlos en su proyecto.
      fase posterior (recomendado: posterior).
  P3. Definir que hacer con la vuelta de salida/entrada (outlap/inlap):
      incluir, marcar o excluir.
+     RESUELTO (heuristico validado con 7 replays): no cuentan. El segmentador
+     marca valida=False con motivo "salida"/"entrada" (primera/ultima lenta),
+     "cortada" o "incompleta" (recorrido < 90% de la distancia mediana). El
+     visualizador las deja desmarcadas por defecto en el selector de vueltas.
  P4. Confirmar la pista de datos de ejemplo disponible en
      "Paquetes de telemetria/".
 

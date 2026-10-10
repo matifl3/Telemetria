@@ -108,4 +108,5 @@ class Vuelta:
     tiempo_ms: int = 0
     es_valida: bool = True
     es_rapida: bool = False
+    motivo_invalida: str = ""  # "salida" | "entrada" | "cortada" | "incompleta" | "" si es valida
     frames: List[Frame] = field(default_factory=list)

@@ -40,6 +40,7 @@ def _salida_json(sesion, vueltas, archivos: List[str], resumen: str) -> dict:
                 "tiempo_ms": vuelta.tiempo_ms,
                 "valida": vuelta.es_valida,
                 "rapida": vuelta.es_rapida,
+                "motivo": vuelta.motivo_invalida,
                 "archivo": os.path.basename(ruta),
             }
             for vuelta, ruta in zip(vueltas, archivos)

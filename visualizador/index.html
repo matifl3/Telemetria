@@ -28,7 +28,7 @@
       <div class="drop-inner">
         <div class="drop-icono" aria-hidden="true"><svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17V4"/><path d="M6 10l6-6 6 6"/><path d="M4 21h16"/></svg></div>
         <h2>Arrastrá tus telemetrías acá</h2>
-        <p>CSV (como los que exporta el core) <strong>o</strong> replays <code>.acreplay</code> (se parsean solos). Tras un replay elegís qué vueltas analizar en las pestañas por vuelta; la pestaña <strong>Conjunto siempre usa todas las vueltas</strong> del replay.</p>
+        <p>CSV (como los que exporta el core) <strong>o</strong> replays <code>.acreplay</code> (se parsean solos). Tras un replay elegís qué vueltas analizar en las pestañas por vuelta; la pestaña <strong>Conjunto usa todas las vueltas válidas</strong> (salidas/largadas, entradas y cortadas no cuentan).</p>
         <p class="hint">
           Columnas esperadas (se detectan por nombre): <code>distance</code>,
           <code>timestamp</code>/<code>t</code>, <code>speed</code>/<code>velocidad_kmh</code>,
@@ -144,7 +144,7 @@
               <label class="check"><input id="mapa-cambios" type="checkbox" /> Marcas de cambio</label>
               <label class="check"><input id="mapa-3d" type="checkbox" /> 3D</label>
             </div>
-            <p class="mapa-hint"><strong>Trazada por vuelta</strong>: cada vuelta en su propio mapa, con la <strong>pista</strong> como banda gris (silueta de todas las vueltas) y su <strong>trazada</strong> de color como línea fina por dentro. Rueda = zoom · arrastrar = panorámica · doble clic = encuadrar.</p>
+            <p class="mapa-hint"><strong>Trazada por vuelta</strong>: cada vuelta en su propio mapa, con la <strong>pista</strong> como banda gris (silueta de todas las vueltas: su centro es la posición media, no la REF) y su <strong>trazada</strong> de color como línea fina en su posición real. Rueda = zoom · arrastrar = panorámica · doble clic = encuadrar.</p>
             <div id="mapa-3d-controles" class="mapa-3d-controles" style="display:none">
               <label>Rotación <input id="mapa-rot" type="range" min="-180" max="180" value="0" step="1" /></label>
               <label>Elevación <input id="mapa-alt" type="range" min="0" max="15" value="3" step="0.5" /></label>
@@ -248,9 +248,10 @@
       <div class="modal-cab">
         <h2 id="modal-titulo">Elegí qué vueltas analizar</h2>
         <p id="modal-archivo" class="mono"></p>
-        <p class="hint">Todas las vueltas del replay se cargan y la pestaña <strong>Conjunto</strong> las usa todas. La selección de acá define qué vueltas entran en <strong>Vuelta, Mapa y Comparación</strong>. Vienen marcadas las <strong>rápidas</strong> (≤103% de la mejor).</p>
+        <p class="hint">Todas las vueltas del replay se cargan y la pestaña <strong>Conjunto</strong> las usa todas. La selección de acá define qué vueltas entran en <strong>Vuelta, Mapa y Comparación</strong>. Luego podés mostrar u ocultar cada vuelta desde el panel lateral.</p>
       </div>
       <div id="modal-lista" class="modal-lista"></div>
+      <p id="modal-aviso" class="modal-aviso" role="alert"></p>
       <div class="modal-acciones">
         <label class="check">
           <input id="chk-todas" type="checkbox" /> Todas

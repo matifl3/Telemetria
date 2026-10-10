@@ -160,13 +160,25 @@ html, body {
 .vuelta-nombre { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vuelta-meta { font-size: 11px; color: var(--muted); }
 .vuelta-eye {
-  background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 2px 4px;
-  transition: color 150ms ease;
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  padding: 4px; border-radius: 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: color 150ms ease, background-color 150ms ease;
 }
+.vuelta-eye:hover { background: var(--bg-2); color: var(--texto); }
 .vuelta-eye.on { color: var(--acento); }
+.vuelta-item.oculta .vuelta-nombre { color: var(--muted); text-decoration: line-through; }
+.vuelta-item.oculta .vuelta-meta { opacity: 0.6; }
+.vuelta-item.oculta .vuelta-color { opacity: 0.4; }
 .ref-badge {
   font-size: 9px; font-weight: 800; letter-spacing: 0.5px;
   background: var(--acento); color: #04222a; padding: 2px 5px; border-radius: 5px;
+}
+.badge-no {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
+  color: #fca5a5; background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.35); padding: 2px 5px; border-radius: 5px;
+  white-space: nowrap;
 }
 
 /* Reproductor */
@@ -315,12 +327,19 @@ html, body {
 .fila-vuelta .nombre { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fila-vuelta .tiempo { width: 64px; text-align: right; color: var(--acento); }
 .fila-vuelta .frames { width: 52px; text-align: right; color: var(--muted); font-size: 11px; }
+.fila-vuelta .badge-no { margin-left: 4px; }
 .modal-acciones {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 .modal-acciones .spacer { flex: 1; }
+.modal-aviso {
+  margin: -6px 0 0;
+  color: #fca5a5;
+  font-size: 12px;
+  min-height: 16px;
+}
 .modal-cab .hint { margin: 6px 0 0; color: var(--muted); }
 #chart-inputs { display: flex; flex-direction: column; gap: 12px; }
 .mini-grafico { padding: 10px; background: var(--bg-2); border: 1px solid var(--borde); border-radius: 10px; }

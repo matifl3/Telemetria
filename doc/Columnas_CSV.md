@@ -4,7 +4,7 @@ Referencia de las columnas que genera el exportador del core
 (`core/src/telemetria/procesamiento/exportador.py`).
 
 - Se genera **un CSV por vuelta** (`<pista>_vuelta_NN.csv`) con **85 columnas**.
-- Se genera además un **resumen** (`<pista>_resumen.csv`) con **9 columnas**.
+- Se genera además un **resumen** (`<pista>_resumen.csv`) con **10 columnas**.
 - El orden de columnas de la vuelta es: **auto (37) → ruedas (48)**.
 - Orden de ruedas: **FL, FR, RL, RR** (delantera izq./der., trasera izq./der.).
 
@@ -70,13 +70,15 @@ tiempo dentro de una vuelta: `t − t` del primer frame de esa vuelta.
 
 ---
 
-## 2. Ruedas (48 columnas = 12 bloques × FL/FR/RL/RR)
+## 2. Ruedas (48 columnas = 12 canales × 4 ruedas)
 
-Se imprimen **por bloque de columna** (los cuatro valores de la rueda seguidos),
-en este orden: `pos_x_*`, `pos_y_*`, `pos_z_*`, `rot_x_*`, `rot_y_*`, `rot_z_*`,
-`vel_angular_*`, `slip_angle_*`, `slip_ratio_*`, `nd_slip_*`, `carga_*`, `dirt_*`.
+Se imprimen **por canal** (los valores de las cuatro ruedas seguidos), en este
+orden: `pos_x_<R>`, `pos_y_<R>`, `pos_z_<R>`, `rot_x_<R>`, `rot_y_<R>`,
+`rot_z_<R>`, `vel_angular_<R>`, `slip_angle_<R>`, `slip_ratio_<R>`,
+`nd_slip_<R>`, `carga_<R>`, `dirt_<R>`, con `<R>` recorriendo `FL, FR, RL, RR`
+en cada canal (p. ej. `pos_x_FL, pos_x_FR, pos_x_RL, pos_x_RR, pos_y_FL, …`).
 
-| Bloque | Unidad / escala | Origen | Descripción |
+| Canal | Unidad / escala | Origen | Descripción |
 |---|---|---|---|
 | `pos_x_*`, `pos_y_*`, `pos_z_*` | m | Replay | Posición de la rueda en el mundo |
 | `rot_x_*`, `rot_y_*`, `rot_z_*` | rad (crudo) | Replay | Orientación de la rueda (normalizada de Y-X-Z) |
@@ -94,15 +96,16 @@ en este orden: `pos_x_*`, `pos_y_*`, `pos_z_*`, `rot_x_*`, `rot_y_*`, `rot_z_*`,
 
 ---
 
-## 3. Resumen (`<pista>_resumen.csv`, 9 columnas)
+## 3. Resumen (`<pista>_resumen.csv`, 10 columnas)
 
 | Columna | Descripción |
 |---|---|
 | `vuelta` | Número de vuelta (`numero_vuelta`) |
 | `tiempo_ms` | Tiempo de la vuelta (ms) |
 | `tiempo` | Tiempo formateado `m:ss.mmm` |
-| `valida` | `1`/`0`: vuelta válida (excluye outlap/inlap) |
+| `valida` | `1`/`0`: vuelta válida (excluye salida/largada, entrada y cortadas) |
 | `rapida` | `1`/`0`: dentro del `pct`% del mejor tiempo (por defecto 103) |
+| `motivo` | Causa de invalidez: `salida`, `entrada`, `cortada`, `incompleta`; vacío si válida |
 | `frames` | Cantidad de frames de la vuelta |
 | `auto` | ID del auto |
 | `piloto` | Nombre del piloto |

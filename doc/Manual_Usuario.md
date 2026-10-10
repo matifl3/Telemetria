@@ -118,7 +118,9 @@ Un archivo por vuelta (85 columnas) más un `*_resumen.csv`. Por cada frame:
 | Ruedas (×4) | `pos_*`, `rot_*`, `vel_angular_*`, `slip_angle_*`, `slip_ratio_*`, `nd_slip_*`, `carga_*`, `dirt_*` | Por rueda (`FL`, `FR`, `RL`, `RR`) |
 
 En el resumen: una fila por vuelta con `vuelta`, `tiempo_ms`, `tiempo`,
-`valida`, `rapida`, `frames`, `auto`, `piloto`, `pista`.
+`valida`, `rapida`, `motivo`, `frames`, `auto`, `piloto`, `pista`. Las vueltas
+de salida/largada, de entrada y las cortadas salen con `valida=0` y su `motivo`
+(`salida`, `entrada`, `cortada` o `incompleta`).
 
 El detalle completo de cada columna (unidad, origen y notas) está en
 `doc/Columnas_CSV.md`.

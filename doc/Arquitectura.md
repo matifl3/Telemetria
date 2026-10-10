@@ -79,7 +79,8 @@ Rueda:
   posicion, rotacion, vel_angular, slip_angle, slip_ratio,
   nd_slip, carga, dirt
 Vuelta:
-  numero, t_inicio, t_fin, tiempo_ms, es_valida, frames: [Frame]
+  numero, t_inicio, t_fin, tiempo_ms, es_valida,
+  motivo_invalida ("salida"|"entrada"|"cortada"|"incompleta"|""), frames: [Frame]
 ```
 
 ## 3. Capa WEB (Flask)
@@ -144,8 +145,8 @@ python -m telemetria <archivo> --out <dir> [--json] [--auto N] [--solo-rapidas] 
   ],
   "resumen": "monza_resumen.csv",
   "vueltas": [
-    { "numero": 2, "tiempo_ms": 105432, "valida": true, "rapida": true, "archivo": "monza_vuelta_02.csv" },
-    { "numero": 3, "tiempo_ms": 104871, "valida": true, "rapida": true, "archivo": "monza_vuelta_03.csv" }
+    { "numero": 2, "tiempo_ms": 105432, "valida": true, "rapida": true, "motivo": "", "archivo": "monza_vuelta_02.csv" },
+    { "numero": 3, "tiempo_ms": 104871, "valida": true, "rapida": true, "motivo": "", "archivo": "monza_vuelta_03.csv" }
   ]
 }
 ```
@@ -158,7 +159,8 @@ python -m telemetria <archivo> --out <dir> [--json] [--auto N] [--solo-rapidas] 
 
 Reglas:
 - `archivo` es relativo a la carpeta `--out` indicada.
-- `valida=false` marca outlap/inlap (ver §6).
+- `valida=false` marca salida/largada, entrada o cortadas/incompletas (ver §6);
+  `motivo` indica la causa exacta.
 - `rapida=true` si la vuelta válida está dentro del `--pct`% del mejor tiempo
   (por defecto 103); se usa para filtrar con `--solo-rapidas`.
 
@@ -201,15 +203,42 @@ TAMANO_MAX_SUBIDA = 200 * 1024 * 1024   # 200 MB
 EXTENSIONES = {".acreplay", ".nkt"}
 ```
 
-## 6. Segmentación de vueltas (lógica propuesta)
+## 6. Segmentación de vueltas (lógica implementada)
 
-Regla base (a validar con datos reales):
+Se corta al cambiar el número de vuelta (`current_lap`). El tiempo de la vuelta
+se toma de `current_lap_time` (y como respaldo `last_lap_time` o la duración).
 
-- Se detecta un corte cuando el número de vuelta `n` cambia a `n+1`, o cuando
-  `current_lap_time` cae (reinicio) respecto del frame anterior.
-- El tiempo de la vuelta se toma de `last_lap_time` cuando se cierra la vuelta.
-- La **vuelta de salida** (outlap) y la **de entrada** (inlap) se marcan como
-  `valida = false` (ver pregunta P3 de Requisitos).
+### Validez (no cuentan las vueltas de salida/largada ni las cortadas)
+
+La clasificación es relativa a la sesión (validada con 7 replays reales):
+
+1. Se calcula por vuelta la **distancia recorrida** (suma de segmentos x-z) y su
+   **velocidad media** = distancia / duración.
+2. `refDist` = mediana de las distancias; `refVel` = máxima de las velocidades
+   medias de las vueltas con `distancia >= 0.9 * refDist`.
+3. `cortada` = `distancia < 0.9 * refDist` (cubre cortes de pista, atajos y
+   grabaciones que empiezan/terminan a mitad de vuelta).
+4. `bordeLento` = primera o última vuelta **y** `velocidadMedia < 0.75 * refVel`
+   (outlap/largada al inicio; inlap/entrada a pits al final).
+5. `valida = !cortada && !bordeLento`. Los motivos de invalidez son:
+
+   | motivo | cuándo |
+   |---|---|---|
+   | `salida` | primera vuelta lenta (outlap o largada/grilla) |
+   | `entrada` | última vuelta lenta (inlap o vuelta de enfriamiento) |
+   | `cortada` | recorrido < 90% de la mediana, en el medio de la sesión |
+   | `incompleta` | recorrido < 90% de la mediana, en el primero/último tramo |
+
+   Con una sola vuelta no hay referencia: se la conserva como válida. La métrica
+   de velocidad se calcula desde posición/tiempo (no del campo `velocidad` del
+   frame), que en tramos lentos o al cerrarse el replay puede quedar desfasada.
+
+Ver pregunta P3 de Requisitos. La misma heurística replica el visualizador: el
+selector de vueltas abre **sin ninguna vuelta preseleccionada** (las no válidas
+llevan su motivo y "Solo rápidas" las marca a demanda) y exige elegir al menos
+una; la pestaña Conjunto excluye de sus estadísticas las vueltas no válidas; las
+corrientes (Vuelta, Mapa, Comparación) muestran solo las vueltas visibles, que se
+alternan desde el ojo del panel lateral (fila tachada = oculta).
 
 ## 7. Tecnologías y dependencias
 

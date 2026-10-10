@@ -66,7 +66,7 @@ def _normalizar_rotacion(valores) -> tuple:
 def _leer_frame(bruto: bytes, indice: int, intervalo_ms: float) -> Frame:
     """Decodifica un CarFrame de 256 bytes (ver doc/FormatoTelemetria.md 2.4)."""
     car_pos = struct.unpack_from("<3f", bruto, 0)
-    car_rot = struct.unpack_from("<3f", bruto, 12)
+    car_rot = struct.unpack_from("<3e", bruto, 12)
     wheel_pos = struct.unpack_from("<12f", bruto, 92)
     wheel_rot = struct.unpack_from("<12e", bruto, 140)
     velocidad = struct.unpack_from("<3e", bruto, 164)

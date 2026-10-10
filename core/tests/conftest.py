@@ -16,7 +16,7 @@ CARPETA_MUESTRAS = RAIZ / "Paquetes de telemetria"
 
 @pytest.fixture(scope="session")
 def ruta_muestra() -> str:
-    archivos = sorted(CARPETA_MUESTRAS.glob("*.acreplay"))
+    archivos = sorted(CARPETA_MUESTRAS.rglob("*.acreplay"))
     if not archivos:
         pytest.skip(f"No hay ningun .acreplay de muestra en '{CARPETA_MUESTRAS}'")
     return str(archivos[0])
