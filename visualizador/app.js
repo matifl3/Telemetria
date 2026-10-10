@@ -48,7 +48,7 @@ const state = {
   colorIdx: 0,
   tab: 'vuelta',
   charts: { lines: [], inputs: [] },
-  mapa: { canal: 'speed', frenada: true, cambios: false, tresD: false, rot: 0, alt: 3 },
+  mapa: { canal: 'speed', frenada: true, cambios: false, tresD: false, rot: 0, alt: 3, visual: 'canal', bordes: true, zoom: 1, panX: 0, panY: 0, s0: 1, cx: 0, cy: 0, resetView: true, projKey: '', projRes: null },
 };
 
 const $ = (id) => document.getElementById(id);
@@ -487,6 +487,7 @@ function recomputar() {
   }
   state.idx = Math.min(state.idx, grid.length - 1);
   state.dist = grid[state.idx] || 0;
+  state.mapa.resetView = true;
 
   renderListaVueltas();
   renderReadoutsBase();
@@ -1084,54 +1085,69 @@ function rangoCanal(laps, canal) {
   return { min, max };
 }
 
-function drawMap() {
-  const cv = $('mapa');
-  if (!cv || !cv.clientWidth || !cv.clientHeight) return;
-  const dpr = window.devicePixelRatio || 1;
-  const w = cv.clientWidth, h = cv.clientHeight;
-  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
-  const ctx = cv.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, w, h);
+function normalTrazado(nx, nz, i) {
+  const a = Math.max(0, i - 1), b = Math.min(nx.length - 1, i + 1);
+  const dx = nx[b] - nx[a], dz = nz[b] - nz[a];
+  const m = Math.hypot(dx, dz) || 1e-9;
+  return [-dz / m, dx / m];
+}
 
-  const laps = visibleLaps();
-  if (!laps.length) return;
-  const canal = state.mapa.canal;
-  const { min: vMin, max: vMax } = rangoCanal(laps, canal);
-
-  // proyección (con rotación/elevación opcional)
-  const a = (state.mapa.tresD ? state.mapa.rot : 0) * Math.PI / 180;
-  const alt = state.mapa.tresD ? state.mapa.alt : 0;
-  const proj = (x, z, y) => {
-    const rx = x * Math.cos(a) - z * Math.sin(a);
-    const rz = x * Math.sin(a) + z * Math.cos(a);
-    return [rx, rz - (Number.isFinite(y) ? y : 0) * alt];
-  };
-
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  const cache = [];
+/* Silueta de la pista: banda formada por los bordes extremos reales de todas las trazadas. */
+function envolventePista(laps, ref) {
+  const n = state.grid.length;
+  const base = (ref && ref.grid) || (laps[0] && laps[0].grid);
+  if (!base || n < 3) return null;
+  const nx = new Array(n), nz = new Array(n), ny = new Array(n);
+  const wl = new Array(n).fill(0), wr = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) { nx[i] = base.x[i]; nz[i] = base.z[i]; ny[i] = base.y[i]; }
   for (const l of laps) {
-    const { x, z, y } = l.raw;
-    const pts = new Array(x.length);
-    for (let i = 0; i < x.length; i++) {
-      const [px, py] = proj(x[i], z[i], y[i]);
-      pts[i] = [px, py];
-      if (px < minX) minX = px; if (px > maxX) maxX = px;
-      if (py < minY) minY = py; if (py > maxY) maxY = py;
+    const g = l.grid;
+    if (!g) continue;
+    for (let i = 1; i < n - 1; i++) {
+      const dx = g.x[i] - nx[i], dz = g.z[i] - nz[i];
+      if (!Number.isFinite(dx) || !Number.isFinite(dz)) continue;
+      const [nmx, nmz] = normalTrazado(nx, nz, i);
+      const sig = dx * nmx + dz * nmz;
+      if (sig > wl[i]) wl[i] = sig;
+      if (-sig > wr[i]) wr[i] = -sig;
     }
-    cache.push(pts);
   }
-  const pad = 34;
-  const spanX = Math.max(maxX - minX, 1e-6), spanY = Math.max(maxY - minY, 1e-6);
-  const s = Math.min((w - 2 * pad) / spanX, (h - 2 * pad) / spanY);
-  const ox = (w - spanX * s) / 2, oy = (h - spanY * s) / 2;
-  const tf = (px, py) => [ox + (px - minX) * s, oy + (py - minY) * s];
+  // borde izquierdo = la trazada más a la izquierda; derecho = la más a la derecha (con margen y mínimo)
+  const MARGEN = 1.5, MIN_LADO = 2.5;
+  for (let i = 0; i < n; i++) {
+    wl[i] = Math.max(wl[i] + MARGEN, MIN_LADO);
+    wr[i] = Math.max(wr[i] + MARGEN, MIN_LADO);
+  }
+  return { nx, nz, ny, wl, wr };
+}
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1;
-  for (let gx = 0; gx <= w; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
-  for (let gy = 0; gy <= h; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
+/* Dibuja la banda de pista (relleno + bordes), sin ejes. */
+function drawBordePista(ctx, tf, proj, env) {
+  const { nx, nz, ny, wl, wr } = env;
+  const n = nx.length;
+  const L = new Array(n), R = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const [nmx, nmz] = normalTrazado(nx, nz, i);
+    const ey = Number.isFinite(ny[i]) ? ny[i] : 0;
+    L[i] = tf(...proj(nx[i] + nmx * wl[i], nz[i] + nmz * wl[i], ey));
+    R[i] = tf(...proj(nx[i] - nmx * wr[i], nz[i] - nmz * wr[i], ey));
+  }
+  ctx.beginPath();
+  ctx.moveTo(L[0][0], L[0][1]);
+  for (let i = 1; i < n; i++) ctx.lineTo(L[i][0], L[i][1]);
+  for (let i = n - 1; i >= 0; i--) ctx.lineTo(R[i][0], R[i][1]);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(148,163,184,0.12)';
+  ctx.fill();
+  ctx.lineWidth = 1.2; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(148,163,184,0.5)';
+  for (const arr of [L, R]) {
+    ctx.beginPath(); ctx.moveTo(arr[0][0], arr[0][1]);
+    for (let i = 1; i < n; i++) ctx.lineTo(arr[i][0], arr[i][1]);
+    ctx.stroke();
+  }
+}
 
-  // trazados coloreados por canal
+function drawCanal(ctx, laps, cache, tf, canal, vMin, vMax) {
   const rango = Math.max(vMax - vMin, 1e-6);
   laps.forEach((l, li) => {
     const pts = cache[li];
@@ -1147,52 +1163,257 @@ function drawMap() {
     }
     ctx.globalAlpha = 1;
   });
-
-  const ref = lapRef();
-  if (ref) {
-    // marcadores de frenada
-    if (state.mapa.frenada) {
-      const b = ref.raw.brake, x = ref.raw.x, z = ref.raw.z, y = ref.raw.y;
-      let prev = 0;
-      for (let i = 0; i < b.length; i++) {
-        if (b[i] > 0.45 && prev <= 0.45) { const [px, py] = tf(...proj(x[i], z[i], y[i])); ctx.fillStyle = '#f87171'; ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill(); }
-        prev = b[i];
-      }
-    }
-    // marcadores de cambio
-    if (state.mapa.cambios) {
-      const g = ref.raw.gear, x = ref.raw.x, z = ref.raw.z, y = ref.raw.y;
-      for (let i = 1; i < g.length; i++) {
-        if (Number.isFinite(g[i]) && Number.isFinite(g[i - 1]) && g[i] !== g[i - 1]) {
-          const [px, py] = tf(...proj(x[i], z[i], y[i]));
-          ctx.fillStyle = g[i] > g[i - 1] ? '#4ade80' : '#facc15';
-          ctx.fillText(g[i] > g[i - 1] ? '↑' : '↓', px - 4, py - 4);
-        }
-      }
-    }
-    // línea de meta
-    const [mx, my] = tf(...proj(ref.raw.x[0], ref.raw.z[0], ref.raw.y[0]));
-    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(mx, my, 4, 0, Math.PI * 2); ctx.fill();
-    ctx.font = '11px "Segoe UI"'; ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillText('S/F', mx + 8, my - 6);
-  }
-
-  // marcadores de posición actual
-  for (const l of laps) {
-    if (!l.grid) continue;
-    const esRef = l.id === state.refId;
-    const [px, py] = tf(...proj(l.grid.x[state.idx], l.grid.z[state.idx], l.grid.y[state.idx]));
-    ctx.beginPath(); ctx.arc(px, py, esRef ? 7 : 4.5, 0, Math.PI * 2);
-    ctx.fillStyle = esRef ? '#ffffff' : hexA(l.color, 0.9); ctx.fill();
-    if (esRef) { ctx.lineWidth = 3; ctx.strokeStyle = l.color; ctx.stroke(); }
-  }
-
-  // leyenda de color
+  const w = ctx.canvas.clientWidth, h = ctx.canvas.clientHeight;
   const lx = 10, ly = h - 22, lw = 140;
   for (let i = 0; i < lw; i++) { ctx.fillStyle = colorMap(i / lw); ctx.fillRect(lx + i, ly, 1, 8); }
   ctx.fillStyle = '#8b97a8'; ctx.font = '10px "Segoe UI"';
   ctx.fillText(`${canal}`, lx, ly - 4);
   if (Number.isFinite(vMin)) ctx.fillText(vMin.toFixed(0), lx, ly + 18);
   if (Number.isFinite(vMax)) ctx.fillText(vMax.toFixed(0), lx + lw - 20, ly + 18);
+}
+
+function drawMarcadoresRef(ctx, tf, proj, lapV) {
+  const ref = (lapV && lapV.raw && lapV.raw.brake) ? lapV : lapRef();
+  if (!ref) return;
+  if (state.mapa.frenada) {
+    const b = ref.raw.brake, x = ref.raw.x, z = ref.raw.z, y = ref.raw.y;
+    let prev = 0;
+    for (let i = 0; i < b.length; i++) {
+      if (b[i] > 0.45 && prev <= 0.45) {
+        const [px, py] = tf(...proj(x[i], z[i], y[i]));
+        ctx.fillStyle = '#f87171';
+        ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
+      }
+      prev = b[i];
+    }
+  }
+  if (state.mapa.cambios) {
+    const g = ref.raw.gear, x = ref.raw.x, z = ref.raw.z, y = ref.raw.y;
+    for (let i = 1; i < g.length; i++) {
+      if (Number.isFinite(g[i]) && Number.isFinite(g[i - 1]) && g[i] !== g[i - 1]) {
+        const [px, py] = tf(...proj(x[i], z[i], y[i]));
+        ctx.font = '12px "Segoe UI"';
+        ctx.fillStyle = g[i] > g[i - 1] ? '#4ade80' : '#facc15';
+        ctx.fillText(g[i] > g[i - 1] ? '↑' : '↓', px - 4, py - 4);
+      }
+    }
+  }
+  const [mx, my] = tf(...proj(ref.raw.x[0], ref.raw.z[0], ref.raw.y[0]));
+  ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(mx, my, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.font = '11px "Segoe UI"'; ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillText('S/F', mx + 8, my - 6);
+}
+
+function adjuntarVistaMapa(cv) {
+  if (!cv) return;
+  cv.style.cursor = 'grab';
+  cv.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = cv.getBoundingClientRect();
+    zoomMapa(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - rect.left, e.clientY - rect.top, cv);
+  }, { passive: false });
+  let drag = null;
+  cv.addEventListener('pointerdown', (e) => {
+    drag = { x: e.clientX, y: e.clientY, px: state.mapa.panX, py: state.mapa.panY };
+    cv.setPointerCapture(e.pointerId);
+    cv.style.cursor = 'grabbing';
+  });
+  cv.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    state.mapa.panX = drag.px + (e.clientX - drag.x);
+    state.mapa.panY = drag.py + (e.clientY - drag.y);
+    drawMap();
+  });
+  const soltar = () => { if (drag) { drag = null; cv.style.cursor = 'grab'; } };
+  cv.addEventListener('pointerup', soltar);
+  cv.addEventListener('pointercancel', soltar);
+  cv.addEventListener('dblclick', () => { resetViewMapa(); cv.style.cursor = 'grab'; });
+}
+
+function zoomMapa(factor, mx, my, cv) {
+  const m = state.mapa;
+  const baseS = m.s0 || 1;
+  const oldS = baseS * m.zoom;
+  const nz = clamp(m.zoom * factor, 0.6, 80);
+  const r = (baseS * nz) / oldS;
+  m.zoom = nz;
+  m.panX = (mx - cv.clientWidth / 2) * (1 - r) + m.panX * r;
+  m.panY = (my - cv.clientHeight / 2) * (1 - r) + m.panY * r;
+  drawMap();
+}
+
+function resetViewMapa() {
+  state.mapa.zoom = 1; state.mapa.panX = 0; state.mapa.panY = 0;
+  drawMap();
+}
+
+/* Proyecta todos los puntos de las vueltas a 2D (rotación/elevación) y
+   devuelve el cache + bounds comunes (misma escala para todos los mini-mapas). */
+function proyectarLaps(laps) {
+  const a = (state.mapa.tresD ? state.mapa.rot : 0) * Math.PI / 180;
+  const alt = state.mapa.tresD ? state.mapa.alt : 0;
+  const proj = (x, z, y) => {
+    const rx = x * Math.cos(a) - z * Math.sin(a);
+    const rz = x * Math.sin(a) + z * Math.cos(a);
+    return [rx, rz - (Number.isFinite(y) ? y : 0) * alt];
+  };
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  const cache = [];
+  for (const l of laps) {
+    const { x, z, y } = l.raw;
+    const pts = new Array(x.length);
+    for (let i = 0; i < x.length; i++) {
+      const [px, py] = proj(x[i], z[i], y[i]);
+      pts[i] = [px, py];
+      if (px < minX) minX = px; if (px > maxX) maxX = px;
+      if (py < minY) minY = py; if (py > maxY) maxY = py;
+    }
+    cache.push(pts);
+  }
+  return { proj, cache, minX, maxX, minY, maxY };
+}
+
+/* Cache de proyección: no reproyectar en cada frame de zoom/pan. */
+function obtenerProyeccion(laps) {
+  const key = laps.map((l) => l.id).join(',') + '|' + state.mapa.tresD + '|' + state.mapa.rot + '|' + state.mapa.alt;
+  if (state.mapa.projKey === key && state.mapa.projRes) return state.mapa.projRes;
+  state.mapa.projKey = key;
+  state.mapa.projRes = proyectarLaps(laps);
+  return state.mapa.projRes;
+}
+
+/* Escala/zoom/pan de la vista; los bounds son comunes a todas las vueltas. */
+function construirVista(laps, cv, p) {
+  const pad = 34;
+  const w = cv.clientWidth || 400, h = cv.clientHeight || 300;
+  const s0 = Math.min((w - 2 * pad) / Math.max(p.maxX - p.minX, 1e-6), (h - 2 * pad) / Math.max(p.maxY - p.minY, 1e-6));
+  const cxm = (p.minX + p.maxX) / 2, cym = (p.minY + p.maxY) / 2;
+  const m = state.mapa;
+  m.s0 = s0; m.cx = cxm; m.cy = cym;
+  if (m.resetView) { m.zoom = 1; m.panX = 0; m.panY = 0; m.resetView = false; }
+  const s = m.zoom * s0;
+  const tf = (px, py) => [w / 2 + m.panX + (px - cxm) * s, h / 2 + m.panY + (py - cym) * s];
+  return { proj: p.proj, cache: p.cache, w, h, tf };
+}
+
+function tfPara(cv) {
+  const m = state.mapa;
+  const w = cv.clientWidth || 400, h = cv.clientHeight || 300;
+  const s = m.zoom * m.s0;
+  return (px, py) => [w / 2 + m.panX + (px - m.cx) * s, h / 2 + m.panY + (py - m.cy) * s];
+}
+
+function prepMapaCv(cv) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth || 400, h = cv.clientHeight || 300;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  return { ctx, w, h };
+}
+
+function dibujarGrilla(ctx, w, h) {
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1;
+  for (let gx = 0; gx <= w; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
+  for (let gy = 0; gy <= h; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
+}
+
+function dibujarPosicion(ctx, laps, view) {
+  for (const l of laps) {
+    if (!l.grid) continue;
+    const esRef = l.id === state.refId;
+    const [px, py] = view.tf(...view.proj(l.grid.x[state.idx], l.grid.z[state.idx], l.grid.y[state.idx]));
+    ctx.beginPath(); ctx.arc(px, py, esRef ? 7 : 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = esRef ? '#ffffff' : hexA(l.color, 0.9); ctx.fill();
+    if (esRef) { ctx.lineWidth = 3; ctx.strokeStyle = l.color; ctx.stroke(); }
+  }
+}
+
+/* Mapa único: heatmap por canal. */
+function pintarMapaCanal(cv, laps) {
+  const { ctx, w, h } = prepMapaCv(cv);
+  if (!laps.length) return;
+  const view = construirVista(laps, cv, obtenerProyeccion(laps));
+  dibujarGrilla(ctx, w, h);
+  const canal = state.mapa.canal;
+  const { min: vMin, max: vMax } = rangoCanal(laps, canal);
+  drawCanal(ctx, laps, view.cache, view.tf, canal, vMin, vMax);
+  drawMarcadoresRef(ctx, view.tf, view.proj, lapRef());
+  dibujarPosicion(ctx, laps, view);
+}
+
+/* Mini-mapa de una vuelta: banda de pista (silueta) + trazada de color fina por encima. */
+function pintarMapaTrazada(cv, lap, laps, view, cacheIdx) {
+  const { ctx, w, h } = prepMapaCv(cv);
+  dibujarGrilla(ctx, w, h);
+  if (view.env) drawBordePista(ctx, view.tf, view.proj, view.env);
+  const pts = view.cache[cacheIdx];
+  if (pts && pts.length > 1) {
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = lap.color; ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let i = 0; i < pts.length; i++) {
+      const [px, py] = view.tf(pts[i][0], pts[i][1]);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+  drawMarcadoresRef(ctx, view.tf, view.proj, lap);
+  dibujarPosicion(ctx, [lap], view);
+}
+
+/* Grilla: un mapa por vuelta visible. */
+function renderTrazadas() {
+  const cont = $('mapa-trazadas');
+  const laps = visibleLaps();
+  if (!cont || !laps.length) return;
+  const key = laps.map((l) => l.id).join(',');
+  if (cont.dataset.key !== key) {
+    cont.innerHTML = '';
+    laps.forEach((l) => {
+      const item = document.createElement('div');
+      item.className = 'trazada-item';
+      const nombre = l.id === state.refId ? l.name + ' (REF)' : l.name;
+      item.innerHTML =
+        `<div class="trazada-titulo"><span class="trazada-dot" style="background:${l.color}"></span>` +
+        `<span class="trazada-nombre">${nombre}</span>` +
+        `<span class="trazada-tiempo mono">${fmtTiempo(tiempoDeVuelta(l))}</span></div>`;
+      const cv = document.createElement('canvas');
+      cv.className = 'trazada-canvas';
+      item.appendChild(cv);
+      cont.appendChild(item);
+      adjuntarVistaMapa(cv);
+    });
+    cont.dataset.key = key;
+  }
+  const p = obtenerProyeccion(laps);
+  const canvases = cont.querySelectorAll('.trazada-canvas');
+  const cv0 = canvases[0];
+  if (!cv0) return;
+  construirVista(laps, cv0, p);
+  const env = state.mapa.bordes ? envolventePista(laps, lapRef()) : null;
+  const view = { proj: p.proj, cache: p.cache, env };
+  laps.forEach((l, i) => {
+    const cv = canvases[i];
+    if (!cv) return;
+    pintarMapaTrazada(cv, l, laps, { ...view, tf: tfPara(cv) }, i);
+  });
+}
+
+function drawMap() {
+  const simple = $('mapa-canvas');
+  const grilla = $('mapa-trazadas');
+  const mapaCv = $('mapa');
+  if (!mapaCv) return;
+  if (state.mapa.visual === 'trazada') {
+    if (simple) simple.style.display = 'none';
+    if (grilla) { grilla.style.display = 'flex'; renderTrazadas(); }
+    return;
+  }
+  if (grilla) grilla.style.display = 'none';
+  if (simple) simple.style.display = 'block';
+  pintarMapaCanal(mapaCv, visibleLaps());
 }
 
 /* ---------- readouts / UI ---------- */
@@ -1286,6 +1507,18 @@ function init() {
   const t3d = $('mapa-3d'); if (t3d) t3d.addEventListener('change', (e) => { state.mapa.tresD = e.target.checked; mostrarControles3D(); drawMap(); });
   const rot = $('mapa-rot'); if (rot) rot.addEventListener('input', (e) => { state.mapa.rot = parseFloat(e.target.value); drawMap(); });
   const alt = $('mapa-alt'); if (alt) alt.addEventListener('input', (e) => { state.mapa.alt = parseFloat(e.target.value); drawMap(); });
+
+  const visual = $('mapa-visual');
+  if (visual) visual.addEventListener('change', (e) => {
+    state.mapa.visual = e.target.value;
+    const canalSel = $('mapa-canal');
+    if (canalSel) canalSel.disabled = state.mapa.visual !== 'canal';
+    drawMap();
+  });
+  const bordes = $('mapa-bordes');
+  if (bordes) bordes.addEventListener('change', (e) => { state.mapa.bordes = e.target.checked; drawMap(); });
+
+  adjuntarVistaMapa($('mapa'));
 
   const selB = $('sel-lap-b'); if (selB) selB.addEventListener('change', (e) => { state.lapBId = e.target.value; renderTabActiva(); });
 

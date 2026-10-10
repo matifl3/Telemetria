@@ -121,6 +121,12 @@
           <div class="mapa-card">
             <div class="grafico-titulo">Mapa de pista</div>
             <div class="mapa-controles">
+              <label>Visual
+                <select id="mapa-visual">
+                  <option value="canal">Canal (heatmap)</option>
+                  <option value="trazada">Trazada por vuelta</option>
+                </select>
+              </label>
               <label>Canal
                 <select id="mapa-canal">
                   <option value="speed">Velocidad</option>
@@ -131,15 +137,18 @@
                   <option value="y">Elevación</option>
                 </select>
               </label>
+              <label class="check"><input id="mapa-bordes" type="checkbox" checked /> Pista de referencia</label>
               <label class="check"><input id="mapa-frenada" type="checkbox" checked /> Marcas de frenada</label>
               <label class="check"><input id="mapa-cambios" type="checkbox" /> Marcas de cambio</label>
               <label class="check"><input id="mapa-3d" type="checkbox" /> 3D</label>
             </div>
+            <p class="mapa-hint"><strong>Trazada por vuelta</strong>: cada vuelta en su propio mapa, con la <strong>pista</strong> como banda gris (silueta de todas las vueltas) y su <strong>trazada</strong> de color como línea fina por dentro. Rueda = zoom · arrastrar = panorámica · doble clic = encuadrar.</p>
             <div id="mapa-3d-controles" class="mapa-3d-controles" style="display:none">
               <label>Rotación <input id="mapa-rot" type="range" min="-180" max="180" value="0" step="1" /></label>
               <label>Elevación <input id="mapa-alt" type="range" min="0" max="15" value="3" step="0.5" /></label>
             </div>
-            <canvas id="mapa"></canvas>
+            <div id="mapa-canvas"><canvas id="mapa"></canvas></div>
+            <div id="mapa-trazadas"></div>
           </div>
         </div>
 
