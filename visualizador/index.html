@@ -28,7 +28,7 @@
       <div class="drop-inner">
         <div class="drop-icono">⇪</div>
         <h2>Arrastrá tus telemetrías acá</h2>
-        <p>CSV (como los que exporta el core) <strong>o</strong> replays <code>.acreplay</code> (se parsean solos). Tras un replay podés elegir, entre el listado, cuál vuelta comparar.</p>
+        <p>CSV (como los que exporta el core) <strong>o</strong> replays <code>.acreplay</code> (se parsean solos). Tras un replay elegís qué vueltas analizar en las pestañas por vuelta; la pestaña <strong>Conjunto siempre usa todas las vueltas</strong> del replay.</p>
         <p class="hint">
           Columnas esperadas (se detectan por nombre): <code>distance</code>,
           <code>timestamp</code>/<code>t</code>, <code>speed</code>/<code>velocidad_kmh</code>,
@@ -153,6 +153,7 @@
         </div>
 
         <div id="panel-conjunto" class="tab-panel">
+          <p class="hint" style="text-align:left; margin:0 0 10px; max-width:none">Conjunto usa <strong>todas las vueltas cargadas</strong>, sin importar la selección de la pestaña por vuelta (ojo lateral / modal al cargar).</p>
           <div class="grafico-card">
             <div class="grafico-titulo">Tiempos por vuelta <span class="unidad">mejor al tope · σ = consistencia</span></div>
             <canvas id="ch-barras-tiempos"></canvas>
@@ -228,9 +229,9 @@
   <section id="modal-selector" class="modal oculto" aria-hidden="true">
     <div class="modal-card">
       <div class="modal-cab">
-        <h2>Elegí qué vueltas comparar</h2>
+        <h2>Elegí qué vueltas analizar</h2>
         <p id="modal-archivo" class="mono"></p>
-        <p class="hint">Vienen marcadas las <strong>rápidas</strong> (≤103% de la mejor). Desmarcá lo que no quieras.</p>
+        <p class="hint">Todas las vueltas del replay se cargan y la pestaña <strong>Conjunto</strong> las usa todas. La selección de acá define qué vueltas entran en <strong>Vuelta, Mapa y Comparación</strong>. Vienen marcadas las <strong>rápidas</strong> (≤103% de la mejor).</p>
       </div>
       <div id="modal-lista" class="modal-lista"></div>
       <div class="modal-acciones">
@@ -240,7 +241,7 @@
         <button id="btn-solo-rapidas" class="btn fantasma">Solo rápidas (≤103%)</button>
         <span class="spacer"></span>
         <button id="btn-modal-cancelar" class="btn fantasma">Cancelar</button>
-        <button id="btn-modal-aceptar" class="btn primario">Agregar seleccionadas</button>
+        <button id="btn-modal-aceptar" class="btn primario">Usar seleccionadas</button>
       </div>
     </div>
   </section>

@@ -182,7 +182,7 @@ function unwrap(rads) {
 }
 
 /** Construye una "vuelta" común a partir de series crudas. */
-function crearLap(name, s) {
+function crearLap(name, s, visible = true) {
   const n = s.x.length;
   if (n < 2) throw new Error(`"${name}": muy pocas filas válidas.`);
   const dist = s.dist ? s.dist.slice() : distanciaAcumulada(s.x, s.z);
@@ -222,7 +222,7 @@ function crearLap(name, s) {
     id: name + '#' + Math.random().toString(36).slice(2, 7),
     name,
     color: PALETA[state.colorIdx++ % PALETA.length],
-    visible: true,
+    visible,
     raw: {
       x: s.x, z: s.z, y: s.y || dist.map(() => NaN), dist,
       speed: s.speed, throttle: gasR.valores, brake: frenoR.valores,
@@ -395,16 +395,17 @@ async function cargarArchivos(fileList) {
         nuevas.push(construirVueltaCSV(await parsearArchivoCSV(f)));
       } else if (/\.acreplay$/i.test(f.name)) {
         const candidatas = await parsearReplay(f);
-        const elegidas = await preguntarVueltas(f.name, candidatas);
-        for (const c of elegidas) nuevas.push(crearLap(c.name, c.serie));
+        const elegidas = await preguntarVueltas(f.name, candidatas); // Set de índices
+        for (let i = 0; i < candidatas.length; i++) nuevas.push(crearLap(candidatas[i].name, candidatas[i].serie, elegidas.has(i)));
       } else {
         throw new Error(`"${f.name}": extensión no soportada (CSV o .acreplay).`);
       }
     }
     if (!nuevas.length) return;
     state.laps.push(...nuevas);
-    if (state.refId === null && state.laps.length) state.refId = visibleLaps()[0].id;
-    if (state.lapBId === null && state.laps.length > 1) state.lapBId = state.laps[1].id;
+    const vs = visibleLaps();
+    if (state.refId === null && vs.length) state.refId = vs[0].id;
+    if (state.lapBId === null && vs.length > 1) state.lapBId = vs[1].id;
     ocultarError();
     mostrarDashboard();
     recomputar();
@@ -444,8 +445,8 @@ function preguntarVueltas(nombreArchivo, vueltas) {
     $('btn-solo-rapidas').onclick = () => { marcarRapidas(); chkTodas.checked = false; };
 
     const cerrar = (elegidas) => { modal.classList.add('oculto'); modal.setAttribute('aria-hidden', 'true'); resolve(elegidas); };
-    $('btn-modal-aceptar').onclick = () => cerrar(vueltas.filter((v, i) => { const cb = lista.querySelector(`input[data-i="${i}"]`); return cb && cb.checked; }));
-    $('btn-modal-cancelar').onclick = () => cerrar([]);
+    $('btn-modal-aceptar').onclick = () => cerrar(new Set(Array.from(lista.querySelectorAll('input[data-i]')).filter((cb) => cb.checked).map((cb) => Number(cb.dataset.i))));
+    $('btn-modal-cancelar').onclick = () => cerrar(new Set());
 
     modal.classList.remove('oculto');
     modal.setAttribute('aria-hidden', 'false');
@@ -455,11 +456,11 @@ function preguntarVueltas(nombreArchivo, vueltas) {
 /* ---------- recomputar malla común ---------- */
 
 function visibleLaps() { return state.laps.filter((l) => l.visible); }
-function lapRef() { return state.laps.find((l) => l.id === state.refId) || visibleLaps()[0] || null; }
-function lapB() { return state.laps.find((l) => l.id === state.lapBId) || visibleLaps().find((l) => l.id !== state.refId) || null; }
+function lapRef() { const v = visibleLaps(); return v.find((l) => l.id === state.refId) || v[0] || null; }
+function lapB() { const v = visibleLaps(); return v.find((l) => l.id === state.lapBId && l.id !== state.refId) || v.find((l) => l.id !== state.refId) || null; }
 
 function recomputar() {
-  const laps = visibleLaps();
+  const laps = state.laps;
   if (!laps.length) return;
   let maxDist = 0;
   for (const l of laps) maxDist = Math.max(maxDist, l.raw.dist[l.raw.dist.length - 1]);
@@ -517,7 +518,7 @@ function renderListaVueltas() {
          <span class="vuelta-meta">${tMeta ? tMeta + ' · ' : ''}${l.raw.x.length} pts · ${l.raw.dist[l.raw.dist.length - 1].toFixed(0)} m</span>
        </span>` +
       (l.id === state.refId ? '<span class="ref-badge">REF</span>' : '') +
-      `<button class="vuelta-eye ${l.visible ? 'on' : ''}" title="Mostrar/ocultar">●</button>`;
+      `<button class="vuelta-eye ${l.visible ? 'on' : ''}" title="Mostrar/ocultar en las pestañas Vuelta, Mapa y Comparación (Conjunto siempre usa todas)">●</button>`;
     li.querySelector('.vuelta-info').addEventListener('click', () => {
       state.refId = l.id; renderListaVueltas(); renderReadoutsBase(); updateUI();
     });
@@ -527,7 +528,6 @@ function renderListaVueltas() {
       l.visible = !l.visible;
       if (!l.visible && l.id === state.refId) { const v = visibleLaps(); state.refId = v.length ? v[0].id : null; }
       recomputar();
-      if (!visibleLaps().length) destroyCharts();
     });
     ul.appendChild(li);
   });
@@ -617,11 +617,15 @@ function moverCursor() {
 
 function renderTabActiva() {
   destroyCharts();
+  if (!state.laps.length) return;
+  if (state.tab === 'conjunto') {
+    renderConjunto(state.laps); // el conjunto siempre usa todas las vueltas cargadas
+    return;
+  }
   const laps = visibleLaps();
   if (!laps.length) return;
   if (state.tab === 'vuelta') renderVuelta(laps);
   else if (state.tab === 'mapa') renderMapa(laps);
-  else if (state.tab === 'conjunto') renderConjunto(laps);
   else if (state.tab === 'comparacion') renderComparacion(laps);
 }
 
