@@ -10,7 +10,7 @@
 <body>
   <header class="topbar">
     <div class="marca">
-      <span class="logo">◈</span>
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 14l5-9 4 7 4-11 5 15"/></svg></span>
       <div>
         <h1>AC Telemetry Lab</h1>
         <p>Análisis y comparación de telemetría de Assetto Corsa</p>
@@ -26,7 +26,7 @@
   <main>
     <section id="zona-carga" class="zona-carga">
       <div class="drop-inner">
-        <div class="drop-icono">⇪</div>
+        <div class="drop-icono" aria-hidden="true"><svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17V4"/><path d="M6 10l6-6 6 6"/><path d="M4 21h16"/></svg></div>
         <h2>Arrastrá tus telemetrías acá</h2>
         <p>CSV (como los que exporta el core) <strong>o</strong> replays <code>.acreplay</code> (se parsean solos). Tras un replay elegís qué vueltas analizar en las pestañas por vuelta; la pestaña <strong>Conjunto siempre usa todas las vueltas</strong> del replay.</p>
         <p class="hint">
@@ -47,8 +47,10 @@
 
         <div class="panel-titulo">Reproductor</div>
         <div class="reproductor">
-          <button id="btn-play" class="btn icono" title="Play/Pausa (espacio)">▶</button>
-          <input id="scrub" type="range" min="0" max="1000" value="0" step="1" />
+          <button id="btn-play" class="btn icono" type="button" title="Play/Pausa (espacio)" aria-label="Reproducir vuelta" aria-pressed="false">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <input id="scrub" type="range" min="0" max="1000" value="0" step="1" aria-label="Posición en la vuelta" />
           <span id="scrub-dist" class="mono">0 m</span>
         </div>
         <div class="velocidad-repro">
@@ -71,14 +73,14 @@
       </aside>
 
       <section class="contenido">
-        <nav class="tabs">
-          <button class="tab activo" data-tab="vuelta">Vuelta</button>
-          <button class="tab" data-tab="mapa">Mapa</button>
-          <button class="tab" data-tab="conjunto">Conjunto</button>
-          <button class="tab" data-tab="comparacion">Comparación</button>
+        <nav class="tabs" role="tablist" aria-label="Vistas de análisis">
+          <button class="tab activo" type="button" role="tab" id="tab-vuelta" aria-selected="true" aria-controls="panel-vuelta" data-tab="vuelta">Vuelta</button>
+          <button class="tab" type="button" role="tab" id="tab-mapa" aria-selected="false" aria-controls="panel-mapa" data-tab="mapa">Mapa</button>
+          <button class="tab" type="button" role="tab" id="tab-conjunto" aria-selected="false" aria-controls="panel-conjunto" data-tab="conjunto">Conjunto</button>
+          <button class="tab" type="button" role="tab" id="tab-comparacion" aria-selected="false" aria-controls="panel-comparacion" data-tab="comparacion">Comparación</button>
         </nav>
 
-        <div id="panel-vuelta" class="tab-panel activo">
+        <div id="panel-vuelta" class="tab-panel activo" role="tabpanel" aria-labelledby="tab-vuelta">
           <div class="grafico-card">
             <div class="grafico-titulo">Velocidad <span class="unidad">km/h</span></div>
             <div id="chart-speed" class="plot"></div>
@@ -117,7 +119,7 @@
           </div>
         </div>
 
-        <div id="panel-mapa" class="tab-panel">
+        <div id="panel-mapa" class="tab-panel" role="tabpanel" aria-labelledby="tab-mapa">
           <div class="mapa-card">
             <div class="grafico-titulo">Mapa de pista</div>
             <div class="mapa-controles">
@@ -156,7 +158,7 @@
           </div>
         </div>
 
-        <div id="panel-conjunto" class="tab-panel">
+        <div id="panel-conjunto" class="tab-panel" role="tabpanel" aria-labelledby="tab-conjunto">
           <p class="hint" style="text-align:left; margin:0 0 10px; max-width:none">Conjunto usa <strong>todas las vueltas cargadas</strong>, sin importar la selección de la pestaña por vuelta (ojo lateral / modal al cargar).</p>
           <div class="grafico-card">
             <div class="grafico-titulo">Tiempos por vuelta <span class="unidad">mejor al tope · σ = consistencia</span></div>
@@ -211,7 +213,7 @@
           </div>
         </div>
 
-        <div id="panel-comparacion" class="tab-panel">
+        <div id="panel-comparacion" class="tab-panel" role="tabpanel" aria-labelledby="tab-comparacion">
           <div class="panel-vs">
             <div>A: <span id="vs-a" class="mono">–</span></div>
             <label>vs B
@@ -241,10 +243,10 @@
     <section id="error-aviso" class="aviso oculto"></section>
   </main>
 
-  <section id="modal-selector" class="modal oculto" aria-hidden="true">
+  <section id="modal-selector" class="modal oculto" role="dialog" aria-modal="true" aria-labelledby="modal-titulo" aria-hidden="true">
     <div class="modal-card">
       <div class="modal-cab">
-        <h2>Elegí qué vueltas analizar</h2>
+        <h2 id="modal-titulo">Elegí qué vueltas analizar</h2>
         <p id="modal-archivo" class="mono"></p>
         <p class="hint">Todas las vueltas del replay se cargan y la pestaña <strong>Conjunto</strong> las usa todas. La selección de acá define qué vueltas entran en <strong>Vuelta, Mapa y Comparación</strong>. Vienen marcadas las <strong>rápidas</strong> (≤103% de la mejor).</p>
       </div>

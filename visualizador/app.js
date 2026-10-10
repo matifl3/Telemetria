@@ -420,6 +420,7 @@ async function cargarArchivos(fileList) {
 function preguntarVueltas(nombreArchivo, vueltas) {
   return new Promise((resolve) => {
     const modal = $('modal-selector');
+    const prevFocus = document.activeElement || document.body;
     $('modal-archivo').textContent = nombreArchivo;
     const lista = $('modal-lista');
     lista.innerHTML = vueltas
@@ -447,12 +448,31 @@ function preguntarVueltas(nombreArchivo, vueltas) {
     chkTodas.onchange = () => lista.querySelectorAll('input[type="checkbox"]').forEach((cb) => (cb.checked = chkTodas.checked));
     $('btn-solo-rapidas').onclick = () => { marcarRapidas(); chkTodas.checked = false; };
 
-    const cerrar = (elegidas) => { modal.classList.add('oculto'); modal.setAttribute('aria-hidden', 'true'); resolve(elegidas); };
+    const cerrar = (elegidas) => {
+      modal.classList.add('oculto');
+      modal.setAttribute('aria-hidden', 'true');
+      document.removeEventListener('keydown', onKey);
+      if (prevFocus && prevFocus.focus) prevFocus.focus();
+      resolve(elegidas);
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); cerrar(new Set()); return; }
+      if (e.key === 'Tab') {
+        const foc = modal.querySelectorAll('button, input[type="checkbox"], select, [tabindex]');
+        if (!foc.length) return;
+        const first = foc[0];
+        const last = foc[foc.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
     $('btn-modal-aceptar').onclick = () => cerrar(new Set(Array.from(lista.querySelectorAll('input[data-i]')).filter((cb) => cb.checked).map((cb) => Number(cb.dataset.i))));
     $('btn-modal-cancelar').onclick = () => cerrar(new Set());
 
+    document.addEventListener('keydown', onKey);
     modal.classList.remove('oculto');
     modal.setAttribute('aria-hidden', 'false');
+    $('btn-modal-aceptar').focus();
   });
 }
 
@@ -1269,7 +1289,8 @@ function envolventePista(laps, ref) {
     }
   }
   // borde izquierdo = la trazada más a la izquierda; derecho = la más a la derecha (con margen y mínimo)
-  const MARGEN = 1.5, MIN_LADO = 2.5;
+  // MIN_LADO alto: garantiza que la pista se vea como banda aunque haya una sola vuelta visible.
+  const MARGEN = 1.5, MIN_LADO = 7;
   for (let i = 0; i < n; i++) {
     wl[i] = Math.max(wl[i] + MARGEN, MIN_LADO);
     wr[i] = Math.max(wr[i] + MARGEN, MIN_LADO);
@@ -1293,9 +1314,9 @@ function drawBordePista(ctx, tf, proj, env) {
   for (let i = 1; i < n; i++) ctx.lineTo(L[i][0], L[i][1]);
   for (let i = n - 1; i >= 0; i--) ctx.lineTo(R[i][0], R[i][1]);
   ctx.closePath();
-  ctx.fillStyle = 'rgba(148,163,184,0.12)';
+  ctx.fillStyle = 'rgba(148,163,184,0.14)';
   ctx.fill();
-  ctx.lineWidth = 1.2; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(148,163,184,0.5)';
+  ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(148,163,184,0.6)';
   for (const arr of [L, R]) {
     ctx.beginPath(); ctx.moveTo(arr[0][0], arr[0][1]);
     for (let i = 1; i < n; i++) ctx.lineTo(arr[i][0], arr[i][1]);
@@ -1429,12 +1450,13 @@ function proyectarLaps(laps, cfg) {
   return { proj, cache, minX, maxX, minY, maxY };
 }
 
-/* Cache de proyección: no reproyectar en cada frame de zoom/pan. */
-function obtenerProyeccion(laps) {
-  const key = laps.map((l) => l.id).join(',') + '|' + state.mapa.tresD + '|' + state.mapa.rot + '|' + state.mapa.alt;
+/* Cache de proyección: no reproyectar en cada frame de zoom/pan. plano=true fuerza vista top-down fija
+   (las mini-mapas por vuelta nunca rotan con el 3D del mapa principal). */
+function obtenerProyeccion(laps, plano) {
+  const key = laps.map((l) => l.id).join(',') + '|' + (plano ? 'plano' : state.mapa.tresD + '|' + state.mapa.rot + '|' + state.mapa.alt);
   if (state.mapa.projKey === key && state.mapa.projRes) return state.mapa.projRes;
   state.mapa.projKey = key;
-  state.mapa.projRes = proyectarLaps(laps);
+  state.mapa.projRes = plano ? proyectarLaps(laps, { tresD: false, rot: 0, alt: 0 }) : proyectarLaps(laps);
   return state.mapa.projRes;
 }
 
@@ -1555,7 +1577,7 @@ function renderTrazadas() {
     });
     cont.dataset.key = key;
   }
-  const p = obtenerProyeccion(laps);
+  const p = obtenerProyeccion(laps, true);
   const canvases = cont.querySelectorAll('.trazada-canvas');
   const cv0 = canvases[0];
   if (!cv0) return;
@@ -1588,7 +1610,9 @@ function drawMap() {
 
 function actualizarScrub() {
   const scrub = $('scrub');
-  scrub.value = state.maxDist ? Math.round((state.dist / state.maxDist) * 1000) : 0;
+  const pct = state.maxDist ? Math.min(100, (state.dist / state.maxDist) * 100) : 0;
+  scrub.value = Math.round(pct * 10);
+  scrub.style.setProperty('--bait', pct + '%');
   $('scrub-dist').textContent = state.dist.toFixed(0) + ' m';
 }
 
@@ -1614,12 +1638,22 @@ function updateUI(opts = { moverCursor: true, mapa: true }) {
 
 /* ---------- reproductor ---------- */
 
+function fijarIconoPlay() {
+  const b = $('btn-play');
+  if (!b) return;
+  b.innerHTML = state.playing
+    ? '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>'
+    : '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+  b.setAttribute('aria-pressed', String(state.playing));
+  b.setAttribute('aria-label', state.playing ? 'Pausar vuelta' : 'Reproducir vuelta');
+}
+
 function togglePlay() {
   if (!state.playing && state.dist >= state.maxDist - 0.5 && state.maxDist > 0) {
     state.dist = 0; state.idx = 0; updateUI({ moverCursor: true });
   }
   state.playing = !state.playing;
-  $('btn-play').textContent = state.playing ? '❚❚' : '▶';
+  fijarIconoPlay();
   if (state.playing) { state.lastTs = performance.now(); state.raf = requestAnimationFrame(tick); }
   else if (state.raf) { cancelAnimationFrame(state.raf); state.raf = null; }
 }
@@ -1665,7 +1699,11 @@ function ocultarError() { $('error-aviso').classList.add('oculto'); }
 
 function activarTab(tab) {
   state.tab = tab;
-  document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('activo', b.dataset.tab === tab));
+  document.querySelectorAll('.tab').forEach((b) => {
+    const act = b.dataset.tab === tab;
+    b.classList.toggle('activo', act);
+    b.setAttribute('aria-selected', String(act));
+  });
   document.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('activo', p.id === 'panel-' + tab));
   if (visibleLaps().length) renderTabActiva();
 }
@@ -1720,7 +1758,7 @@ function init() {
 
   $('btn-limpiar').addEventListener('click', () => {
     destroyCharts(); state.laps = []; state.refId = null; state.lapBId = null; state.idx = 0; state.dist = 0; state.playing = false; state.colorIdx = 0;
-    $('btn-play').textContent = '▶'; $('dashboard').classList.add('oculto'); $('zona-carga').classList.remove('oculto'); $('btn-limpiar').disabled = true; ocultarError();
+    fijarIconoPlay(); $('dashboard').classList.add('oculto'); $('zona-carga').classList.remove('oculto'); $('btn-limpiar').disabled = true; ocultarError();
   });
 
   window.addEventListener('keydown', (e) => {
