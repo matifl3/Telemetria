@@ -45,6 +45,8 @@ const state = {
   loop: true,
   raf: null,
   lastTs: 0,
+  ultVms: 0,
+  _tick: 0,
   colorIdx: 0,
   tab: 'vuelta',
   charts: { lines: [], inputs: [] },
@@ -602,14 +604,18 @@ function destroyCharts() {
 function onCursor(u) {
   const idx = u.cursor.idx;
   if (idx == null || idx < 0 || idx >= state.grid.length) return;
+  if (idx === state.idx) return; // cursor programático del play/scrub: no realimentar
   state.idx = idx; state.dist = state.grid[idx];
   updateUI({ moverCursor: false });
 }
 
+let _ultimoCursorPx = -1;
 function moverCursor() {
   const u = state.charts.lines[0]?.u;
   if (!u) return;
   const left = u.valToPos(state.dist, 'x');
+  if (Math.abs(left - _ultimoCursorPx) < 1) return;
+  _ultimoCursorPx = left;
   u.setCursor({ left, top: u.over.height / 2 });
 }
 
@@ -617,6 +623,7 @@ function moverCursor() {
 
 function renderTabActiva() {
   destroyCharts();
+  _ultimoCursorPx = -1;
   if (!state.laps.length) return;
   if (state.tab === 'conjunto') {
     renderConjunto(state.laps); // el conjunto siempre usa todas las vueltas cargadas
@@ -671,6 +678,8 @@ function renderVuelta(laps) {
 
 function renderMapa(laps) {
   drawMap();
+  const ref = lapRef();
+  if (ref) dibujarAutoCarga(ref, state.idx);
 }
 
 function renderConjunto(laps) {
@@ -756,6 +765,89 @@ function drawTraction(laps) {
   ctx.fillText('izq.', cx - R + 2, cy + 12); ctx.fillText('der.', cx + R - 26, cy + 12);
   for (const [x, y, color] of pts) { ctx.fillStyle = hexA(color, 0.25); ctx.fillRect(sx(x) - 1, sy(y) - 1, 2, 2); }
   ctx.fillStyle = '#8b97a8'; ctx.fillText(`escala ±${maxG} g`, 8, 14);
+}
+
+/* ---------- carga por rueda ---------- */
+
+const RUEDAS = [
+  { k: 'loadFL', l: 'FL', c: '#38bdf8', u: [-1, -1] },
+  { k: 'loadFR', l: 'FR', c: '#f472b6', u: [1, -1] },
+  { k: 'loadRL', l: 'RL', c: '#4ade80', u: [-1, 1] },
+  { k: 'loadRR', l: 'RR', c: '#facc15', u: [1, 1] },
+];
+
+function redondeado(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function cargaPuntosMax(lap) {
+  if (!lap._cargaMax) {
+    let m = 0;
+    for (const r of RUEDAS) { const arr = lap.grid[r.k]; if (arr) for (const v of arr) if (Number.isFinite(v) && v > m) m = v; }
+    lap._cargaMax = m || 1;
+  }
+  return lap._cargaMax;
+}
+
+/* Auto en vivo: las 4 ruedas se llenan según la carga en el instante actual. */
+function dibujarAutoCarga(lap, i) {
+  const c = prepCanvas('chart-carga-vivo', 240);
+  if (!c || !lap) return;
+  const { ctx, w, h } = c;
+  const maxC = cargaPuntosMax(lap);
+  const ancho = Math.min(w * 0.56, 240), alto = Math.min(h * 0.5, 130);
+  const cx = w / 2, cy = h / 2 + 6;
+  ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+  ctx.fillText('Carga por rueda · ' + lap.name, 8, 16);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#8b97a8';
+  ctx.fillText('▲ adelante', cx, cy - alto / 2 - 14);
+  ctx.textAlign = 'left';
+  const rw = Math.min(ancho * 0.16, 34), rh = Math.min(alto * 0.22, 20);
+  // cuerpo del auto primero (las ruedas se dibujan encima)
+  ctx.fillStyle = 'rgba(148,163,184,0.14)';
+  redondeado(ctx, cx - ancho / 2, cy - alto / 2, ancho, alto, ancho * 0.18); ctx.fill();
+  ctx.strokeStyle = 'rgba(148,163,184,0.5)'; ctx.lineWidth = 1.5; ctx.stroke();
+  // capó (lado delantero) más claro
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  redondeado(ctx, cx - ancho * 0.36, cy - alto / 2 + 2, ancho * 0.72, alto * 0.18, 8); ctx.fill();
+  for (const r of RUEDAS) {
+    const rx = cx + (r.u[0] * ancho) / 2 - rw / 2;
+    const ry = cy + (r.u[1] * alto) / 2 - rh / 2;
+    const v = lap.grid[r.k] ? lap.grid[r.k][i] : NaN;
+    const frac = Number.isFinite(v) ? clamp(v / maxC, 0, 1) : 0;
+    // neumático (fondo oscuro)
+    ctx.fillStyle = '#1c2430';
+    redondeado(ctx, rx - 2, ry - 2, rw + 4, rh + 4, 6); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+    // carga dentro del neumático
+    if (Number.isFinite(v) && frac > 0.02) {
+      const offY = Math.round((1 - frac) * (rh - 2));
+      ctx.fillStyle = colorMap(frac);
+      redondeado(ctx, rx, ry + offY, rw, Math.max(2, Math.round((rh - 2) * frac)), 4); ctx.fill();
+    } else if (Number.isFinite(v)) {
+      ctx.fillStyle = 'rgba(148,163,184,0.35)';
+      redondeado(ctx, rx, ry, rw, Math.max(2, Math.round(rh * 0.06)), 2); ctx.fill();
+    }
+    ctx.textAlign = 'center';
+    ctx.fillStyle = r.c; ctx.font = 'bold 13px "Segoe UI"';
+    ctx.fillText(r.l, rx + rw / 2, ry + rh + 16);
+    ctx.fillStyle = '#e6ebf2'; ctx.font = '11px "Consolas", monospace';
+    ctx.fillText(Number.isFinite(v) ? Math.round(v).toLocaleString() : '–', rx + rw / 2, ry + rh + 30);
+    ctx.textAlign = 'left';
+  }
+  // leyenda de escala
+  ctx.fillStyle = '#8b97a8'; ctx.font = '10px "Segoe UI"';
+  ctx.fillText('0', 10, h - 6);
+  ctx.fillText(maxC.toLocaleString() + ' N (máx)', w - 92, h - 6);
+  for (let k2 = 0; k2 < w - 102 - 10 - 4; k2++) { ctx.fillStyle = colorMap(k2 / Math.max(w - 102 - 10 - 4, 1)); ctx.fillRect(10 + k2, h - 12, 1, 3); }
 }
 
 function drawBarrasTiempos(laps) {
@@ -1428,7 +1520,7 @@ function actualizarScrub() {
   $('scrub-dist').textContent = state.dist.toFixed(0) + ' m';
 }
 
-function updateUI(opts = { moverCursor: true }) {
+function updateUI(opts = { moverCursor: true, mapa: true }) {
   actualizarScrub();
   const lap = lapRef();
   if (lap && lap.grid) {
@@ -1440,13 +1532,20 @@ function updateUI(opts = { moverCursor: true }) {
     $('ro-marcha').textContent = Math.round(lap.grid.gear[i] ?? 0);
     $('ro-tiempo').textContent = (lap.grid.time[i] ?? 0).toFixed(2);
   }
-  if (state.tab === 'mapa') drawMap();
+  if (state.tab === 'mapa') {
+    if (opts.mapa) drawMap();
+    const r = lapRef();
+    if (r && r.grid) dibujarAutoCarga(r, state.idx);
+  }
   if (opts.moverCursor) moverCursor();
 }
 
 /* ---------- reproductor ---------- */
 
 function togglePlay() {
+  if (!state.playing && state.dist >= state.maxDist - 0.5 && state.maxDist > 0) {
+    state.dist = 0; state.idx = 0; updateUI({ moverCursor: true });
+  }
   state.playing = !state.playing;
   $('btn-play').textContent = state.playing ? '❚❚' : '▶';
   if (state.playing) { state.lastTs = performance.now(); state.raf = requestAnimationFrame(tick); }
@@ -1455,12 +1554,28 @@ function togglePlay() {
 
 function tick(ts) {
   if (!state.playing) return;
-  const dt = (ts - state.lastTs) / 1000; state.lastTs = ts;
-  let nueva = state.dist + dt * state.speedMult * 90;
-  if (nueva >= state.maxDist) { if (state.loop) nueva = nueva % state.maxDist; else { nueva = state.maxDist; togglePlay(); } }
-  const idx = Math.min(state.grid.length - 1, Math.max(0, Math.round(nueva / state.gridStep)));
-  state.idx = idx; state.dist = state.grid[idx];
-  updateUI({ moverCursor: true });
+  try {
+    const dt = Math.min(Math.max((ts - state.lastTs) / 1000, 0), 0.05); state.lastTs = ts;
+    const ref = lapRef();
+    let vms = state.ultVms > 0 ? state.ultVms : 90;
+    if (ref && ref.grid && ref.grid.speed) {
+      const s = ref.grid.speed[state.idx];
+      if (Number.isFinite(s) && s > 0) vms = s / 3.6;
+    }
+    state.ultVms = vms;
+    let nueva = state.dist + dt * state.speedMult * vms;
+    if (nueva >= state.maxDist) {
+      if (state.loop) nueva = nueva % state.maxDist;
+      else { nueva = state.maxDist; togglePlay(); }
+    }
+    const idx = Math.min(state.grid.length - 1, Math.max(0, Math.round(nueva / state.gridStep)));
+    state.idx = idx; state.dist = nueva;
+    const redibujarMapa = state.mapa.visual !== 'trazada' && state._tick % 3 === 0;
+    state._tick++;
+    updateUI({ moverCursor: true, mapa: redibujarMapa });
+  } catch (err) {
+    console.error('[tick]', err);
+  }
   if (state.playing) state.raf = requestAnimationFrame(tick);
 }
 
@@ -1532,7 +1647,7 @@ function init() {
   });
 
   window.addEventListener('keydown', (e) => {
-    if (document.activeElement && ['INPUT', 'SELECT'].includes(document.activeElement.tagName)) return;
+    if (document.activeElement && ['INPUT', 'SELECT', 'BUTTON'].includes(document.activeElement.tagName)) return;
     if (e.code === 'Space') { e.preventDefault(); if (state.grid.length) togglePlay(); }
     else if (e.code === 'ArrowRight') { e.preventDefault(); irA(state.dist + state.gridStep * 10); }
     else if (e.code === 'ArrowLeft') { e.preventDefault(); irA(state.dist - state.gridStep * 10); }
