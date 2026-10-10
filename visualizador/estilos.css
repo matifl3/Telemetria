@@ -272,3 +272,131 @@ html, body {
 #chart-inputs { display: flex; flex-direction: column; gap: 12px; }
 .mini-grafico { padding: 10px; background: var(--bg-2); border: 1px solid var(--borde); border-radius: 10px; }
 .mini-titulo { font-size: 12px; margin: 0 4px 6px; font-weight: 600; letter-spacing: 0.3px; }
+
+/* Pestañas */
+.tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: var(--sombra);
+}
+.tab {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+.tab:hover { color: var(--texto); }
+.tab.activo {
+  background: linear-gradient(180deg, #23c7e0, #14a6bd);
+  color: #04222a;
+  border-color: transparent;
+}
+
+/* Paneles */
+.tab-panel { display: none; flex-direction: column; gap: 18px; min-width: 0; }
+.tab-panel.activo { display: flex; }
+
+/* Canvases de gráficos propios */
+#chart-traction,
+#ch-barras-tiempos,
+#ch-velmedia,
+#ch-histvel,
+#ch-histgear,
+#ch-fuel,
+#ch-sectores,
+#ch-minidelta { width: 100%; display: block; }
+#chart-traction { height: 300px; }
+#ch-barras-tiempos { height: 240px; }
+#ch-velmedia { height: 240px; }
+#ch-histvel { height: 200px; }
+#ch-histgear { height: 200px; }
+#ch-fuel { height: 200px; }
+#ch-sectores { height: 260px; }
+#ch-minidelta { height: 240px; }
+
+/* Controles del mapa */
+.mapa-controles {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.mapa-controles select,
+.panel-vs select {
+  background: var(--panel-2);
+  color: var(--texto);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+.mapa-3d-controles {
+  display: none;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.mapa-3d-controles input[type="range"] { accent-color: var(--acento); width: 130px; }
+
+/* Tabla resumen */
+#tabla-resumen { overflow-x: auto; }
+#tabla-resumen table { width: 100%; border-collapse: collapse; font-size: 12px; }
+#tabla-resumen th, #tabla-resumen td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--borde);
+  white-space: nowrap;
+}
+#tabla-resumen th {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+#tabla-resumen tr:hover td { background: var(--panel-2); }
+.delta { color: var(--freno); font-size: 11px; }
+
+/* Vuelta teórica */
+#teorica { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.teorica-fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  color: var(--muted);
+}
+.teorica-fila strong { color: var(--acento); font-size: 15px; }
+
+/* Comparación */
+.panel-vs {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 12px 16px;
+  box-shadow: var(--sombra);
+  font-size: 13px;
+  color: var(--muted);
+}
+.panel-vs label { display: flex; align-items: center; gap: 8px; }
+#vs-a { color: var(--texto); }
+.vacio { color: var(--muted); }

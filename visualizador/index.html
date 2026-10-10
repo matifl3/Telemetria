@@ -33,8 +33,9 @@
           Columnas esperadas (se detectan por nombre): <code>distance</code>,
           <code>timestamp</code>/<code>t</code>, <code>speed</code>/<code>velocidad_kmh</code>,
           <code>throttle</code>/<code>gas</code>, <code>brake</code>/<code>freno</code>,
-          <code>gear</code>/<code>marcha</code>, <code>x</code>/<code>pos_x</code>,
-          <code>z</code>/<code>pos_z</code>. Si no hay <code>distance</code>, se calcula desde x/z.
+          <code>gear</code>/<code>marcha</code>, <code>rpm</code>, <code>steer_angle</code>,
+          <code>x</code>/<code>pos_x</code>, <code>z</code>/<code>pos_z</code>,
+          <code>carga_FL/FR/RL/RR</code>, <code>fuel</code>. Si no hay <code>distance</code>, se calcula desde x/z.
         </p>
       </div>
     </section>
@@ -70,21 +71,144 @@
       </aside>
 
       <section class="contenido">
-        <div id="graficos" class="graficos">
+        <nav class="tabs">
+          <button class="tab activo" data-tab="vuelta">Vuelta</button>
+          <button class="tab" data-tab="mapa">Mapa</button>
+          <button class="tab" data-tab="conjunto">Conjunto</button>
+          <button class="tab" data-tab="comparacion">Comparación</button>
+        </nav>
+
+        <div id="panel-vuelta" class="tab-panel activo">
           <div class="grafico-card">
             <div class="grafico-titulo">Velocidad <span class="unidad">km/h</span></div>
             <div id="chart-speed" class="plot"></div>
           </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">RPM <span class="unidad">revoluciones</span></div>
+            <div id="chart-rpm" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Marcha <span class="unidad">por distancia</span></div>
+            <div id="chart-gear" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Volante <span class="unidad">rad (f16 crudo)</span></div>
+            <div id="chart-steer" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Aceleración total <span class="unidad">g</span></div>
+            <div id="chart-acc" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Rumbo <span class="unidad">grados (yaw)</span></div>
+            <div id="chart-yaw" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Carga por rueda <span class="unidad">N · vuelta REF</span></div>
+            <div id="chart-load" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Círculo de tracción <span class="unidad">acel/freno × lateral (g)</span></div>
+            <canvas id="chart-traction"></canvas>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Acelerador / Freno por vuelta <span class="unidad">0–1</span></div>
+            <div id="chart-inputs" class="plot"></div>
+          </div>
         </div>
 
-        <div class="mapa-card">
-          <div class="grafico-titulo">Mapa de pista <span class="unidad">X / Z</span></div>
-          <canvas id="mapa"></canvas>
+        <div id="panel-mapa" class="tab-panel">
+          <div class="mapa-card">
+            <div class="grafico-titulo">Mapa de pista</div>
+            <div class="mapa-controles">
+              <label>Canal
+                <select id="mapa-canal">
+                  <option value="speed">Velocidad</option>
+                  <option value="throttle">Acelerador</option>
+                  <option value="brake">Freno</option>
+                  <option value="gear">Marcha</option>
+                  <option value="accLat">G lateral</option>
+                  <option value="y">Elevación</option>
+                </select>
+              </label>
+              <label class="check"><input id="mapa-frenada" type="checkbox" checked /> Marcas de frenada</label>
+              <label class="check"><input id="mapa-cambios" type="checkbox" /> Marcas de cambio</label>
+              <label class="check"><input id="mapa-3d" type="checkbox" /> 3D</label>
+            </div>
+            <div id="mapa-3d-controles" class="mapa-3d-controles" style="display:none">
+              <label>Rotación <input id="mapa-rot" type="range" min="-180" max="180" value="0" step="1" /></label>
+              <label>Elevación <input id="mapa-alt" type="range" min="0" max="15" value="3" step="0.5" /></label>
+            </div>
+            <canvas id="mapa"></canvas>
+          </div>
         </div>
 
-        <div class="grafico-card">
-          <div class="grafico-titulo">Acelerador / Freno por vuelta <span class="unidad">0–1</span></div>
-          <div id="chart-inputs" class="plot"></div>
+        <div id="panel-conjunto" class="tab-panel">
+          <div class="grafico-card">
+            <div class="grafico-titulo">Tiempos por vuelta <span class="unidad">mejor al tope · σ = consistencia</span></div>
+            <canvas id="ch-barras-tiempos"></canvas>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Velocidad media / máx por vuelta <span class="unidad">km/h</span></div>
+            <canvas id="ch-velmedia"></canvas>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Envolvente de velocidad <span class="unidad">mín / prom / máx</span></div>
+            <div id="chart-env" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Histograma de velocidad <span class="unidad">km/h</span></div>
+            <canvas id="ch-histvel"></canvas>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Uso de marchas <span class="unidad">frecuencia</span></div>
+            <canvas id="ch-histgear"></canvas>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Combustible usado por vuelta <span class="unidad">unidades crudas</span></div>
+            <canvas id="ch-fuel"></canvas>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Desvío lateral vs vuelta REF <span class="unidad">m</span></div>
+            <div id="chart-lat" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Tiempo por sector <span class="unidad">10 sectores de igual distancia</span></div>
+            <canvas id="ch-sectores"></canvas>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Resumen por vuelta</div>
+            <div id="tabla-resumen"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Vuelta teórica <span class="unidad">mejor sector de cada vuelta</span></div>
+            <div id="teorica"></div>
+          </div>
+        </div>
+
+        <div id="panel-comparacion" class="tab-panel">
+          <div class="panel-vs">
+            <div>A: <span id="vs-a" class="mono">–</span></div>
+            <label>vs B
+              <select id="sel-lap-b"></select>
+            </label>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Delta A − B <span class="unidad">s (positivo = A más lento)</span></div>
+            <div id="chart-delta" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Diferencia de velocidad <span class="unidad">km/h</span></div>
+            <div id="chart-dvel" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Diferencia pedales <span class="unidad">Δ 0–1</span></div>
+            <div id="chart-dped" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Delta por sector <span class="unidad">rojo = A pierde · verde = A gana</span></div>
+            <canvas id="ch-minidelta"></canvas>
+          </div>
         </div>
       </section>
     </section>

@@ -2,12 +2,14 @@
 
 /* ============================================================
    AC Telemetry Lab
-   Carga CSV de vueltas, gráficos sincronizados (uPlot) y mapa
-   de pista en canvas con marcador y reproductor.
+   Carga CSV / .acreplay, gráficos sincronizados (uPlot),
+   mapas y estadísticas por vuelta y de conjunto.
    ============================================================ */
 
 const SYNC_KEY = 'ac-tele-lab';
-const PALETA = ['#38bdf8', '#f472b6', '#4ade80', '#facc15', '#a78bfa', '#fb923c', '#22d3ee', '#f87171'];
+const PALETA = ['#38bdf8', '#f472b6', '#4ade80', '#facc15', '#a78bfa', '#fb923c', '#22d3ee', '#f87171', '#c084fc', '#fde047'];
+const G = 9.80665;
+const N_SECTORES = 10;
 
 const ALIAS = {
   distance: ['distance', 'dist', 'distancia', 'lap_distance', 'distance_m', 'lapdist', 'dist_m'],
@@ -16,13 +18,23 @@ const ALIAS = {
   throttle: ['throttle', 'gas', 'acelerador', 'throttle_pct', 'gas_pct', 'acelerador_pct'],
   brake: ['brake', 'freno', 'brake_pct', 'freno_pct', 'frenado_pct'],
   gear: ['gear', 'marcha', 'ngear', 'gear_number'],
+  rpm: ['rpm', 'revoluciones', 'engine_rpm'],
+  steer: ['steer_angle', 'steer', 'volante', 'steering', 'steerangle'],
   x: ['x', 'pos_x', 'position_x', 'world_x', 'posx', 'positionx', 'pos_x_m', 'x_m'],
+  y: ['pos_y', 'y', 'position_y', 'world_y', 'posy', 'positiony', 'pos_y_m', 'y_m', 'elevacion'],
   z: ['z', 'pos_z', 'position_z', 'world_z', 'posz', 'positionz', 'pos_z_m', 'z_m'],
+  yaw: ['rot_y', 'rotation_y', 'yaw', 'roty'],
+  fuel: ['fuel', 'combustible', 'nafta', 'fuel_level', 'fuel_nivel'],
+  loadFL: ['carga_fl', 'load_fl', 'carga_di', 'load_fl_'],
+  loadFR: ['carga_fr', 'load_fr', 'carga_dd'],
+  loadRL: ['carga_rl', 'load_rl', 'carga_ti'],
+  loadRR: ['carga_rr', 'load_rr', 'carga_td'],
 };
 
 const state = {
   laps: [],
   refId: null,
+  lapBId: null,
   grid: [],
   gridStep: 1,
   maxDist: 0,
@@ -31,13 +43,16 @@ const state = {
   playing: false,
   speedMult: 1,
   loop: true,
-  charts: { speed: null, inputs: [] },
   raf: null,
   lastTs: 0,
   colorIdx: 0,
+  tab: 'vuelta',
+  charts: { lines: [], inputs: [] },
+  mapa: { canal: 'speed', frenada: true, cambios: false, tresD: false, rot: 0, alt: 3 },
 };
 
 const $ = (id) => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /* ---------- utilidades numéricas ---------- */
 
@@ -58,8 +73,6 @@ function columnasDe(fields) {
     const encontrado = bajas.find((f) => opciones.includes(f.low));
     if (encontrado) mapa[clave] = encontrado.orig;
   }
-  // heurística de posición: eje x/z si no vino por alias exacto
-  // (evita confundirse con acc_x, rot_z, vel_x de los ejes del auto).
   if (mapa.x === undefined) {
     const e = bajas.find((f) => /^(pos|position|world|car|coche)[_\s]?x(_?m)?$/.test(f.low) || f.low === 'x');
     if (e) mapa.x = e.orig;
@@ -82,11 +95,7 @@ function normalizarPedal(valores) {
 function distanciaAcumulada(xs, zs) {
   const d = new Array(xs.length);
   d[0] = 0;
-  for (let i = 1; i < xs.length; i++) {
-    const dx = xs[i] - xs[i - 1];
-    const dz = zs[i] - zs[i - 1];
-    d[i] = d[i - 1] + Math.hypot(dx, dz);
-  }
+  for (let i = 1; i < xs.length; i++) d[i] = d[i - 1] + Math.hypot(xs[i] - xs[i - 1], zs[i] - zs[i - 1]);
   return d;
 }
 
@@ -118,6 +127,31 @@ function resampleCercano(srcX, srcY, grid) {
   return out;
 }
 
+function fmtTiempo(seg) {
+  if (!Number.isFinite(seg)) return '';
+  const m = Math.floor(seg / 60);
+  const s = seg - m * 60;
+  return `${m}:${s.toFixed(1).padStart(4, '0')}`;
+}
+
+function hexA(hex, a) {
+  const h = hex.replace('#', '');
+  return `rgba(${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)},${a})`;
+}
+
+function colorMap(t) {
+  t = clamp(t, 0, 1);
+  const stops = [[0, [59, 130, 246]], [0.25, [34, 211, 238]], [0.5, [74, 222, 128]], [0.75, [250, 204, 21]], [1, [248, 113, 113]]];
+  for (let i = 1; i < stops.length; i++) {
+    if (t <= stops[i][0]) {
+      const a = stops[i - 1], b = stops[i];
+      const k = (t - a[0]) / (b[0] - a[0]);
+      return `rgb(${Math.round(a[1][0] + (b[1][0] - a[1][0]) * k)},${Math.round(a[1][1] + (b[1][1] - a[1][1]) * k)},${Math.round(a[1][2] + (b[1][2] - a[1][2]) * k)})`;
+    }
+  }
+  return 'rgb(248,113,113)';
+}
+
 /* ---------- carga ---------- */
 
 function parsearArchivoCSV(file) {
@@ -133,26 +167,74 @@ function parsearArchivoCSV(file) {
   });
 }
 
-/** Construye una "vuelta" común (lo que graficamos) a partir de series. */
-function crearLap(name, series) {
-  const n = series.x.length;
+function unwrap(rads) {
+  const out = new Array(rads.length);
+  if (!rads.length) return out;
+  out[0] = Number.isFinite(rads[0]) ? rads[0] : 0;
+  for (let i = 1; i < rads.length; i++) {
+    let d = rads[i] - rads[i - 1];
+    if (!Number.isFinite(d)) { out[i] = out[i - 1]; continue; }
+    while (d > Math.PI) d -= 2 * Math.PI;
+    while (d < -Math.PI) d += 2 * Math.PI;
+    out[i] = out[i - 1] + d;
+  }
+  return out;
+}
+
+/** Construye una "vuelta" común a partir de series crudas. */
+function crearLap(name, s) {
+  const n = s.x.length;
   if (n < 2) throw new Error(`"${name}": muy pocas filas válidas.`);
-  const dist = series.dist ? series.dist.slice() : distanciaAcumulada(series.x, series.z);
-  const gasR = normalizarPedal(series.throttle);
-  const frenoR = normalizarPedal(series.brake);
-  const time = series.time || dist.map(() => NaN);
+  const dist = s.dist ? s.dist.slice() : distanciaAcumulada(s.x, s.z);
+  const gasR = normalizarPedal(s.throttle);
+  const frenoR = normalizarPedal(s.brake);
+  const time = s.time || dist.map(() => NaN);
   const t0 = Number.isFinite(time[0]) ? time[0] : 0;
+  const timeRel = time.map((v) => (Number.isFinite(v) ? v - t0 : NaN));
+
+  // dt por frame (con respaldo)
+  const dt = new Array(n);
+  let dUlt = 0.12;
+  for (let i = 0; i < n; i++) {
+    const d = i > 0 ? timeRel[i] - timeRel[i - 1] : NaN;
+    if (Number.isFinite(d) && d > 0 && d < 2) { dt[i] = d; dUlt = d; }
+    else dt[i] = i === 0 ? dUlt : dt[i - 1] || dUlt;
+  }
+
+  const speedMs = s.speed.map((v) => (Number.isFinite(v) ? v / 3.6 : NaN));
+  const yaw = unwrap(s.yaw || dist.map(() => 0));
+
+  const accLong = new Array(n);
+  const accLat = new Array(n);
+  const accTotal = new Array(n);
+  for (let i = 0; i < n; i++) {
+    if (i === 0) { accLong[i] = 0; accLat[i] = 0; accTotal[i] = 0; continue; }
+    const dv = speedMs[i] - speedMs[i - 1];
+    const dY = yaw[i] - yaw[i - 1];
+    accLong[i] = Number.isFinite(dv) ? dv / dt[i] : NaN;
+    accLat[i] = Number.isFinite(speedMs[i]) ? speedMs[i] * (dY / dt[i]) : NaN;
+    const a = Number.isFinite(accLong[i]) ? accLong[i] : 0;
+    const b = Number.isFinite(accLat[i]) ? accLat[i] : 0;
+    accTotal[i] = Math.hypot(a, b);
+  }
+
   return {
     id: name + '#' + Math.random().toString(36).slice(2, 7),
     name,
     color: PALETA[state.colorIdx++ % PALETA.length],
     visible: true,
     raw: {
-      x: series.x, z: series.z, dist,
-      speed: series.speed,
-      throttle: gasR.valores, brake: frenoR.valores,
-      gear: series.gear,
-      time: time.map((v) => (Number.isFinite(v) ? v - t0 : NaN)),
+      x: s.x, z: s.z, y: s.y || dist.map(() => NaN), dist,
+      speed: s.speed, throttle: gasR.valores, brake: frenoR.valores,
+      gear: s.gear || dist.map(() => NaN), time: timeRel, dt,
+      rpm: s.rpm || dist.map(() => NaN),
+      steer: s.steer || dist.map(() => NaN),
+      yaw, accLong, accLat, accTotal,
+      loadFL: s.loadFL || dist.map(() => NaN),
+      loadFR: s.loadFR || dist.map(() => NaN),
+      loadRL: s.loadRL || dist.map(() => NaN),
+      loadRR: s.loadRR || dist.map(() => NaN),
+      fuel: s.fuel || dist.map(() => NaN),
     },
     grid: null,
   };
@@ -169,15 +251,18 @@ function construirVueltaCSV({ file, rows, fields }) {
   }
   const col = (clave) => (cols[clave] === undefined ? rows.map(() => NaN) : rows.map((r) => aNumero(r[cols[clave]])));
   const series = {
-    x: col('x'), z: col('z'),
+    x: col('x'), z: col('z'), y: col('y'),
     speed: col('speed'), time: col('time'), gear: col('gear'),
     throttle: col('throttle'), brake: col('brake'),
+    rpm: col('rpm'), steer: col('steer'), yaw: col('yaw'),
+    loadFL: col('loadFL'), loadFR: col('loadFR'), loadRL: col('loadRL'), loadRR: col('loadRR'),
+    fuel: col('fuel'),
   };
   if (cols.distance !== undefined) series.dist = col('distance');
   return crearLap(file.name.replace(/\.csv$/i, ''), series);
 }
 
-/* ---------- parser .acreplay v16 (en el navegador) ---------- */
+/* ---------- parser .acreplay v16 (navegador) ---------- */
 
 const decodUtf8 = new TextDecoder('utf-8');
 
@@ -190,10 +275,6 @@ function halfToFloat(h) {
   return (s ? -1 : 1) * Math.pow(2, e - 15) * (1 + f / 1024);
 }
 
-/**
- * Convierte un .acreplay v16 en vueltas (offsets según doc/FormatoTelemetria.md §2.4).
- * Lee solo el auto del jugador (current_recording_index) y saltea el resto.
- */
 async function parsearReplay(file) {
   const buf = await file.arrayBuffer();
   const dv = new DataView(buf);
@@ -212,24 +293,21 @@ async function parsearReplay(file) {
 
   const version = u32();
   if (version !== 16) throw new Error(`${file.name}: .acreplay de versión ${version}; solo se soporta la 16.`);
-  f64();                    // recording_interval (no lo usamos)
-  cadena(); cadena(); cadena();  // weather, track, track_config
+  f64();
+  cadena(); cadena(); cadena();
   const numCars = u32();
-  u32();                          // current_recording_index (no se usa: el jugador es el auto 0)
+  u32();
   const numFrames = u32();
   const numTrackObjects = u32();
   pos += (4 + 12 * numTrackObjects) * numFrames;
 
   const jugador = 0;
-  let encontrado = false;
   let result = null;
 
   for (let c = 0; c < numCars; c++) {
     const carId = cadena();
     const piloto = cadena();
-    cadena();                  // nation_code
-    cadena();                  // team
-    cadena();                  // skin
+    cadena(); cadena(); cadena();
     const frames = u32();
     const wings = u32();
     pos += 20;
@@ -242,28 +320,37 @@ async function parsearReplay(file) {
       continue;
     }
 
-    const X = [], Z = [], V = [], GE = [], GAS = [], FREN = [], VUELTA = [], TIME = [];
+    const X = [], Y = [], Z = [], V = [], GE = [], GAS = [], FREN = [], VUELTA = [], TIME = [];
+    const RPM = [], STEER = [], YAW = [], LF = [], RF = [], LR = [], RR = [], FUEL = [];
     for (let i = 0; i < frames; i++) {
       const o = pos;
       pos += 256;
       X.push(dv.getFloat32(o, true));
+      Y.push(dv.getFloat32(o + 4, true));
       Z.push(dv.getFloat32(o + 8, true));
+      YAW.push(dv.getFloat32(o + 12, true)); // rotación: orden Y-X-Z → slot 0 es Y
       const vx = halfToFloat(dv.getUint16(o + 164, true));
       const vy = halfToFloat(dv.getUint16(o + 166, true));
       const vz = halfToFloat(dv.getUint16(o + 168, true));
       V.push(Math.hypot(vx, vy, vz) * 3.6);
+      RPM.push(halfToFloat(dv.getUint16(o + 170, true)));
+      LF.push(halfToFloat(dv.getUint16(o + 204, true)));
+      RF.push(halfToFloat(dv.getUint16(o + 206, true)));
+      LR.push(halfToFloat(dv.getUint16(o + 208, true)));
+      RR.push(halfToFloat(dv.getUint16(o + 210, true)));
+      STEER.push(halfToFloat(dv.getUint16(o + 212, true)));
+      TIME.push(dv.getUint32(o + 220, true) / 1000);
+      FUEL.push(u8[o + 232]);
       GE.push(u8[o + 234]);
       GAS.push(u8[o + 244]);
       FREN.push(u8[o + 245]);
       VUELTA.push(u8[o + 246]);
-      TIME.push(dv.getUint32(o + 220, true) / 1000);
       if (i < frames - 1) pos += 20 + wings * 4;
     }
     pos += wings * 4;
     const extra = u32();
     pos += extra * 8;
 
-    // segmenta por número de vuelta (como el core): cada tramo es una "vuelta"
     const laps = [];
     let seg = { lap: null, indices: [] };
     for (let i = 0; i < frames; i++) {
@@ -277,30 +364,24 @@ async function parsearReplay(file) {
     for (const lap of laps) {
       const idxs = lap.indices;
       if (idxs.length < 2) continue;
-      const serie = { x: [], z: [], speed: [], throttle: [], brake: [], gear: [], time: [] };
+      const serie = { x: [], z: [], y: [], speed: [], throttle: [], brake: [], gear: [], time: [], rpm: [], steer: [], yaw: [], loadFL: [], loadFR: [], loadRL: [], loadRR: [], fuel: [] };
       for (const i of idxs) {
-        serie.x.push(X[i]); serie.z.push(Z[i]);
+        serie.x.push(X[i]); serie.y.push(Y[i]); serie.z.push(Z[i]);
         serie.speed.push(V[i]); serie.throttle.push(GAS[i]); serie.brake.push(FREN[i]);
         serie.gear.push(GE[i]); serie.time.push(TIME[i]);
+        serie.rpm.push(RPM[i]); serie.steer.push(STEER[i]); serie.yaw.push(YAW[i]);
+        serie.loadFL.push(LF[i]); serie.loadFR.push(RF[i]); serie.loadRL.push(LR[i]); serie.loadRR.push(RR[i]);
+        serie.fuel.push(FUEL[i]);
       }
       const t = serie.time;
       const dur = t.length > 1 ? Math.max(...t) - Math.min(...t) : NaN;
-      vueltas.push({
-        name: `${piloto} · ${carId} · V${lap.lap}`,
-        nVuelta: lap.lap,
-        frames: idxs.length,
-        tiempo: Number.isFinite(dur) ? dur : NaN,
-        serie,
-      });
+      vueltas.push({ name: `${piloto} · ${carId} · V${lap.lap}`, nVuelta: lap.lap, frames: idxs.length, tiempo: dur, serie });
     }
     result = vueltas;
-    encontrado = true;
     break;
   }
 
-  if (!encontrado || !result || !result.length) {
-    throw new Error(`${file.name}: no se encontraron vueltas en el replay.`);
-  }
+  if (!result || !result.length) throw new Error(`${file.name}: no se encontraron vueltas en el replay.`);
   return result;
 }
 
@@ -323,6 +404,7 @@ async function cargarArchivos(fileList) {
     if (!nuevas.length) return;
     state.laps.push(...nuevas);
     if (state.refId === null && state.laps.length) state.refId = visibleLaps()[0].id;
+    if (state.lapBId === null && state.laps.length > 1) state.lapBId = state.laps[1].id;
     ocultarError();
     mostrarDashboard();
     recomputar();
@@ -331,35 +413,23 @@ async function cargarArchivos(fileList) {
   }
 }
 
-/* ---------- selector de vueltas (replays) ---------- */
-
-function fmtTiempo(seg) {
-  if (!Number.isFinite(seg)) return '';
-  const m = Math.floor(seg / 60);
-  const s = seg - m * 60;
-  return `${m}:${s.toFixed(1).padStart(4, '0')}`;
-}
-
 function preguntarVueltas(nombreArchivo, vueltas) {
   return new Promise((resolve) => {
     const modal = $('modal-selector');
     $('modal-archivo').textContent = nombreArchivo;
     const lista = $('modal-lista');
     lista.innerHTML = vueltas
-      .map(
-        (v, i) =>
-          `<label class="fila-vuelta">
-             <input type="checkbox" data-i="${i}" checked />
-             <span class="nombre">${v.name}</span>
-             <span class="tiempo mono">${fmtTiempo(v.tiempo)}</span>
-             <span class="frames mono">${v.frames} fr</span>
-           </label>`
-      )
+      .map((v, i) =>
+        `<label class="fila-vuelta">
+           <input type="checkbox" data-i="${i}" checked />
+           <span class="nombre">${v.name}</span>
+           <span class="tiempo mono">${fmtTiempo(v.tiempo)}</span>
+           <span class="frames mono">${v.frames} fr</span>
+         </label>`)
       .join('');
 
     const chkTodas = $('chk-todas');
     chkTodas.checked = false;
-
     const marcarRapidas = () => {
       const tiempos = vueltas.map((v) => v.tiempo).filter(Number.isFinite);
       if (!tiempos.length) return;
@@ -370,28 +440,11 @@ function preguntarVueltas(nombreArchivo, vueltas) {
       });
     };
     marcarRapidas();
+    chkTodas.onchange = () => lista.querySelectorAll('input[type="checkbox"]').forEach((cb) => (cb.checked = chkTodas.checked));
+    $('btn-solo-rapidas').onclick = () => { marcarRapidas(); chkTodas.checked = false; };
 
-    chkTodas.onchange = () => {
-      lista.querySelectorAll('input[type="checkbox"]').forEach((cb) => (cb.checked = chkTodas.checked));
-    };
-
-    $('btn-solo-rapidas').onclick = () => {
-      marcarRapidas();
-      chkTodas.checked = false;
-    };
-
-    const cerrar = (elegidas) => {
-      modal.classList.add('oculto');
-      modal.setAttribute('aria-hidden', 'true');
-      resolve(elegidas);
-    };
-    $('btn-modal-aceptar').onclick = () => {
-      const elegidas = vueltas.filter((v, i) => {
-        const cb = lista.querySelector(`input[data-i="${i}"]`);
-        return cb && cb.checked;
-      });
-      cerrar(elegidas);
-    };
+    const cerrar = (elegidas) => { modal.classList.add('oculto'); modal.setAttribute('aria-hidden', 'true'); resolve(elegidas); };
+    $('btn-modal-aceptar').onclick = () => cerrar(vueltas.filter((v, i) => { const cb = lista.querySelector(`input[data-i="${i}"]`); return cb && cb.checked; }));
     $('btn-modal-cancelar').onclick = () => cerrar([]);
 
     modal.classList.remove('oculto');
@@ -399,40 +452,37 @@ function preguntarVueltas(nombreArchivo, vueltas) {
   });
 }
 
-/* ---------- recomputar malla común y resample ---------- */
+/* ---------- recomputar malla común ---------- */
 
-function visibleLaps() {
-  return state.laps.filter((l) => l.visible);
-}
+function visibleLaps() { return state.laps.filter((l) => l.visible); }
+function lapRef() { return state.laps.find((l) => l.id === state.refId) || visibleLaps()[0] || null; }
+function lapB() { return state.laps.find((l) => l.id === state.lapBId) || visibleLaps().find((l) => l.id !== state.refId) || null; }
 
 function recomputar() {
   const laps = visibleLaps();
   if (!laps.length) return;
-
   let maxDist = 0;
-  for (const l of laps) {
-    const d = l.raw.dist;
-    maxDist = Math.max(maxDist, d[d.length - 1]);
-  }
+  for (const l of laps) maxDist = Math.max(maxDist, l.raw.dist[l.raw.dist.length - 1]);
   state.maxDist = maxDist;
-  const objetivo = 2200;
-  const step = Math.max(maxDist / objetivo, 0.25);
+  const step = Math.max(maxDist / 2200, 0.25);
   state.gridStep = step;
   const n = Math.floor(maxDist / step) + 1;
   const grid = new Array(n);
   for (let i = 0; i < n; i++) grid[i] = i * step;
   state.grid = grid;
 
+  const RL = (d, v) => resampleLineal(d, v, grid);
   for (const l of laps) {
     const r = l.raw;
     l.grid = {
-      speed: resampleLineal(r.dist, r.speed, grid),
-      throttle: resampleLineal(r.dist, r.throttle, grid),
-      brake: resampleLineal(r.dist, r.brake, grid),
-      x: resampleLineal(r.dist, r.x, grid),
-      z: resampleLineal(r.dist, r.z, grid),
-      time: resampleLineal(r.dist, r.time, grid),
-      gear: resampleCercano(r.dist, r.gear, grid),
+      speed: RL(r.dist, r.speed), throttle: RL(r.dist, r.throttle), brake: RL(r.dist, r.brake),
+      gear: resampleCercano(r.dist, r.gear, grid), time: RL(r.dist, r.time),
+      x: RL(r.dist, r.x), z: RL(r.dist, r.z), y: RL(r.dist, r.y),
+      rpm: RL(r.dist, r.rpm), steer: RL(r.dist, r.steer), yaw: RL(r.dist, r.yaw),
+      accLong: RL(r.dist, r.accLong), accLat: RL(r.dist, r.accLat), accTotal: RL(r.dist, r.accTotal),
+      loadFL: RL(r.dist, r.loadFL), loadFR: RL(r.dist, r.loadFR),
+      loadRL: RL(r.dist, r.loadRL), loadRR: RL(r.dist, r.loadRR),
+      fuel: RL(r.dist, r.fuel),
     };
   }
   state.idx = Math.min(state.idx, grid.length - 1);
@@ -440,8 +490,7 @@ function recomputar() {
 
   renderListaVueltas();
   renderReadoutsBase();
-  buildCharts();
-  drawMap();
+  renderTabActiva();
   actualizarScrub();
 }
 
@@ -469,21 +518,15 @@ function renderListaVueltas() {
       (l.id === state.refId ? '<span class="ref-badge">REF</span>' : '') +
       `<button class="vuelta-eye ${l.visible ? 'on' : ''}" title="Mostrar/ocultar">●</button>`;
     li.querySelector('.vuelta-info').addEventListener('click', () => {
-      state.refId = l.id;
-      renderListaVueltas();
-      renderReadoutsBase();
-      updateUI();
+      state.refId = l.id; renderListaVueltas(); renderReadoutsBase(); updateUI();
     });
     const ojo = li.querySelector('.vuelta-eye');
     ojo.addEventListener('click', (ev) => {
       ev.stopPropagation();
       l.visible = !l.visible;
-      if (!l.visible && l.id === state.refId) {
-        const v = visibleLaps();
-        state.refId = v.length ? v[0].id : null;
-      }
+      if (!l.visible && l.id === state.refId) { const v = visibleLaps(); state.refId = v.length ? v[0].id : null; }
       recomputar();
-      if (!visibleLaps().length) buildCharts();
+      if (!visibleLaps().length) destroyCharts();
     });
     ul.appendChild(li);
   });
@@ -512,102 +555,45 @@ function renderReadoutsBase() {
   });
 }
 
-function lapRef() {
-  return state.laps.find((l) => l.id === state.refId) || visibleLaps()[0] || null;
-}
-
-/* ---------- gráficos ---------- */
+/* ---------- gráficos (uPlot) ---------- */
 
 function opcionesGrafico(cont, height, yRango, yLabel) {
-  const ancho = cont.clientWidth || 800;
+  const ancho = cont.clientWidth || cont.parentElement?.clientWidth || 900;
   return {
     width: ancho,
     height,
     padding: [8, 14, 0, 8],
-    cursor: {
-      sync: { key: SYNC_KEY },
-      drag: { x: true, y: false, setScale: false },
-      focus: { prox: 40 },
-    },
+    cursor: { sync: { key: SYNC_KEY }, drag: { x: true, y: false, setScale: false }, focus: { prox: 40 } },
     legend: { show: true, live: true },
-    scales: {
-      x: { time: false },
-      y: yRango ? { range: yRango } : { auto: true },
-    },
+    scales: { x: { time: false }, y: yRango ? { range: yRango } : { auto: true } },
     axes: [
-      {
-        stroke: '#8b97a8',
-        grid: { stroke: 'rgba(255,255,255,0.05)' },
-        ticks: { stroke: '#2a3444' },
-        font: '12px "Segoe UI", sans-serif',
-        label: 'Distancia (m)',
-        labelFont: '12px "Segoe UI", sans-serif',
-        size: 42,
-        values: (u, vals) => vals.map((v) => Math.round(v)),
-      },
-      {
-        stroke: '#8b97a8',
-        grid: { stroke: 'rgba(255,255,255,0.05)' },
-        ticks: { stroke: '#2a3444' },
-        font: '12px "Segoe UI", sans-serif',
-        label: yLabel,
-        labelFont: '12px "Segoe UI", sans-serif',
-        size: 52,
-        labelSize: 26,
-      },
+      { stroke: '#8b97a8', grid: { stroke: 'rgba(255,255,255,0.05)' }, ticks: { stroke: '#2a3444' }, font: '12px "Segoe UI", sans-serif', label: 'Distancia (m)', labelFont: '12px "Segoe UI", sans-serif', size: 42, values: (u, vals) => vals.map((v) => Math.round(v)) },
+      { stroke: '#8b97a8', grid: { stroke: 'rgba(255,255,255,0.05)' }, ticks: { stroke: '#2a3444' }, font: '12px "Segoe UI", sans-serif', label: yLabel, labelFont: '12px "Segoe UI", sans-serif', size: 52, labelSize: 26 },
     ],
     hooks: { setCursor: [onCursor] },
   };
 }
 
-function buildCharts() {
-  destroyCharts();
-  const laps = visibleLaps();
-  if (!laps.length) return;
-  const x = state.grid;
-
-  // --- Velocidad ---
-  const cSpeed = $('chart-speed');
-  const sData = [x];
-  const sSeries = [{ label: 'Distancia', value: (u, v) => (v == null ? '' : v.toFixed(0) + ' m') }];
-  laps.forEach((l) => {
-    sData.push(l.grid.speed);
-    sSeries.push({ label: l.name, stroke: l.color, width: 2, points: { show: false }, spanGaps: true });
-  });
-  const oSpeed = opcionesGrafico(cSpeed, 250, null, 'km/h');
-  oSpeed.series = sSeries;
-  state.charts.speed = new uPlot(oSpeed, sData, cSpeed);
-
-  // --- Acelerador / Freno: un gráfico por vuelta ---
-  const cIn = $('chart-inputs');
-  cIn.innerHTML = '';
-  laps.forEach((l) => {
-    const caja = document.createElement('div');
-    caja.className = 'mini-grafico';
-    caja.innerHTML = `<div class="mini-titulo" style="color:${l.color}">${l.name}</div>`;
-    const div = document.createElement('div');
-    div.className = 'plot';
-    div.style.height = '150px';
-    caja.appendChild(div);
-    cIn.appendChild(caja);
-
-    const iData = [x, l.grid.throttle, l.grid.brake];
-    const iSeries = [
-      { label: `${l.name} · distancia`, value: (u, v) => (v == null ? '' : v.toFixed(0) + ' m') },
-      { label: 'gas', stroke: '#4ade80', width: 2, points: { show: false }, spanGaps: true },
-      { label: 'freno', stroke: '#f87171', width: 2, dash: [6, 4], points: { show: false }, spanGaps: true },
-    ];
-    const oIn = opcionesGrafico(div, 150, [0, 1.05], '0–1');
-    oIn.series = iSeries;
-    state.charts.inputs.push(new uPlot(oIn, iData, div));
-  });
-
-  // posición inicial del cursor
-  moverCursor();
+/** Grafico de líneas: cada vuelta aporta N series sobre la malla común. */
+function lineChart(cont, height, yRango, yLabel, laps, getSeries) {
+  const data = [state.grid];
+  const series = [{ label: 'Distancia', value: (u, v) => (v == null ? '' : Math.round(v) + ' m') }];
+  for (const l of laps) {
+    for (const s of getSeries(l)) {
+      data.push(s.data);
+      series.push(Object.assign({ stroke: l.color, width: 2, points: { show: false }, spanGaps: true }, s.opts || {}));
+    }
+  }
+  const o = opcionesGrafico(cont, height, yRango, yLabel);
+  o.series = series;
+  const u = new uPlot(o, data, cont);
+  state.charts.lines.push({ u, cont, height });
+  return u;
 }
 
 function destroyCharts() {
-  if (state.charts.speed) { state.charts.speed.destroy(); state.charts.speed = null; }
+  for (const r of state.charts.lines) r.u.destroy();
+  state.charts.lines = [];
   for (const u of state.charts.inputs) u.destroy();
   state.charts.inputs = [];
 }
@@ -615,19 +601,601 @@ function destroyCharts() {
 function onCursor(u) {
   const idx = u.cursor.idx;
   if (idx == null || idx < 0 || idx >= state.grid.length) return;
-  state.idx = idx;
-  state.dist = state.grid[idx];
+  state.idx = idx; state.dist = state.grid[idx];
   updateUI({ moverCursor: false });
 }
 
 function moverCursor() {
-  const u = state.charts.speed;
+  const u = state.charts.lines[0]?.u;
   if (!u) return;
   const left = u.valToPos(state.dist, 'x');
   u.setCursor({ left, top: u.over.height / 2 });
 }
 
-/* ---------- UI / mapa ---------- */
+/* ---------- render por pestaña ---------- */
+
+function renderTabActiva() {
+  destroyCharts();
+  const laps = visibleLaps();
+  if (!laps.length) return;
+  if (state.tab === 'vuelta') renderVuelta(laps);
+  else if (state.tab === 'mapa') renderMapa(laps);
+  else if (state.tab === 'conjunto') renderConjunto(laps);
+  else if (state.tab === 'comparacion') renderComparacion(laps);
+}
+
+function renderVuelta(laps) {
+  lineChart($('chart-speed'), 250, null, 'km/h', laps, (l) => [{ data: l.grid.speed }]);
+  lineChart($('chart-rpm'), 170, null, 'rpm', laps, (l) => [{ data: l.grid.rpm }]);
+  lineChart($('chart-gear'), 140, null, 'marcha', laps, (l) => [{ data: l.grid.gear, opts: { paths: uPlot.paths.stepped({ align: 1 }) } }]);
+  lineChart($('chart-steer'), 150, null, 'volante', laps, (l) => [{ data: l.grid.steer }]);
+  lineChart($('chart-acc'), 150, [0, null], 'g', laps, (l) => [{ data: l.grid.accTotal.map((v) => (Number.isFinite(v) ? v / G : null)) }]);
+  lineChart($('chart-yaw'), 140, null, 'rumbo (°)', laps, (l) => [{ data: l.grid.yaw.map((v) => (Number.isFinite(v) ? (v * 180) / Math.PI : null)) }]);
+
+  const ref = lapRef();
+  if (ref) {
+    lineChart($('chart-load'), 170, [0, null], 'carga (N)', [ref], (l) => [
+      { data: l.grid.loadFL, opts: { stroke: '#38bdf8', label: 'FL' } },
+      { data: l.grid.loadFR, opts: { stroke: '#f472b6', label: 'FR' } },
+      { data: l.grid.loadRL, opts: { stroke: '#4ade80', label: 'RL' } },
+      { data: l.grid.loadRR, opts: { stroke: '#facc15', label: 'RR' } },
+    ]);
+  }
+
+  // Acelerador / Freno por vuelta
+  const cIn = $('chart-inputs');
+  cIn.innerHTML = '';
+  laps.forEach((l) => {
+    const caja = document.createElement('div');
+    caja.className = 'mini-grafico';
+    caja.innerHTML = `<div class="mini-titulo" style="color:${l.color}">${l.name}</div>`;
+    const div = document.createElement('div');
+    div.className = 'plot'; div.style.height = '140px';
+    caja.appendChild(div); cIn.appendChild(caja);
+    const oIn = opcionesGrafico(div, 140, [0, 1.05], '0–1');
+    oIn.series = [
+      { label: 'distancia', value: (u, v) => (v == null ? '' : Math.round(v) + ' m') },
+      { label: 'gas', stroke: '#4ade80', width: 2, points: { show: false }, spanGaps: true },
+      { label: 'freno', stroke: '#f87171', width: 2, dash: [6, 4], points: { show: false }, spanGaps: true },
+    ];
+    state.charts.inputs.push(new uPlot(oIn, [state.grid, l.grid.throttle, l.grid.brake], div));
+  });
+
+  drawTraction(laps);
+}
+
+function renderMapa(laps) {
+  drawMap();
+}
+
+function renderConjunto(laps) {
+  const ref = lapRef();
+  drawBarrasTiempos(laps);
+  drawVelMedia(laps);
+  drawEnvolvente(laps);
+  drawHistVel(laps);
+  drawHistMarchas(laps);
+  drawFuel(laps);
+  drawDesvioLateral(laps, ref);
+  drawSectores(laps);
+  renderTablaResumen(laps);
+  renderTeorica(laps);
+}
+
+function poblarSelB() {
+  const sel = $('sel-lap-b');
+  if (!sel) return;
+  const laps = visibleLaps();
+  if (!laps.some((l) => l.id === state.lapBId)) {
+    const sig = laps.find((l) => l.id !== state.refId);
+    state.lapBId = sig ? sig.id : (laps[0] || { id: null }).id;
+  }
+  const vsA = $('vs-a');
+  const ref = lapRef();
+  sel.innerHTML = laps.map((l) => `<option value="${l.id}"${l.id === state.lapBId ? ' selected' : ''}>${l.name}</option>`).join('');
+  if (vsA) vsA.textContent = ref ? ref.name : '–';
+}
+
+function renderComparacion(laps) {
+  const A = lapRef();
+  poblarSelB();
+  const B = lapB();
+  if (!A || !B || A.id === B.id) { drawDelta(null); drawDVel(null); drawDPed(null); drawMiniDelta(null); return; }
+  drawDelta([A, B]);
+  drawDVel([A, B]);
+  drawDPed([A, B]);
+  drawMiniDelta([A, B]);
+}
+
+/* ---------- canvas helpers ---------- */
+
+function prepCanvas(id, fallbackH) {
+  const cv = $(id);
+  if (!cv) return null;
+  const w = cv.clientWidth || cv.parentElement?.clientWidth || 600;
+  const h = cv.clientHeight || fallbackH || 260;
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(h * dpr);
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  return { cv, ctx, w, h };
+}
+
+function drawTraction(laps) {
+  const c = prepCanvas('chart-traction', 300);
+  if (!c) return;
+  const { ctx, w, h } = c;
+  const pts = [];
+  let maxG = 1;
+  for (const l of laps) {
+    const { accLong, accLat } = l.raw;
+    const step = Math.max(1, Math.floor(accLong.length / 1500));
+    for (let i = 0; i < accLong.length; i += step) {
+      if (!Number.isFinite(accLong[i]) || !Number.isFinite(accLat[i])) continue;
+      const x = accLong[i] / G, y = accLat[i] / G;
+      maxG = Math.max(maxG, Math.abs(x), Math.abs(y));
+      pts.push([x, y, l.color]);
+    }
+  }
+  maxG = Math.ceil(maxG);
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 24;
+  const sx = (v) => cx + (v / maxG) * R;
+  const sy = (v) => cy - (v / maxG) * R;
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1;
+  for (const r of [0.5, 1]) { ctx.beginPath(); ctx.arc(cx, cy, (r * R), 0, Math.PI * 2); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '11px "Segoe UI"';
+  ctx.fillText('acel.', cx + R - 30, cy - 6); ctx.fillText('frena', cx + R - 34, cy + 14);
+  ctx.fillText('izq.', cx - R + 2, cy + 12); ctx.fillText('der.', cx + R - 26, cy + 12);
+  for (const [x, y, color] of pts) { ctx.fillStyle = hexA(color, 0.25); ctx.fillRect(sx(x) - 1, sy(y) - 1, 2, 2); }
+  ctx.fillStyle = '#8b97a8'; ctx.fillText(`escala ±${maxG} g`, 8, 14);
+}
+
+function drawBarrasTiempos(laps) {
+  const c = prepCanvas('ch-barras-tiempos', 240);
+  if (!c) return;
+  const { ctx, w, h } = c;
+  const datos = laps.map((l) => ({ name: l.name, t: tiempoDeVuelta(l), color: l.color })).filter((d) => Number.isFinite(d.t) && d.t > 0);
+  if (!datos.length) { ctx.fillStyle = '#8b97a8'; ctx.fillText('sin tiempos', 12, 20); return; }
+  datos.sort((a, b) => a.t - b.t);
+  const mejor = datos[0].t;
+  const maxT = Math.max(...datos.map((d) => d.t));
+  const pad = 8, izq = 150, filaH = Math.min(30, (h - pad * 2) / datos.length);
+  const anchoMax = w - izq - 70;
+  datos.forEach((d, i) => {
+    const y = pad + i * filaH;
+    ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+    ctx.fillText(d.name.slice(0, 24), 6, y + filaH * 0.62);
+    const bw = (d.t / maxT) * anchoMax;
+    ctx.fillStyle = hexA(d.color, 0.85); ctx.fillRect(izq, y + 3, bw, filaH - 8);
+    ctx.fillStyle = '#e6ebf2'; ctx.font = '11px "Consolas", monospace';
+    ctx.fillText(fmtTiempo(d.t) + (i ? '  (+' + (d.t - mejor).toFixed(2) + ')' : '  MEJOR'), izq + bw + 6, y + filaH * 0.62);
+  });
+  const media = datos.reduce((a, d) => a + d.t, 0) / datos.length;
+  const sd = Math.sqrt(datos.reduce((a, d) => a + (d.t - media) ** 2, 0) / datos.length);
+  ctx.fillStyle = '#8b97a8'; ctx.font = '12px "Segoe UI"';
+  ctx.fillText(`consistencia (σ) = ${sd.toFixed(3)} s   ·   promedio ${fmtTiempo(media)}`, 6, h - 4);
+}
+
+function drawVelMedia(laps) {
+  const c = prepCanvas('ch-velmedia', 240);
+  if (!c) return;
+  const { ctx, w, h } = c;
+  const datos = laps.map((l) => {
+    const g = l.grid.speed.filter(Number.isFinite);
+    const avg = g.reduce((a, v) => a + v, 0) / (g.length || 1);
+    const mx = Math.max(...g);
+    return { name: l.name, avg, mx, color: l.color };
+  });
+  const maxV = Math.max(...datos.map((d) => d.mx), 1);
+  const pad = 8, izq = 150, filaH = Math.min(30, (h - pad * 2) / datos.length), anchoMax = w - izq - 70;
+  datos.forEach((d, i) => {
+    const y = pad + i * filaH;
+    ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+    ctx.fillText(d.name.slice(0, 24), 6, y + filaH * 0.62);
+    ctx.fillStyle = hexA(d.color, 0.85); ctx.fillRect(izq, y + 3, (d.avg / maxV) * anchoMax, filaH - 8);
+    ctx.fillStyle = '#e6ebf2'; ctx.font = '11px "Consolas", monospace';
+    ctx.fillText(`${d.avg.toFixed(1)} km/h  (máx ${d.mx.toFixed(0)})`, izq + (d.avg / maxV) * anchoMax + 6, y + filaH * 0.62);
+  });
+}
+
+function drawEnvolvente(laps) {
+  const cont = $('chart-env');
+  if (!cont || !state.grid.length) return;
+  const n = state.grid.length;
+  const min = new Array(n).fill(Infinity), max = new Array(n).fill(-Infinity), avg = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    let s = 0, c = 0;
+    for (const l of laps) { const v = l.grid.speed[i]; if (Number.isFinite(v)) { s += v; c++; if (v < min[i]) min[i] = v; if (v > max[i]) max[i] = v; } }
+    avg[i] = c ? s / c : null;
+    if (!c) { min[i] = null; max[i] = null; }
+  }
+  const o = opcionesGrafico(cont, 200, null, 'km/h');
+  o.series = [
+    { label: 'distancia', value: (u, v) => (v == null ? '' : Math.round(v) + ' m') },
+    { label: 'mín', stroke: '#f87171', width: 1.5, points: { show: false }, spanGaps: true },
+    { label: 'prom', stroke: '#22d3ee', width: 2, points: { show: false }, spanGaps: true },
+    { label: 'máx', stroke: '#4ade80', width: 1.5, points: { show: false }, spanGaps: true },
+  ];
+  state.charts.lines.push({ u: new uPlot(o, [state.grid, min, avg, max], cont), cont, height: 200 });
+}
+
+function drawHistVel(laps) {
+  const c = prepCanvas('ch-histvel', 200);
+  if (!c) return;
+  const { ctx, w, h } = c;
+  const vals = [];
+  for (const l of laps) for (const v of l.raw.speed) if (Number.isFinite(v)) vals.push(v);
+  if (!vals.length) return;
+  const min = 0, max = Math.max(...vals);
+  const bins = 30, conteo = new Array(bins).fill(0);
+  for (const v of vals) conteo[clamp(Math.floor(((v - min) / (max - min || 1)) * bins), 0, bins - 1)]++;
+  const cmax = Math.max(...conteo, 1);
+  const pad = 24, bw = (w - pad * 2) / bins;
+  for (let i = 0; i < bins; i++) {
+    const bh = (conteo[i] / cmax) * (h - pad * 2);
+    ctx.fillStyle = colorMap(i / (bins - 1));
+    ctx.fillRect(pad + i * bw, h - pad - bh, bw - 1, bh);
+  }
+  ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+  ctx.fillText('0', pad, h - 8); ctx.fillText(max.toFixed(0) + ' km/h', w - pad - 50, h - 8);
+}
+
+function drawHistMarchas(laps) {
+  const c = prepCanvas('ch-histgear', 200);
+  if (!c) return;
+  const { ctx, w, h } = c;
+  const gears = [];
+  for (const l of laps) for (const g of l.raw.gear) if (Number.isFinite(g)) gears.push(Math.round(g));
+  if (!gears.length) return;
+  const maxG = Math.max(...gears, 1), minG = Math.min(...gears, 0);
+  const n = maxG - minG + 1;
+  const conteo = new Array(n).fill(0);
+  for (const g of gears) conteo[g - minG]++;
+  const cmax = Math.max(...conteo, 1);
+  const pad = 24, bw = (w - pad * 2) / n;
+  for (let i = 0; i < n; i++) {
+    const bh = (conteo[i] / cmax) * (h - pad * 2);
+    ctx.fillStyle = colorMap(i / (n - 1));
+    ctx.fillRect(pad + i * bw + 2, h - pad - bh, bw - 4, bh);
+    ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+    ctx.fillText(String(i + minG), pad + i * bw + bw / 2 - 3, h - 8);
+  }
+  ctx.fillStyle = '#8b97a8'; ctx.fillText('marcha', 4, 14);
+}
+
+function drawFuel(laps) {
+  const c = prepCanvas('ch-fuel', 200);
+  if (!c) return;
+  const { ctx, w, h } = c;
+  const datos = laps.map((l) => {
+    const f = l.raw.fuel.filter(Number.isFinite);
+    const usado = f.length > 1 ? Math.max(0, f[0] - f[f.length - 1]) : 0;
+    return { name: l.name, usado, color: l.color };
+  });
+  const maxU = Math.max(...datos.map((d) => d.usado), 1);
+  const pad = 8, izq = 150, filaH = Math.min(30, (h - pad * 2) / datos.length), anchoMax = w - izq - 70;
+  datos.forEach((d, i) => {
+    const y = pad + i * filaH;
+    ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+    ctx.fillText(d.name.slice(0, 24), 6, y + filaH * 0.62);
+    ctx.fillStyle = hexA(d.color, 0.85); ctx.fillRect(izq, y + 3, (d.usado / maxU) * anchoMax, filaH - 8);
+    ctx.fillStyle = '#e6ebf2'; ctx.font = '11px "Consolas", monospace';
+    ctx.fillText(d.usado.toFixed(1) + ' u', izq + (d.usado / maxU) * anchoMax + 6, y + filaH * 0.62);
+  });
+  if (!datos.length) ctx.fillText('sin datos de combustible', 12, 20);
+}
+
+function drawDesvioLateral(laps, ref) {
+  const cont = $('chart-lat');
+  if (!cont || !ref || !state.grid.length) return;
+  const series = []; const data = [state.grid];
+  for (const l of laps) {
+    if (l === ref) continue;
+    const dev = state.grid.map((_, i) => {
+      const dx = l.grid.x[i] - ref.grid.x[i];
+      const dz = l.grid.z[i] - ref.grid.z[i];
+      return Number.isFinite(dx) && Number.isFinite(dz) ? Math.hypot(dx, dz) : null;
+    });
+    data.push(dev);
+    series.push({ label: l.name, stroke: l.color, width: 2, points: { show: false }, spanGaps: true });
+  }
+  const o = opcionesGrafico(cont, 200, [0, null], 'desvío (m)');
+  o.series = [{ label: 'distancia', value: (u, v) => (v == null ? '' : Math.round(v) + ' m') }, ...series];
+  state.charts.lines.push({ u: new uPlot(o, data, cont), cont, height: 200 });
+}
+
+function sectorTimes(l) {
+  const out = new Array(N_SECTORES);
+  const corte = state.maxDist / N_SECTORES;
+  for (let s = 0; s < N_SECTORES; s++) {
+    const d0 = s * corte, d1 = (s + 1) * corte;
+    const i0 = clamp(Math.round(d0 / state.gridStep), 0, state.grid.length - 1);
+    const i1 = clamp(Math.round(d1 / state.gridStep), 0, state.grid.length - 1);
+    const t0 = l.grid.time[i0], t1 = l.grid.time[i1];
+    out[s] = Number.isFinite(t0) && Number.isFinite(t1) && t1 >= t0 ? t1 - t0 : NaN;
+  }
+  return out;
+}
+
+function drawSectores(laps) {
+  const c = prepCanvas('ch-sectores', 260);
+  if (!c) return;
+  const { ctx, w, h } = c;
+  const matriz = laps.map((l) => ({ l, s: sectorTimes(l) }));
+  const todos = matriz.flatMap((m) => m.s).filter(Number.isFinite);
+  if (!todos.length) { ctx.fillStyle = '#8b97a8'; ctx.fillText('sin tiempos de sector', 12, 20); return; }
+  const maxS = Math.max(...todos);
+  const pad = 28, groupW = (w - pad * 2) / N_SECTORES;
+  const barW = groupW / (matriz.length + 1);
+  matriz.forEach((m, li) => m.s.forEach((v, si) => {
+    if (!Number.isFinite(v)) return;
+    const x = pad + si * groupW + li * barW + 2;
+    const bh = (v / maxS) * (h - pad * 2);
+    ctx.fillStyle = hexA(m.l.color, 0.9);
+    ctx.fillRect(x, h - pad - bh, barW - 2, bh);
+  }));
+  ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+  for (let s = 0; s < N_SECTORES; s++) ctx.fillText('S' + (s + 1), pad + s * groupW + 2, h - 8);
+  ctx.fillText('tiempo por sector (s)', 4, 14);
+}
+
+function renderTablaResumen(laps) {
+  const cont = $('tabla-resumen');
+  if (!cont) return;
+  const filas = laps.map((l) => {
+    const g = l.grid;
+    const fin = (arr) => arr.filter(Number.isFinite);
+    const avgSpeed = fin(g.speed).reduce((a, v) => a + v, 0) / (fin(g.speed).length || 1);
+    const maxSpeed = Math.max(...fin(g.speed), 0);
+    const gas = fin(g.throttle).reduce((a, v) => a + v, 0) / (fin(g.throttle).length || 1);
+    const freno = fin(g.brake).reduce((a, v) => a + v, 0) / (fin(g.brake).length || 1);
+    const gLat = Math.max(...fin(g.accLat).map(Math.abs), 0) / G;
+    const rpm = fin(g.rpm).reduce((a, v) => a + v, 0) / (fin(g.rpm).length || 1);
+    const fuel = fin(l.raw.fuel);
+    const usado = fuel.length > 1 ? fuel[0] - fuel[fuel.length - 1] : NaN;
+    return { name: l.name, t: tiempoDeVuelta(l), avgSpeed, maxSpeed, gas, freno, gLat, rpm, usado };
+  });
+  const mejor = Math.min(...filas.map((f) => f.t).filter(Number.isFinite));
+  cont.innerHTML =
+    '<table><thead><tr><th>Vuelta</th><th>Tiempo</th><th>Vel.media</th><th>Vel.máx</th><th>Gas%</th><th>Freno%</th><th>g lat</th><th>RPM</th><th>Fuel</th></tr></thead><tbody>' +
+    filas
+      .map((f) => `<tr><td>${f.name}</td><td class="mono">${fmtTiempo(f.t)}${Number.isFinite(mejor) && f.t > mejor ? ' <span class="delta">+' + (f.t - mejor).toFixed(2) + '</span>' : ''}</td><td>${f.avgSpeed.toFixed(1)}</td><td>${f.maxSpeed.toFixed(0)}</td><td>${(f.gas * 100).toFixed(0)}</td><td>${(f.freno * 100).toFixed(0)}</td><td>${f.gLat.toFixed(2)}</td><td>${f.rpm.toFixed(0)}</td><td>${Number.isFinite(f.usado) ? f.usado.toFixed(1) : '–'}</td></tr>`)
+      .join('') +
+    '</tbody></table>';
+}
+
+function renderTeorica(laps) {
+  const cont = $('teorica');
+  if (!cont) return;
+  const matriz = laps.map((l) => ({ l, s: sectorTimes(l) }));
+  let total = 0, valido = true;
+  for (let s = 0; s < N_SECTORES; s++) {
+    const vals = matriz.map((m) => m.s[s]).filter(Number.isFinite);
+    if (!vals.length) { valido = false; break; }
+    total += Math.min(...vals);
+  }
+  const real = Math.min(...matriz.map((m) => tiempoDeVuelta(m.l)).filter(Number.isFinite));
+  cont.innerHTML = valido
+    ? `<div class="teorica-fila"><span>Vuelta teórica (mejor sector de cada vuelta)</span><strong class="mono">${fmtTiempo(total)}</strong></div>
+       <div class="teorica-fila"><span>Mejor vuelta real</span><strong class="mono">${fmtTiempo(real)}</strong></div>
+       <div class="teorica-fila"><span>Potencial a ganar</span><strong class="mono">${Number.isFinite(real) ? (real - total).toFixed(3) + ' s' : '–'}</strong></div>`
+    : '<em>Faltan tiempos para calcular la vuelta teórica.</em>';
+}
+
+/* ---------- comparación (delta / diferencias) ---------- */
+
+function drawDelta(par) {
+  const cont = $('chart-delta');
+  if (!cont) return;
+  if (!par) { cont.innerHTML = '<em class="vacio">Elegí dos vueltas distintas.</em>'; return; }
+  const [A, B] = par;
+  const delta = state.grid.map((_, i) => {
+    const ta = A.grid.time[i], tb = B.grid.time[i];
+    return Number.isFinite(ta) && Number.isFinite(tb) ? ta - tb : null;
+  });
+  const o = opcionesGrafico(cont, 200, null, 'Δ (s)');
+  o.series = [
+    { label: 'distancia', value: (u, v) => (v == null ? '' : Math.round(v) + ' m') },
+    { label: A.name + ' − ' + B.name, stroke: '#22d3ee', width: 2, points: { show: false }, spanGaps: true },
+  ];
+  state.charts.lines.push({ u: new uPlot(o, [state.grid, delta], cont), cont, height: 200 });
+}
+
+function drawDVel(par) {
+  const cont = $('chart-dvel');
+  if (!cont) return;
+  if (!par) { cont.innerHTML = '<em class="vacio">Elegí dos vueltas distintas.</em>'; return; }
+  const [A, B] = par;
+  const d = state.grid.map((_, i) => {
+    const a = A.grid.speed[i], b = B.grid.speed[i];
+    return Number.isFinite(a) && Number.isFinite(b) ? a - b : null;
+  });
+  const o = opcionesGrafico(cont, 180, null, 'km/h');
+  o.series = [
+    { label: 'distancia', value: (u, v) => (v == null ? '' : Math.round(v) + ' m') },
+    { label: A.name + ' − ' + B.name, stroke: '#f472b6', width: 2, points: { show: false }, spanGaps: true },
+  ];
+  state.charts.lines.push({ u: new uPlot(o, [state.grid, d], cont), cont, height: 180 });
+}
+
+function drawDPed(par) {
+  const cont = $('chart-dped');
+  if (!cont) return;
+  if (!par) { cont.innerHTML = '<em class="vacio">Elegí dos vueltas distintas.</em>'; return; }
+  const [A, B] = par;
+  const dg = state.grid.map((_, i) => { const a = A.grid.throttle[i], b = B.grid.throttle[i]; return Number.isFinite(a) && Number.isFinite(b) ? a - b : null; });
+  const df = state.grid.map((_, i) => { const a = A.grid.brake[i], b = B.grid.brake[i]; return Number.isFinite(a) && Number.isFinite(b) ? a - b : null; });
+  const o = opcionesGrafico(cont, 180, null, 'Δ 0–1');
+  o.series = [
+    { label: 'distancia', value: (u, v) => (v == null ? '' : Math.round(v) + ' m') },
+    { label: 'Δ gas', stroke: '#4ade80', width: 2, points: { show: false }, spanGaps: true },
+    { label: 'Δ freno', stroke: '#f87171', width: 2, dash: [6, 4], points: { show: false }, spanGaps: true },
+  ];
+  state.charts.lines.push({ u: new uPlot(o, [state.grid, dg, df], cont), cont, height: 180 });
+}
+
+function drawMiniDelta(par) {
+  const c = prepCanvas('ch-minidelta', 240);
+  if (!c) return;
+  const { ctx, w, h } = c;
+  if (!par) { ctx.fillStyle = '#8b97a8'; ctx.fillText('Elegí dos vueltas distintas.', 12, 20); return; }
+  const [A, B] = par;
+  const sa = sectorTimes(A), sb = sectorTimes(B);
+  const dif = sa.map((v, i) => (Number.isFinite(v) && Number.isFinite(sb[i]) ? v - sb[i] : NaN));
+  const maxAbs = Math.max(...dif.map((v) => Math.abs(v)).filter(Number.isFinite), 0.001);
+  const pad = 28, groupW = (w - pad * 2) / N_SECTORES;
+  const cy = h / 2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.beginPath(); ctx.moveTo(pad, cy); ctx.lineTo(w - pad, cy); ctx.stroke();
+  dif.forEach((v, i) => {
+    if (!Number.isFinite(v)) return;
+    const bh = (v / maxAbs) * (h / 2 - pad);
+    ctx.fillStyle = v >= 0 ? '#f87171' : '#4ade80';
+    ctx.fillRect(pad + i * groupW + 3, v >= 0 ? cy - bh : cy, groupW - 6, Math.abs(bh));
+    ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+    ctx.fillText('S' + (i + 1), pad + i * groupW + 3, h - 8);
+  });
+  ctx.fillStyle = '#8b97a8'; ctx.fillText(`${A.name} − ${B.name}  (rojo = A pierde)`, 4, 14);
+}
+
+/* ---------- mapa ---------- */
+
+function valorCanal(l, i, canal) {
+  const g = l.grid || {};
+  switch (canal) {
+    case 'speed': return (l.grid?.speed ?? l.raw.speed)[i];
+    case 'throttle': return (l.grid?.throttle ?? l.raw.throttle)[i];
+    case 'brake': return (l.grid?.brake ?? l.raw.brake)[i];
+    case 'gear': return (l.grid?.gear ?? l.raw.gear)[i];
+    case 'y': return (l.grid?.y ?? l.raw.y)[i];
+    case 'accLat': return (l.grid?.accLat ?? l.raw.accLat)[i];
+    default: return NaN;
+  }
+}
+
+function rangoCanal(laps, canal) {
+  let min = Infinity, max = -Infinity;
+  for (const l of laps) for (let i = 0; i < l.raw.x.length; i++) {
+    const v = valorCanal(l, i, canal);
+    if (Number.isFinite(v)) { if (v < min) min = v; if (v > max) max = v; }
+  }
+  return { min, max };
+}
+
+function drawMap() {
+  const cv = $('mapa');
+  if (!cv || !cv.clientWidth || !cv.clientHeight) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const laps = visibleLaps();
+  if (!laps.length) return;
+  const canal = state.mapa.canal;
+  const { min: vMin, max: vMax } = rangoCanal(laps, canal);
+
+  // proyección (con rotación/elevación opcional)
+  const a = (state.mapa.tresD ? state.mapa.rot : 0) * Math.PI / 180;
+  const alt = state.mapa.tresD ? state.mapa.alt : 0;
+  const proj = (x, z, y) => {
+    const rx = x * Math.cos(a) - z * Math.sin(a);
+    const rz = x * Math.sin(a) + z * Math.cos(a);
+    return [rx, rz - (Number.isFinite(y) ? y : 0) * alt];
+  };
+
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  const cache = [];
+  for (const l of laps) {
+    const { x, z, y } = l.raw;
+    const pts = new Array(x.length);
+    for (let i = 0; i < x.length; i++) {
+      const [px, py] = proj(x[i], z[i], y[i]);
+      pts[i] = [px, py];
+      if (px < minX) minX = px; if (px > maxX) maxX = px;
+      if (py < minY) minY = py; if (py > maxY) maxY = py;
+    }
+    cache.push(pts);
+  }
+  const pad = 34;
+  const spanX = Math.max(maxX - minX, 1e-6), spanY = Math.max(maxY - minY, 1e-6);
+  const s = Math.min((w - 2 * pad) / spanX, (h - 2 * pad) / spanY);
+  const ox = (w - spanX * s) / 2, oy = (h - spanY * s) / 2;
+  const tf = (px, py) => [ox + (px - minX) * s, oy + (py - minY) * s];
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1;
+  for (let gx = 0; gx <= w; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
+  for (let gy = 0; gy <= h; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
+
+  // trazados coloreados por canal
+  const rango = Math.max(vMax - vMin, 1e-6);
+  laps.forEach((l, li) => {
+    const pts = cache[li];
+    const esRef = l.id === state.refId;
+    ctx.lineWidth = esRef ? 4 : 3; ctx.lineCap = 'round';
+    for (let i = 1; i < pts.length; i++) {
+      const v = valorCanal(l, i, canal);
+      const [x0, y0] = tf(pts[i - 1][0], pts[i - 1][1]);
+      const [x1, y1] = tf(pts[i][0], pts[i][1]);
+      ctx.strokeStyle = Number.isFinite(v) ? colorMap((v - vMin) / rango) : '#555';
+      ctx.globalAlpha = esRef ? 1 : 0.7;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  });
+
+  const ref = lapRef();
+  if (ref) {
+    // marcadores de frenada
+    if (state.mapa.frenada) {
+      const b = ref.raw.brake, x = ref.raw.x, z = ref.raw.z, y = ref.raw.y;
+      let prev = 0;
+      for (let i = 0; i < b.length; i++) {
+        if (b[i] > 0.45 && prev <= 0.45) { const [px, py] = tf(...proj(x[i], z[i], y[i])); ctx.fillStyle = '#f87171'; ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill(); }
+        prev = b[i];
+      }
+    }
+    // marcadores de cambio
+    if (state.mapa.cambios) {
+      const g = ref.raw.gear, x = ref.raw.x, z = ref.raw.z, y = ref.raw.y;
+      for (let i = 1; i < g.length; i++) {
+        if (Number.isFinite(g[i]) && Number.isFinite(g[i - 1]) && g[i] !== g[i - 1]) {
+          const [px, py] = tf(...proj(x[i], z[i], y[i]));
+          ctx.fillStyle = g[i] > g[i - 1] ? '#4ade80' : '#facc15';
+          ctx.fillText(g[i] > g[i - 1] ? '↑' : '↓', px - 4, py - 4);
+        }
+      }
+    }
+    // línea de meta
+    const [mx, my] = tf(...proj(ref.raw.x[0], ref.raw.z[0], ref.raw.y[0]));
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(mx, my, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.font = '11px "Segoe UI"'; ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillText('S/F', mx + 8, my - 6);
+  }
+
+  // marcadores de posición actual
+  for (const l of laps) {
+    if (!l.grid) continue;
+    const esRef = l.id === state.refId;
+    const [px, py] = tf(...proj(l.grid.x[state.idx], l.grid.z[state.idx], l.grid.y[state.idx]));
+    ctx.beginPath(); ctx.arc(px, py, esRef ? 7 : 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = esRef ? '#ffffff' : hexA(l.color, 0.9); ctx.fill();
+    if (esRef) { ctx.lineWidth = 3; ctx.strokeStyle = l.color; ctx.stroke(); }
+  }
+
+  // leyenda de color
+  const lx = 10, ly = h - 22, lw = 140;
+  for (let i = 0; i < lw; i++) { ctx.fillStyle = colorMap(i / lw); ctx.fillRect(lx + i, ly, 1, 8); }
+  ctx.fillStyle = '#8b97a8'; ctx.font = '10px "Segoe UI"';
+  ctx.fillText(`${canal}`, lx, ly - 4);
+  if (Number.isFinite(vMin)) ctx.fillText(vMin.toFixed(0), lx, ly + 18);
+  if (Number.isFinite(vMax)) ctx.fillText(vMax.toFixed(0), lx + lw - 20, ly + 18);
+}
+
+/* ---------- readouts / UI ---------- */
 
 function actualizarScrub() {
   const scrub = $('scrub');
@@ -642,107 +1210,13 @@ function updateUI(opts = { moverCursor: true }) {
     const i = state.idx;
     $('ro-vel').textContent = (lap.grid.speed[i] ?? 0).toFixed(1);
     $('ro-dist').textContent = state.dist.toFixed(0);
-    $('ro-gas').textContent = (lap.grid.throttle[i] * 100).toFixed(0);
-    $('ro-freno').textContent = (lap.grid.brake[i] * 100).toFixed(0);
+    $('ro-gas').textContent = ((lap.grid.throttle[i] ?? 0) * 100).toFixed(0);
+    $('ro-freno').textContent = ((lap.grid.brake[i] ?? 0) * 100).toFixed(0);
     $('ro-marcha').textContent = Math.round(lap.grid.gear[i] ?? 0);
     $('ro-tiempo').textContent = (lap.grid.time[i] ?? 0).toFixed(2);
   }
-  drawMap();
+  if (state.tab === 'mapa') drawMap();
   if (opts.moverCursor) moverCursor();
-}
-
-/* ---------- canvas mapa ---------- */
-
-function drawMap() {
-  const cv = $('mapa');
-  if (!cv) return;
-  const dpr = window.devicePixelRatio || 1;
-  const w = cv.clientWidth || 600;
-  const h = cv.clientHeight || 400;
-  cv.width = Math.round(w * dpr);
-  cv.height = Math.round(h * dpr);
-  const ctx = cv.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, w, h);
-
-  const laps = visibleLaps();
-  if (!laps.length) return;
-
-  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-  for (const l of laps) {
-    const { x, z } = l.raw;
-    for (let i = 0; i < x.length; i++) {
-      if (x[i] < minX) minX = x[i];
-      if (x[i] > maxX) maxX = x[i];
-      if (z[i] < minZ) minZ = z[i];
-      if (z[i] > maxZ) maxZ = z[i];
-    }
-  }
-  const pad = 34;
-  const spanX = Math.max(maxX - minX, 1e-6);
-  const spanZ = Math.max(maxZ - minZ, 1e-6);
-  const s = Math.min((w - 2 * pad) / spanX, (h - 2 * pad) / spanZ);
-  const ox = (w - spanX * s) / 2;
-  const oy = (h - spanZ * s) / 2;
-  const tf = (x, z) => [ox + (x - minX) * s, oy + (maxZ - z) * s];
-
-  // grilla de fondo
-  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-  ctx.lineWidth = 1;
-  for (let gx = 0; gx <= w; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
-  for (let gy = 0; gy <= h; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
-
-  // trazados
-  for (const l of laps) {
-    const esRef = l.id === state.refId;
-    ctx.beginPath();
-    const { x, z } = l.raw;
-    for (let i = 0; i < x.length; i++) {
-      const [px, py] = tf(x[i], z[i]);
-      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    }
-    ctx.strokeStyle = hexA(l.color, esRef ? 0.95 : 0.45);
-    ctx.lineWidth = esRef ? 3 : 2;
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-  }
-
-  // línea de meta (primer punto de la referencia)
-  const ref = lapRef();
-  if (ref) {
-    const [mxs, mys] = tf(ref.raw.x[0], ref.raw.z[0]);
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(mxs, mys, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.font = '11px "Segoe UI", sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.fillText('S/F', mxs + 8, mys - 6);
-  }
-
-  // marcadores (uno por vuelta visible) en la distancia actual
-  for (const l of laps) {
-    if (!l.grid) continue;
-    const esRef = l.id === state.refId;
-    const [px, py] = tf(l.grid.x[state.idx], l.grid.z[state.idx]);
-    ctx.beginPath();
-    ctx.arc(px, py, esRef ? 7 : 4.5, 0, Math.PI * 2);
-    ctx.fillStyle = esRef ? '#ffffff' : hexA(l.color, 0.9);
-    ctx.fill();
-    if (esRef) {
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = l.color;
-      ctx.stroke();
-    }
-  }
-}
-
-function hexA(hex, a) {
-  const h = hex.replace('#', '');
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return `rgba(${r},${g},${b},${a})`;
 }
 
 /* ---------- reproductor ---------- */
@@ -750,44 +1224,39 @@ function hexA(hex, a) {
 function togglePlay() {
   state.playing = !state.playing;
   $('btn-play').textContent = state.playing ? '❚❚' : '▶';
-  if (state.playing) {
-    state.lastTs = performance.now();
-    state.raf = requestAnimationFrame(tick);
-  } else if (state.raf) {
-    cancelAnimationFrame(state.raf);
-    state.raf = null;
-  }
+  if (state.playing) { state.lastTs = performance.now(); state.raf = requestAnimationFrame(tick); }
+  else if (state.raf) { cancelAnimationFrame(state.raf); state.raf = null; }
 }
 
 function tick(ts) {
   if (!state.playing) return;
-  const dt = (ts - state.lastTs) / 1000;
-  state.lastTs = ts;
-  // velocidad de reproducción: ~120 m/s base * mult (aprox. 1× = tiempo real a ~200 km/h)
+  const dt = (ts - state.lastTs) / 1000; state.lastTs = ts;
   let nueva = state.dist + dt * state.speedMult * 90;
-  if (nueva >= state.maxDist) {
-    if (state.loop) nueva = nueva % state.maxDist;
-    else { nueva = state.maxDist; togglePlay(); }
-  }
+  if (nueva >= state.maxDist) { if (state.loop) nueva = nueva % state.maxDist; else { nueva = state.maxDist; togglePlay(); } }
   const idx = Math.min(state.grid.length - 1, Math.max(0, Math.round(nueva / state.gridStep)));
-  state.idx = idx;
-  state.dist = state.grid[idx];
+  state.idx = idx; state.dist = state.grid[idx];
   updateUI({ moverCursor: true });
   if (state.playing) state.raf = requestAnimationFrame(tick);
 }
 
 function irA(dist) {
   const d = Math.max(0, Math.min(state.maxDist, dist));
-  state.dist = d;
-  state.idx = Math.min(state.grid.length - 1, Math.max(0, Math.round(d / state.gridStep)));
+  state.dist = d; state.idx = Math.min(state.grid.length - 1, Math.max(0, Math.round(d / state.gridStep)));
   updateUI({ moverCursor: true });
 }
 
-/* ---------- visibilidad ---------- */
+/* ---------- visibilidad / pestañas ---------- */
 
 function mostrarDashboard() { $('zona-carga').classList.add('oculto'); $('dashboard').classList.remove('oculto'); $('btn-limpiar').disabled = false; }
 function mostrarError(msg) { const e = $('error-aviso'); e.textContent = '⚠ ' + msg; e.classList.remove('oculto'); }
 function ocultarError() { $('error-aviso').classList.add('oculto'); }
+
+function activarTab(tab) {
+  state.tab = tab;
+  document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('activo', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('activo', p.id === 'panel-' + tab));
+  if (visibleLaps().length) renderTabActiva();
+}
 
 /* ---------- eventos ---------- */
 
@@ -797,40 +1266,32 @@ function init() {
   input.addEventListener('change', (e) => { cargarArchivos(e.target.files); input.value = ''; });
 
   const zona = $('zona-carga');
-  ['dragenter', 'dragover'].forEach((ev) =>
-    zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.add('encima'); }));
-  ['dragleave', 'drop'].forEach((ev) =>
-    zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.remove('encima'); }));
-  zona.addEventListener('drop', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    zona.classList.remove('encima');
-    if (e.dataTransfer.files.length) cargarArchivos(e.dataTransfer.files);
-  });
+  ['dragenter', 'dragover'].forEach((ev) => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.add('encima'); }));
+  ['dragleave', 'drop'].forEach((ev) => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.remove('encima'); }));
+  zona.addEventListener('drop', (e) => { e.preventDefault(); e.stopPropagation(); zona.classList.remove('encima'); if (e.dataTransfer.files.length) cargarArchivos(e.dataTransfer.files); });
   document.addEventListener('dragover', (e) => e.preventDefault());
-  document.addEventListener('drop', (e) => {
-    e.preventDefault();
-    if (e.dataTransfer.files.length && $('dashboard').classList.contains('oculto')) cargarArchivos(e.dataTransfer.files);
-  });
+  document.addEventListener('drop', (e) => { e.preventDefault(); if (e.dataTransfer.files.length && $('dashboard').classList.contains('oculto')) cargarArchivos(e.dataTransfer.files); });
 
   $('btn-play').addEventListener('click', togglePlay);
   $('chk-loop').addEventListener('change', (e) => { state.loop = e.target.checked; });
   $('sel-velocidad').addEventListener('change', (e) => { state.speedMult = parseFloat(e.target.value); });
   $('scrub').addEventListener('input', (e) => irA((e.target.value / 1000) * state.maxDist));
 
+  document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => activarTab(b.dataset.tab)));
+
+  // controles del mapa
+  const canal = $('mapa-canal'); if (canal) canal.addEventListener('change', (e) => { state.mapa.canal = e.target.value; drawMap(); });
+  const frenada = $('mapa-frenada'); if (frenada) frenada.addEventListener('change', (e) => { state.mapa.frenada = e.target.checked; drawMap(); });
+  const cambios = $('mapa-cambios'); if (cambios) cambios.addEventListener('change', (e) => { state.mapa.cambios = e.target.checked; drawMap(); });
+  const t3d = $('mapa-3d'); if (t3d) t3d.addEventListener('change', (e) => { state.mapa.tresD = e.target.checked; mostrarControles3D(); drawMap(); });
+  const rot = $('mapa-rot'); if (rot) rot.addEventListener('input', (e) => { state.mapa.rot = parseFloat(e.target.value); drawMap(); });
+  const alt = $('mapa-alt'); if (alt) alt.addEventListener('input', (e) => { state.mapa.alt = parseFloat(e.target.value); drawMap(); });
+
+  const selB = $('sel-lap-b'); if (selB) selB.addEventListener('change', (e) => { state.lapBId = e.target.value; renderTabActiva(); });
+
   $('btn-limpiar').addEventListener('click', () => {
-    destroyCharts();
-    state.laps = [];
-    state.refId = null;
-    state.idx = 0;
-    state.dist = 0;
-    state.playing = false;
-    state.colorIdx = 0;
-    $('btn-play').textContent = '▶';
-    $('dashboard').classList.add('oculto');
-    $('zona-carga').classList.remove('oculto');
-    $('btn-limpiar').disabled = true;
-    ocultarError();
+    destroyCharts(); state.laps = []; state.refId = null; state.lapBId = null; state.idx = 0; state.dist = 0; state.playing = false; state.colorIdx = 0;
+    $('btn-play').textContent = '▶'; $('dashboard').classList.add('oculto'); $('zona-carga').classList.remove('oculto'); $('btn-limpiar').disabled = true; ocultarError();
   });
 
   window.addEventListener('keydown', (e) => {
@@ -841,17 +1302,12 @@ function init() {
   });
 
   let rt;
-  window.addEventListener('resize', () => {
-    clearTimeout(rt);
-    rt = setTimeout(() => {
-      drawMap();
-      const laps = visibleLaps();
-      if (!laps.length) return;
-      const w = $('graficos').clientWidth;
-      if (state.charts.speed) state.charts.speed.setSize({ width: w, height: 250 });
-      if (state.charts.inputs) state.charts.inputs.setSize({ width: w, height: 210 });
-    }, 120);
-  });
+  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (visibleLaps().length) renderTabActiva(); }, 120); });
+}
+
+function mostrarControles3D() {
+  const box = $('mapa-3d-controles');
+  if (box) box.style.display = state.mapa.tresD ? 'flex' : 'none';
 }
 
 document.addEventListener('DOMContentLoaded', init);
