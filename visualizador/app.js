@@ -10,6 +10,8 @@ const SYNC_KEY = 'ac-tele-lab';
 const PALETA = ['#38bdf8', '#f472b6', '#4ade80', '#facc15', '#a78bfa', '#fb923c', '#22d3ee', '#f87171', '#c084fc', '#fde047'];
 const G = 9.80665;
 const N_SECTORES = 10;
+const GRID_PUNTOS_MAX = 10000;      // puntos máximos de la grilla de distancia común
+const GRID_PASO_MIN = 0.1;          // paso mínimo (m) entre puntos de la grilla
 const ICONO_OJO = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
 const ICONO_OJO_TACHADO = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
 
@@ -245,6 +247,7 @@ function crearLap(name, s, visible = true) {
     name,
     color: PALETA[state.colorIdx++ % PALETA.length],
     visible,
+    enLista: true,
     raw: {
       x: s.x, z: s.z, y: s.y || dist.map(() => NaN), dist,
       speed: s.speed, throttle: gasR.valores, brake: frenoR.valores,
@@ -447,7 +450,13 @@ async function cargarArchivos(fileList) {
       } else if (/\.acreplay$/i.test(f.name)) {
         const candidatas = await parsearReplay(f);
         const elegidas = await preguntarVueltas(f.name, candidatas); // Set de índices
-        for (let i = 0; i < candidatas.length; i++) nuevas.push(crearLap(candidatas[i].name, candidatas[i].serie, elegidas.has(i)));
+        for (let i = 0; i < candidatas.length; i++) {
+          const p = elegidas.has(i);
+          const l = crearLap(candidatas[i].name, candidatas[i].serie, false);
+          l.visible = p;     // aparece en gráficos/trazadas solo si fue elegida
+          l.enLista = p;     // aparece en el panel lateral solo si fue elegida
+          nuevas.push(l);
+        }
       } else {
         throw new Error(`"${f.name}": extensión no soportada (CSV o .acreplay).`);
       }
@@ -555,7 +564,7 @@ function recomputar() {
   let maxDist = 0;
   for (const l of laps) maxDist = Math.max(maxDist, l.raw.dist[l.raw.dist.length - 1]);
   state.maxDist = maxDist;
-  const step = Math.max(maxDist / 2200, 0.25);
+  const step = Math.max(maxDist / GRID_PUNTOS_MAX, GRID_PASO_MIN);
   state.gridStep = step;
   const n = Math.floor(maxDist / step) + 1;
   const grid = new Array(n);
@@ -598,6 +607,7 @@ function renderListaVueltas() {
   const ul = $('lista-vueltas');
   ul.innerHTML = '';
   state.laps.forEach((l) => {
+    if (l.enLista === false) return;
     const li = document.createElement('li');
     li.className = 'vuelta-item' + (l.id === state.refId ? ' ref' : '') + (l.visible ? '' : ' oculta');
     const tMeta = fmtTiempo(tiempoDeVuelta(l));
@@ -785,6 +795,7 @@ function renderConjunto(laps) {
   drawDesvioLateral(laps, ref);
   drawSectores(laps);
   drawMapaSectores();
+  drawMapaTeorico(laps);
   renderTablaResumen(laps);
   renderTeorica(laps);
 }
@@ -1114,23 +1125,60 @@ function sectorTimes(l) {
 function drawSectores(laps) {
   const c = prepCanvas('ch-sectores', 260);
   if (!c) return;
-  const { ctx, w, h } = c;
-  const matriz = laps.map((l) => ({ l, s: sectorTimes(l) }));
-  const todos = matriz.flatMap((m) => m.s).filter(Number.isFinite);
+  const { ctx, w, h, cv } = c;
+  const mat = laps.map((l) => ({ l, s: sectorTimes(l) }));
+  const todos = mat.flatMap((m) => m.s).filter(Number.isFinite);
   if (!todos.length) { ctx.fillStyle = '#8b97a8'; ctx.fillText('sin tiempos de sector', 12, 20); return; }
   const maxS = Math.max(...todos);
   const pad = 28, groupW = (w - pad * 2) / N_SECTORES;
-  const barW = groupW / (matriz.length + 1);
-  matriz.forEach((m, li) => m.s.forEach((v, si) => {
+  const barW = groupW / (mat.length + 1);
+  const mejores = new Array(N_SECTORES).fill(null);
+  const rects = [];
+  mat.forEach((m, li) => m.s.forEach((v, si) => {
     if (!Number.isFinite(v)) return;
+    if (!mejores[si] || v < mejores[si].v) mejores[si] = { v, name: m.l.name, color: m.l.color };
     const x = pad + si * groupW + li * barW + 2;
-    const bh = (v / maxS) * (h - pad * 2);
+    const bh = (v / maxS) * (h - pad * 2 - 12);
     ctx.fillStyle = hexA(m.l.color, 0.9);
     ctx.fillRect(x, h - pad - bh, barW - 2, bh);
+    rects.push({ x, y: h - pad - bh, w: barW - 2, h: bh, v, name: m.l.name, color: m.l.color, sector: si });
   }));
+  ctx.textAlign = 'center';
+  for (let s = 0; s < N_SECTORES; s++) {
+    const cx = pad + s * groupW + groupW / 2;
+    ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+    ctx.fillText('S' + (s + 1), cx, h - 15);
+    if (mejores[s]) {
+      ctx.fillStyle = mejores[s].color; ctx.font = '10px "Consolas", monospace';
+      ctx.fillText(fmtTiempo(mejores[s].v), cx, h - 3);
+    }
+  }
+  ctx.textAlign = 'left';
   ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
-  for (let s = 0; s < N_SECTORES; s++) ctx.fillText('S' + (s + 1), pad + s * groupW + 2, h - 8);
   ctx.fillText('tiempo por sector (s)', 4, 14);
+  cv._sectRects = rects;
+  cv.onmousemove = hoverSectores;
+  cv.onmouseleave = ocultarTooltip;
+}
+
+function hoverSectores(ev) {
+  const cv = ev.currentTarget;
+  const tt = $('tt-sectores');
+  if (!tt || !cv._sectRects) return;
+  const card = cv.parentElement;
+  const r = card.getBoundingClientRect();
+  const rect = cv._sectRects.find((b) =>
+    ev.offsetX >= b.x && ev.offsetX <= b.x + b.w && ev.offsetY >= b.y && ev.offsetY <= b.y + b.h);
+  if (!rect) { tt.hidden = true; return; }
+  tt.textContent = `S${rect.sector + 1} · ${rect.name}: ${fmtTiempo(rect.v)}`;
+  tt.style.left = `${ev.clientX - r.left + 14}px`;
+  tt.style.top = `${ev.clientY - r.top + 12}px`;
+  if (tt.hidden) tt.hidden = false;
+}
+
+function ocultarTooltip() {
+  const tt = $('tt-sectores');
+  if (tt) tt.hidden = true;
 }
 
 /* Mapa de Conjunto: la vuelta REF dividida con el mismo corte de distancia
@@ -1189,6 +1237,196 @@ function drawMapaSectores() {
   ctx.fillText('S1', 8, h - 8);
   ctx.fillText('S' + N_SECTORES, w - 30, h - 8);
   for (let k = 0; k < w - 58 && k > 0; k++) { ctx.fillStyle = colorMap(k / Math.max(w - 58, 1)); ctx.fillRect(24 + k, h - 14, 1, 4); }
+}
+
+/* Trazada compuesta: junta el tramo del mejor sector de cada vuelta en una sola línea
+   (mismo corte de distancia que "Tiempo por sector" y "Mapa por sectores").
+   Cada tramo se pinta con el color del sector, sobre una base tenue de todas las vueltas. */
+function construirTrazada(laps) {
+  const p = proyectarLaps(laps, state.mapaSectores);
+  const corte = state.maxDist / N_SECTORES;
+  const n = state.grid.length;
+  const matriz = laps.map((l) => ({ l, s: sectorTimes(l), gx: l.grid.x, gz: l.grid.z, gy: l.grid.y }));
+  const tramos = [];
+  for (let s = 0; s < N_SECTORES; s++) {
+    let best = null;
+    for (const m of matriz) if (Number.isFinite(m.s[s]) && (!best || m.s[s] < best.s[s])) best = m;
+    if (!best) continue;
+    const i0 = clamp(Math.round((s * corte) / state.gridStep), 0, n - 1);
+    const i1 = clamp(Math.round(((s + 1) * corte) / state.gridStep), 0, n - 1);
+    tramos.push({ s, best, i0, i1 });
+  }
+  const env = envolventePista(laps);
+  return { p, corte, n, matriz, tramos, env };
+}
+
+function pintarTrazada(ctx, w, h, view, data) {
+  const { matriz, tramos } = data;
+  if (!tramos.length) return;
+
+  // pista de fondo (silueta gris)
+  if (data.env) drawBordePista(ctx, view.tf, view.proj, data.env);
+
+  // base tenue: todas las trazadas
+  ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(148,163,184,0.12)';
+  for (const m of matriz) {
+    ctx.beginPath();
+    for (let i = 0; i < m.gx.length; i++) {
+      const [px, py] = view.tf(...view.proj(m.gx[i], m.gz[i], m.gy[i]));
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 3.5;
+  for (const t of tramos) {
+    ctx.strokeStyle = colorMap(t.s / (N_SECTORES - 1));
+    ctx.beginPath();
+    let first = true;
+    for (let i = t.i0; i <= t.i1; i++) {
+      const [px, py] = view.tf(...view.proj(t.best.gx[i], t.best.gz[i], t.best.gy[i]));
+      if (first) { ctx.moveTo(px, py); first = false; } else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+
+  // marcadores de frontera de sector + largada
+  ctx.textAlign = 'center'; ctx.font = '10px "Segoe UI"';
+  for (let s = 1; s < N_SECTORES; s++) {
+    const i = clamp(Math.round((s * data.corte) / state.gridStep), 0, data.n - 1);
+    const t = tramos[Math.min(s, tramos.length - 1)] || tramos[0];
+    if (!t) continue;
+    const [px, py] = view.tf(...view.proj(t.best.gx[i], t.best.gz[i], t.best.gy[i]));
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fillText('S' + (s + 1), px, py - 8);
+  }
+  const t0 = tramos[0];
+  if (t0) {
+    const [mx, my] = view.tf(...view.proj(t0.best.gx[t0.i0], t0.best.gz[t0.i0], t0.best.gy[t0.i0]));
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(mx, my, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.textAlign = 'left'; ctx.fillStyle = '#8b97a8';
+    ctx.fillText('S/F', mx + 8, my - 6);
+  }
+
+  // leyenda: paleta de sectores + vueltas usadas
+  ctx.textAlign = 'left'; ctx.font = '10px "Segoe UI"'; ctx.fillStyle = '#8b97a8';
+  const usadas = [...new Set(tramos.map((t) => t.best.l.name))];
+  const resumen = usadas.length === 1 ? `mejor vuelta: ${usadas[0]}` : `mejores sectores de: ${usadas.join(', ')}`;
+  ctx.fillText(resumen.slice(0, 90), 8, 14);
+  for (let k = 0; k < w - 58 && k > 0; k++) { ctx.fillStyle = colorMap(k / Math.max(w - 58, 1)); ctx.fillRect(24 + k, h - 14, 1, 4); }
+  ctx.fillStyle = '#8b97a8';
+  ctx.textAlign = 'left'; ctx.fillText('S1', 8, h - 8);
+  ctx.fillText('S' + N_SECTORES, w - 30, h - 8);
+}
+
+function drawMapaTeorico(laps) {
+  const c = prepCanvas('ch-mapa-teorico', 260);
+  if (!c) return;
+  if (!laps.length) return;
+  const data = construirTrazada(laps);
+  const view = construirVistaLocal(c, data.p);
+  pintarTrazada(c.ctx, c.w, c.h, view, data);
+}
+
+/* Overlay ampliable de la trazada con zoom (rueda) y paneo (arrastre). */
+const zoomTeorico = { abierto: false, zoom: 1, panX: 0, panY: 0, data: null, arrastrando: false, lx: 0, ly: 0 };
+
+function dibujarZoomTeorico() {
+  const cv = $('ch-mapa-zoom');
+  if (!cv || !zoomTeorico.data) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth || 800, h = cv.clientHeight || 600;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  const ctx = cv.getContext('2d');
+  if (!ctx || !ctx.setTransform) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const base = construirVistaLocal(cv, zoomTeorico.data.p);
+  const z = zoomTeorico.zoom, ox = zoomTeorico.panX, oy = zoomTeorico.panY;
+  const tf = (px, py) => {
+    const [x0, y0] = base.tf(px, py);
+    return [w / 2 + (x0 - w / 2) * z + ox, h / 2 + (y0 - h / 2) * z + oy];
+  };
+  pintarTrazada(ctx, w, h, { proj: zoomTeorico.data.p.proj, tf }, zoomTeorico.data);
+  const nivel = $('zoom-nivel');
+  if (nivel) nivel.textContent = Math.round(z * 100) + '%';
+}
+
+function abrirZoomTeorico() {
+  const laps = state.laps.filter((l) => l.valida);
+  if (!laps.length) return;
+  zoomTeorico.data = construirTrazada(laps);
+  zoomTeorico.zoom = 1; zoomTeorico.panX = 0; zoomTeorico.panY = 0;
+  const ov = $('zoom-teorico');
+  if (!ov) return;
+  ov.classList.remove('oculto');
+  ov.setAttribute('aria-hidden', 'false');
+  zoomTeorico.abierto = true;
+  dibujarZoomTeorico();
+  $('zoom-cerrar')?.focus();
+}
+
+function cerrarZoomTeorico() {
+  const ov = $('zoom-teorico');
+  if (!ov) return;
+  ov.classList.add('oculto');
+  ov.setAttribute('aria-hidden', 'true');
+  zoomTeorico.abierto = false;
+}
+
+function zoomTeoricoFactor(factor, mx, my) {
+  const cv = $('ch-mapa-zoom');
+  if (!cv) return;
+  const w = cv.clientWidth || 800, h = cv.clientHeight || 600;
+  if (mx == null) { mx = w / 2; my = h / 2; }
+  const z0 = zoomTeorico.zoom;
+  const z1 = clamp(z0 * factor, 0.4, 20);
+  const k = z1 / z0;
+  zoomTeorico.panX = mx - w / 2 - (mx - w / 2 - zoomTeorico.panX) * k;
+  zoomTeorico.panY = my - h / 2 - (my - h / 2 - zoomTeorico.panY) * k;
+  zoomTeorico.zoom = z1;
+  dibujarZoomTeorico();
+}
+
+function initZoomTeorico() {
+  $('btn-zoom-teorico')?.addEventListener('click', abrirZoomTeorico);
+  $('ch-mapa-teorico')?.addEventListener('click', abrirZoomTeorico);
+  $('zoom-cerrar')?.addEventListener('click', cerrarZoomTeorico);
+  $('zoom-in')?.addEventListener('click', () => zoomTeoricoFactor(1.25));
+  $('zoom-out')?.addEventListener('click', () => zoomTeoricoFactor(1 / 1.25));
+  $('zoom-reset')?.addEventListener('click', () => { zoomTeorico.zoom = 1; zoomTeorico.panX = 0; zoomTeorico.panY = 0; dibujarZoomTeorico(); });
+  const ov = $('zoom-teorico');
+  ov?.addEventListener('click', (e) => { if (e.target === ov) cerrarZoomTeorico(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && zoomTeorico.abierto) cerrarZoomTeorico(); });
+  const cv = $('ch-mapa-zoom');
+  if (!cv) return;
+  cv.addEventListener('wheel', (e) => {
+    if (!zoomTeorico.abierto) return;
+    e.preventDefault();
+    const rect = cv.getBoundingClientRect();
+    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+    zoomTeoricoFactor(factor, e.clientX - rect.left, e.clientY - rect.top);
+  }, { passive: false });
+  cv.addEventListener('pointerdown', (e) => {
+    if (!zoomTeorico.abierto) return;
+    zoomTeorico.arrastrando = true; zoomTeorico.lx = e.clientX; zoomTeorico.ly = e.clientY;
+    cv.setPointerCapture?.(e.pointerId);
+  });
+  cv.addEventListener('pointermove', (e) => {
+    if (!zoomTeorico.arrastrando) return;
+    zoomTeorico.panX += e.clientX - zoomTeorico.lx;
+    zoomTeorico.panY += e.clientY - zoomTeorico.ly;
+    zoomTeorico.lx = e.clientX; zoomTeorico.ly = e.clientY;
+    dibujarZoomTeorico();
+  });
+  const soltar = () => { zoomTeorico.arrastrando = false; };
+  cv.addEventListener('pointerup', soltar);
+  cv.addEventListener('pointercancel', soltar);
+  cv.addEventListener('pointerleave', soltar);
+  window.addEventListener('resize', () => { if (zoomTeorico.abierto) dibujarZoomTeorico(); });
 }
 
 function renderTablaResumen(laps) {
@@ -1822,9 +2060,10 @@ function init() {
   const alt = $('mapa-alt'); if (alt) alt.addEventListener('input', (e) => { state.mapa.alt = parseFloat(e.target.value); drawMap(); });
 
   // controles 3D del mapa por sectores (Conjunto)
-  const ms3d = $('msect-3d'); if (ms3d) ms3d.addEventListener('change', (e) => { state.mapaSectores.tresD = e.target.checked; mostrarControles3DMsect(); drawMapaSectores(); });
-  const msrot = $('msect-rot'); if (msrot) msrot.addEventListener('input', (e) => { state.mapaSectores.rot = parseFloat(e.target.value); drawMapaSectores(); });
-  const msalt = $('msect-alt'); if (msalt) msalt.addEventListener('input', (e) => { state.mapaSectores.alt = parseFloat(e.target.value); drawMapaSectores(); });
+  const redibConjMapas = () => { drawMapaSectores(); drawMapaTeorico(state.laps.filter((l) => l.valida)); };
+  const ms3d = $('msect-3d'); if (ms3d) ms3d.addEventListener('change', (e) => { state.mapaSectores.tresD = e.target.checked; mostrarControles3DMsect(); redibConjMapas(); });
+  const msrot = $('msect-rot'); if (msrot) msrot.addEventListener('input', (e) => { state.mapaSectores.rot = parseFloat(e.target.value); redibConjMapas(); });
+  const msalt = $('msect-alt'); if (msalt) msalt.addEventListener('input', (e) => { state.mapaSectores.alt = parseFloat(e.target.value); redibConjMapas(); });
 
   const visual = $('mapa-visual');
   if (visual) visual.addEventListener('change', (e) => {
@@ -1845,6 +2084,9 @@ function init() {
     fijarIconoPlay(); $('dashboard').classList.add('oculto'); $('zona-carga').classList.remove('oculto'); $('btn-limpiar').disabled = true; ocultarError();
   });
 
+  const btnColapsar = $('btn-colapsar-vueltas');
+  if (btnColapsar) btnColapsar.addEventListener('click', colapsarVueltas)
+
   window.addEventListener('keydown', (e) => {
     if (document.activeElement && ['INPUT', 'SELECT', 'BUTTON'].includes(document.activeElement.tagName)) return;
     if (e.code === 'Space') { e.preventDefault(); if (state.grid.length) togglePlay(); }
@@ -1854,6 +2096,18 @@ function init() {
 
   let rt;
   window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (visibleLaps().length) renderTabActiva(); }, 120); });
+
+  initZoomTeorico();
+}
+
+function colapsarVueltas() {
+  const btn = $('btn-colapsar-vueltas');
+  const lista = $('lista-vueltas');
+  if (!btn || !lista) return;
+  const colapsada = lista.classList.toggle('colapsada');
+  btn.classList.toggle('colapsado', colapsada);
+  btn.setAttribute('aria-expanded', String(!colapsada));
+  btn.title = colapsada ? 'Mostrar la lista de vueltas' : 'Ocultar la lista de vueltas';
 }
 
 function mostrarControles3D() {

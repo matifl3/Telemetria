@@ -42,7 +42,12 @@
 
     <section id="dashboard" class="dashboard oculto">
       <aside class="panel lateral">
-        <div class="panel-titulo">Vueltas cargadas</div>
+        <div class="panel-titulo fila-colapsable">
+          <span>Vueltas cargadas</span>
+          <button id="btn-colapsar-vueltas" class="colapsar" type="button" title="Ocultar la lista de vueltas" aria-label="Ocultar o mostrar la lista de vueltas" aria-expanded="true" aria-controls="lista-vueltas">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+        </div>
         <ul id="lista-vueltas" class="lista-vueltas"></ul>
 
         <div class="panel-titulo">Reproductor</div>
@@ -191,17 +196,27 @@
           <div class="grafico-card">
             <div class="grafico-titulo">Tiempo por sector <span class="unidad">10 sectores de igual distancia</span></div>
             <canvas id="ch-sectores"></canvas>
+            <div id="tt-sectores" class="grafico-tooltip" hidden></div>
           </div>
-          <div class="grafico-card">
-            <div class="grafico-titulo">Mapa por sectores <span class="unidad">vuelta REF · mismo corte</span></div>
-            <div class="mapa-controles" style="margin-bottom:6px">
-              <label class="check"><input id="msect-3d" type="checkbox" /> 3D</label>
-              <div id="msect-3d-controles" class="mapa-3d-controles">
-                <label>Rotación <input id="msect-rot" type="range" min="-180" max="180" value="0" step="1" /></label>
-                <label>Elevación <input id="msect-alt" type="range" min="0" max="15" value="3" step="0.5" /></label>
+          <div class="fila-doble">
+            <div class="grafico-card">
+              <div class="grafico-titulo">Mapa por sectores <span class="unidad">vuelta REF · mismo corte</span></div>
+              <div class="mapa-controles" style="margin-bottom:6px">
+                <label class="check"><input id="msect-3d" type="checkbox" /> 3D</label>
+                <div id="msect-3d-controles" class="mapa-3d-controles">
+                  <label>Rotación <input id="msect-rot" type="range" min="-180" max="180" value="0" step="1" /></label>
+                  <label>Elevación <input id="msect-alt" type="range" min="0" max="15" value="3" step="0.5" /></label>
+                </div>
               </div>
+              <canvas id="ch-mapa-sectores"></canvas>
             </div>
-            <canvas id="ch-mapa-sectores"></canvas>
+            <div class="grafico-card">
+              <div class="grafico-titulo">
+                <span>Trazada de mejores sectores <span class="unidad">mejor sector de cada vuelta</span></span>
+                <button id="btn-zoom-teorico" class="btn fantasma btn-ampliar" type="button">⤢ Ver en grande</button>
+              </div>
+              <canvas id="ch-mapa-teorico"></canvas>
+            </div>
           </div>
           <div class="grafico-card">
             <div class="grafico-titulo">Resumen por vuelta</div>
@@ -261,6 +276,23 @@
         <button id="btn-modal-cancelar" class="btn fantasma">Cancelar</button>
         <button id="btn-modal-aceptar" class="btn primario">Usar seleccionadas</button>
       </div>
+    </div>
+  </section>
+
+  <section id="zoom-teorico" class="zoom-overlay oculto" role="dialog" aria-modal="true" aria-labelledby="zoom-titulo" aria-hidden="true">
+    <div class="zoom-panel">
+      <div class="zoom-cab">
+        <h2 id="zoom-titulo">Trazada de mejores sectores</h2>
+        <div class="zoom-acciones">
+          <button id="zoom-out" class="btn fantasma" type="button" aria-label="Alejar">−</button>
+          <span id="zoom-nivel" class="mono">100%</span>
+          <button id="zoom-in" class="btn fantasma" type="button" aria-label="Acercar">+</button>
+          <button id="zoom-reset" class="btn fantasma" type="button">Reiniciar</button>
+          <button id="zoom-cerrar" class="btn fantasma" type="button" aria-label="Cerrar">✕</button>
+        </div>
+      </div>
+      <canvas id="ch-mapa-zoom"></canvas>
+      <p class="hint" style="text-align:center; margin:6px 0 0">Rueda del mouse para zoom · arrastrá para mover.</p>
     </div>
   </section>
 

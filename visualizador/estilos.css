@@ -138,6 +138,24 @@ html, body {
   font-weight: 700;
 }
 .panel-titulo:first-child { margin-top: 0; }
+.fila-colapsable { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.colapsar {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  transition: color 150ms var(--ease-out), background-color 150ms var(--ease-out), transform 150ms var(--ease-out);
+}
+.colapsar:hover { background: var(--bg-2); color: var(--texto); }
+.colapsar svg { transition: transform 200ms var(--ease-out); }
+.colapsar.colapsado svg { transform: rotate(180deg); }
+#lista-vueltas.colapsada { display: none; }
 
 /* Lista de vueltas */
 .lista-vueltas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -212,6 +230,21 @@ html, body {
   border-radius: var(--radio);
   padding: 14px 16px 10px;
   box-shadow: var(--sombra);
+  position: relative;
+}
+.grafico-tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 20;
+  background: #0b0f15;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 6px 9px;
+  font-size: 12px;
+  color: #e6ebf2;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+  font-family: "Consolas", monospace;
 }
 .grafico-titulo { font-size: 13px; font-weight: 700; margin-bottom: 8px; display: flex; justify-content: space-between; }
 .unidad { color: var(--muted); font-weight: 500; font-size: 11px; }
@@ -388,6 +421,7 @@ html, body {
 #ch-sectores,
 #ch-mapa-sectores,
 #ch-minidelta { width: 100%; display: block; }
+#ch-mapa-teorico { width: 100%; display: block; }
 #chart-traction { height: 300px; }
 #ch-barras-tiempos { height: 240px; }
 #ch-velmedia { height: 240px; }
@@ -396,7 +430,12 @@ html, body {
 #ch-fuel { height: 200px; }
 #ch-sectores { height: 260px; }
 #ch-mapa-sectores { height: 260px; }
+#ch-mapa-teorico { height: 260px; }
 #ch-minidelta { height: 240px; }
+
+/* Fila de dos tarjetas (mapas lado a lado) */
+.fila-doble { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 900px) { .fila-doble { grid-template-columns: 1fr; } }
 
 /* Controles del mapa */
 .mapa-controles {
@@ -538,3 +577,47 @@ html, body {
   .modal-card { animation: none !important; }
   .topbar { backdrop-filter: none; }
 }
+
+/* Overlay de zoom de la trazada */
+.zoom-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 7, 10, 0.82);
+  backdrop-filter: blur(4px);
+  z-index: 60;
+  padding: 16px;
+}
+.zoom-overlay.oculto { display: none; }
+.zoom-panel {
+  width: min(1200px, 96vw);
+  height: min(88vh, 900px);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  padding: 14px;
+  gap: 10px;
+}
+.zoom-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.zoom-cab h2 { margin: 0; font-size: 16px; }
+.zoom-acciones { display: flex; align-items: center; gap: 6px; }
+.zoom-acciones .btn { min-width: 34px; padding: 4px 9px; }
+#zoom-nivel { color: var(--muted); font-size: 12px; min-width: 46px; text-align: center; }
+#ch-mapa-zoom {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  display: block;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  cursor: grab;
+  touch-action: none;
+}
+#ch-mapa-zoom:active { cursor: grabbing; }
+.grafico-card .btn-ampliar { font-size: 11px; padding: 2px 8px; cursor: pointer; align-self: center; }
+#ch-mapa-teorico { cursor: zoom-in; }
