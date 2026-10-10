@@ -51,6 +51,7 @@ const state = {
   tab: 'vuelta',
   charts: { lines: [], inputs: [] },
   mapa: { canal: 'speed', frenada: true, cambios: false, tresD: false, rot: 0, alt: 3, visual: 'canal', bordes: true, zoom: 1, panX: 0, panY: 0, s0: 1, cx: 0, cy: 0, resetView: true, projKey: '', projRes: null },
+  mapaSectores: { tresD: false, rot: 0, alt: 3 },
 };
 
 const $ = (id) => document.getElementById(id);
@@ -692,6 +693,7 @@ function renderConjunto(laps) {
   drawFuel(laps);
   drawDesvioLateral(laps, ref);
   drawSectores(laps);
+  drawMapaSectores();
   renderTablaResumen(laps);
   renderTeorica(laps);
 }
@@ -1039,6 +1041,64 @@ function drawSectores(laps) {
   ctx.fillText('tiempo por sector (s)', 4, 14);
 }
 
+/* Mapa de Conjunto: la vuelta REF dividida con el mismo corte de distancia
+   que usa "Tiempo por sector" (state.maxDist / N_SECTORES). */
+function drawMapaSectores() {
+  const ref = lapRef();
+  const c = prepCanvas('ch-mapa-sectores', 260);
+  if (!c || !ref || !ref.grid) return;
+  const { ctx, w, h } = c;
+  const p = proyectarLaps([ref], state.mapaSectores);
+  const view = construirVistaLocal(c, p);
+  const corte = state.maxDist / N_SECTORES;
+  const gx = ref.grid.x, gz = ref.grid.z, gy = ref.grid.y;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(148,163,184,0.18)';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  for (let i = 0; i < gx.length; i++) {
+    const [px, py] = view.tf(...view.proj(gx[i], gz[i], gy[i]));
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+  const ptsBySector = Array.from({ length: N_SECTORES }, () => []);
+  for (let i = 0; i < gx.length; i++) {
+    const s = Math.min(Math.floor(state.grid[i] / corte), N_SECTORES - 1);
+    ptsBySector[s].push(view.tf(...view.proj(gx[i], gz[i], gy[i])));
+  }
+  for (let s = 0; s < N_SECTORES; s++) {
+    const pts = ptsBySector[s];
+    if (!pts.length) continue;
+    ctx.strokeStyle = colorMap(s / (N_SECTORES - 1));
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.stroke();
+  }
+  ctx.textAlign = 'center';
+  ctx.font = '10px "Segoe UI"';
+  for (let s = 1; s < N_SECTORES; s++) {
+    const i = clamp(Math.round((s * corte) / state.gridStep), 0, gx.length - 1);
+    const [px, py] = view.tf(...view.proj(gx[i], gz[i], gy[i]));
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fillText('S' + (s + 1), px, py - 8);
+  }
+  const [mx, my] = view.tf(...view.proj(ref.raw.x[0], ref.raw.z[0], ref.raw.y[0]));
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(mx, my, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#8b97a8';
+  ctx.fillText('S/F', mx + 8, my - 6);
+  ctx.textAlign = 'left'; ctx.font = '10px "Segoe UI"';
+  ctx.fillStyle = '#8b97a8';
+  ctx.fillText('S1', 8, h - 8);
+  ctx.fillText('S' + N_SECTORES, w - 30, h - 8);
+  for (let k = 0; k < w - 58 && k > 0; k++) { ctx.fillStyle = colorMap(k / Math.max(w - 58, 1)); ctx.fillRect(24 + k, h - 14, 1, 4); }
+}
+
 function renderTablaResumen(laps) {
   const cont = $('tabla-resumen');
   if (!cont) return;
@@ -1344,9 +1404,10 @@ function resetViewMapa() {
 
 /* Proyecta todos los puntos de las vueltas a 2D (rotación/elevación) y
    devuelve el cache + bounds comunes (misma escala para todos los mini-mapas). */
-function proyectarLaps(laps) {
-  const a = (state.mapa.tresD ? state.mapa.rot : 0) * Math.PI / 180;
-  const alt = state.mapa.tresD ? state.mapa.alt : 0;
+function proyectarLaps(laps, cfg) {
+  const m = cfg || state.mapa;
+  const a = (m.tresD ? m.rot : 0) * Math.PI / 180;
+  const alt = m.tresD ? m.alt : 0;
   const proj = (x, z, y) => {
     const rx = x * Math.cos(a) - z * Math.sin(a);
     const rz = x * Math.sin(a) + z * Math.cos(a);
@@ -1389,6 +1450,17 @@ function construirVista(laps, cv, p) {
   const s = m.zoom * s0;
   const tf = (px, py) => [w / 2 + m.panX + (px - cxm) * s, h / 2 + m.panY + (py - cym) * s];
   return { proj: p.proj, cache: p.cache, w, h, tf };
+}
+
+/* Vista propia para thumbnails (no toca el zoom/pan del mapa interactivo). */
+function construirVistaLocal(cv, p) {
+  const pad = 30;
+  const w = cv.clientWidth || 400, h = cv.clientHeight || 300;
+  const sx = Math.max(p.maxX - p.minX, 1e-6), sy = Math.max(p.maxY - p.minY, 1e-6);
+  const s = Math.min((w - 2 * pad) / sx, (h - 2 * pad) / sy);
+  const cx = (p.minX + p.maxX) / 2, cy = (p.minY + p.maxY) / 2;
+  const tf = (px, py) => [w / 2 + (px - cx) * s, h / 2 + (py - cy) * s];
+  return { proj: p.proj, w, h, tf };
 }
 
 function tfPara(cv) {
@@ -1627,6 +1699,11 @@ function init() {
   const rot = $('mapa-rot'); if (rot) rot.addEventListener('input', (e) => { state.mapa.rot = parseFloat(e.target.value); drawMap(); });
   const alt = $('mapa-alt'); if (alt) alt.addEventListener('input', (e) => { state.mapa.alt = parseFloat(e.target.value); drawMap(); });
 
+  // controles 3D del mapa por sectores (Conjunto)
+  const ms3d = $('msect-3d'); if (ms3d) ms3d.addEventListener('change', (e) => { state.mapaSectores.tresD = e.target.checked; mostrarControles3DMsect(); drawMapaSectores(); });
+  const msrot = $('msect-rot'); if (msrot) msrot.addEventListener('input', (e) => { state.mapaSectores.rot = parseFloat(e.target.value); drawMapaSectores(); });
+  const msalt = $('msect-alt'); if (msalt) msalt.addEventListener('input', (e) => { state.mapaSectores.alt = parseFloat(e.target.value); drawMapaSectores(); });
+
   const visual = $('mapa-visual');
   if (visual) visual.addEventListener('change', (e) => {
     state.mapa.visual = e.target.value;
@@ -1660,6 +1737,11 @@ function init() {
 function mostrarControles3D() {
   const box = $('mapa-3d-controles');
   if (box) box.style.display = state.mapa.tresD ? 'flex' : 'none';
+}
+
+function mostrarControles3DMsect() {
+  const box = $('msect-3d-controles');
+  if (box) box.style.display = state.mapaSectores.tresD ? 'flex' : 'none';
 }
 
 document.addEventListener('DOMContentLoaded', init);

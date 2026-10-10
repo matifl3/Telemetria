@@ -355,6 +355,7 @@ html, body {
 #ch-histgear,
 #ch-fuel,
 #ch-sectores,
+#ch-mapa-sectores,
 #ch-minidelta { width: 100%; display: block; }
 #chart-traction { height: 300px; }
 #ch-barras-tiempos { height: 240px; }
@@ -363,6 +364,7 @@ html, body {
 #ch-histgear { height: 200px; }
 #ch-fuel { height: 200px; }
 #ch-sectores { height: 260px; }
+#ch-mapa-sectores { height: 260px; }
 #ch-minidelta { height: 240px; }
 
 /* Controles del mapa */
