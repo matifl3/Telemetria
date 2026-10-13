@@ -1,6 +1,7 @@
 # --- Replays / telemetria pesada: NUNCA versionar ---
 *.acreplay
 *.nkt
+Paquetes de telemetria/
 
 # --- Datos generados por la app ---
 datos/
