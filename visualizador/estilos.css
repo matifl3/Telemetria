@@ -252,7 +252,6 @@ html, body {
 
 /* Canvas de gráficos: tamaño estable (evita que crezcan al redibujar en cada cursor/scrub) */
 .grafico-card canvas { width: 100%; display: block; }
-#chart-traction { height: 300px; }
 #chart-carga-vivo { height: 240px; }
 #ch-barras-tiempos, #ch-velmedia { height: 240px; }
 #ch-histvel, #ch-histgear, #ch-fuel { height: 200px; }
@@ -412,7 +411,6 @@ html, body {
 .tab-panel.activo { display: flex; }
 
 /* Canvases de gráficos propios */
-#chart-traction,
 #ch-barras-tiempos,
 #ch-velmedia,
 #ch-histvel,
@@ -422,7 +420,6 @@ html, body {
 #ch-mapa-sectores,
 #ch-minidelta { width: 100%; display: block; }
 #ch-mapa-teorico { width: 100%; display: block; }
-#chart-traction { height: 300px; }
 #ch-barras-tiempos { height: 240px; }
 #ch-velmedia { height: 240px; }
 #ch-histvel { height: 200px; }
@@ -486,6 +483,70 @@ html, body {
 }
 #tabla-resumen tr:hover td { background: var(--panel-2); }
 .delta { color: var(--freno); font-size: 11px; }
+
+/* Curvas: bloques por curva */
+.curvas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 14px; }
+.curva-bloque {
+  background: var(--panel-2);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 12px 14px;
+  box-shadow: var(--sombra);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.curva-cab { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; margin-bottom: 8px; }
+.curva-nombre { font-size: 14px; font-weight: 700; color: var(--texto); }
+.curva-dato {
+  font-size: 10px; color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+.curva-filas { display: flex; flex-direction: column; }
+.curva-fila {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 6px 0;
+  border-top: 1px solid var(--borde);
+}
+.curva-fila:first-child { border-top: none; }
+.curva-vuelta {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 600; color: var(--texto);
+  min-width: 92px;
+  flex: none;
+}
+.curva-vuelta i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.curva-stats { display: flex; gap: 6px; flex-wrap: wrap; }
+.stat {
+  display: flex; flex-direction: column; align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 4px 8px;
+  min-width: 60px;
+}
+.stat b { font-size: 12px; font-family: "Cascadia Code", "Consolas", monospace; color: var(--texto); }
+.stat label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
+
+/* Curvas: círculo de tracción por curva */
+.traction-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 14px; }
+.traction-curva {
+  background: var(--panel-2);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 10px 10px 8px;
+  box-shadow: var(--sombra);
+  cursor: pointer;
+  transition: border-color 150ms ease, transform 150ms ease;
+}
+.traction-curva:hover { border-color: var(--acento); transform: translateY(-1px); }
+.traction-titulo { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+.traction-titulo .unidad { font-weight: 500; }
+.traction-canvas { width: 100%; max-width: 240px; aspect-ratio: 1 / 1; height: auto; margin: 0 auto; display: block; }
 
 /* Vuelta teórica */
 #teorica { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }

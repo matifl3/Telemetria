@@ -87,6 +87,7 @@
           <button class="tab" type="button" role="tab" id="tab-mapa" aria-selected="false" aria-controls="panel-mapa" data-tab="mapa">Mapa</button>
           <button class="tab" type="button" role="tab" id="tab-conjunto" aria-selected="false" aria-controls="panel-conjunto" data-tab="conjunto">Conjunto</button>
           <button class="tab" type="button" role="tab" id="tab-comparacion" aria-selected="false" aria-controls="panel-comparacion" data-tab="comparacion">Comparación</button>
+          <button class="tab" type="button" role="tab" id="tab-curvas" aria-selected="false" aria-controls="panel-curvas" data-tab="curvas">Curvas</button>
         </nav>
 
         <div id="panel-vuelta" class="tab-panel activo" role="tabpanel" aria-labelledby="tab-vuelta">
@@ -117,10 +118,6 @@
           <div class="grafico-card">
             <div class="grafico-titulo">Carga por rueda <span class="unidad">N · vuelta REF</span></div>
             <div id="chart-load" class="plot"></div>
-          </div>
-          <div class="grafico-card">
-            <div class="grafico-titulo">Círculo de tracción <span class="unidad">acel/freno × lateral (g)</span></div>
-            <canvas id="chart-traction"></canvas>
           </div>
           <div class="grafico-card">
             <div class="grafico-titulo">Acelerador / Freno por vuelta <span class="unidad">0–1</span></div>
@@ -256,6 +253,27 @@
             <canvas id="ch-minidelta"></canvas>
           </div>
         </div>
+
+        <div id="panel-curvas" class="tab-panel" role="tabpanel" aria-labelledby="tab-curvas">
+          <p class="hint" style="text-align:left; margin:0 0 10px; max-width:none">Las curvas se detectan sobre la curvatura de la línea central del <strong>fast_lane.ai</strong>. Cada arco se numera <strong>C1..Cn</strong> en orden de recorrido.</p>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Mapa por curvas <span class="unidad">vuelta REF · arcos coloreados</span></div>
+            <canvas id="ch-mapa-curvas"></canvas>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Tiempo por curva <span class="unidad">por vuelta</span></div>
+            <canvas id="ch-curvas"></canvas>
+            <div id="tt-curvas" class="grafico-tooltip" hidden></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Círculo de tracción por curva <span class="unidad">acel/freno × lateral (g)</span></div>
+            <div id="traction-curvas" class="traction-grid"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Métricas por curva <span class="unidad">una fila por vuelta</span></div>
+            <div id="tabla-curvas" class="curvas-grid"></div>
+          </div>
+        </div>
       </section>
     </section>
 
@@ -302,6 +320,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js"></script>
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>

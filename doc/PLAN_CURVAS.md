@@ -1,82 +1,88 @@
 # Plan: detección y análisis de curvas desde el `.ai`
 
-Estado: **propuesto** (pendiente de implementación)
+Estado: **implementado** (tab "Curvas")
 Ámbito: `visualizador/app.js`, `visualizador/index.html`
 Base: pista de referencia `fast_lane.ai` (Monza noDRS, `lfmv2`)
 
 ## Objetivo
 Detectar las curvas de la pista a partir de la línea central del `.ai` y usarlas para:
-- panel/tab **"Curvas"** con métricas por curva (por vuelta),
-- **pintar/etiquetar el mapa** por curva (`C1..Cn`),
-- **comparación por curva** entre dos vueltas (delta de tiempo y de velocidad mínima).
+- panel/tab **"Curvas"** con métricas por curva y por vuelta,
+- **pintar/etiquetar el mapa** por curva (`C1..Cn`).
 
-Decisiones acordadas: cada arco por separado (sin unir chicanes); nombres automáticos `C1..Cn`; incluir curvas rápidas con segundo umbral.
+Pendiente (fase 2): **comparación por curva** entre dos vueltas (delta de tiempo y de `vMin`).
+
+Decisiones: cada arco por separado (sin unir chicanes); nombres automáticos `C1..Cn`; segundo umbral para curvas rápidas; mapeo al eje de distancia por proyección a la vuelta REF; `.ai` obligatorio (el tab siempre está disponible dentro del dashboard).
 
 ---
 
 ## 1. Detección (núcleo, geometría del `.ai`)
 
-Nueva función `detectarCurvas(ai)` en `visualizador/app.js`, junto a `parsearAi`.
+`detectarCurvas(env)` en `visualizador/app.js`, junto a `parsearAi`.
 
-- Entrada: línea central `nx,nz` y distancia acumulada `s` (ya vienen del `.ai`: 3750 pts, paso ≈1,54 m, largo ≈5757 m).
-- Remuestreo a paso uniforme ~1,5 m; suavizado de `x,z` (media móvil ~7 pts).
-- Rumbo `θ(s) = atan2(dz, dx)` desenrollado (`θ[i]` sin saltos de 2π).
-- Curvatura `κ(s) = dθ/ds`, suavizada (ventana ~9). Radio `R = 1/|κ|`.
-- Umbrales con histéresis para evitar parpadeo:
-  - `R_CURVA ≈ 300 m` (entra a "curva")
-  - `R_RECTA ≈ 1200 m` (sale de "curva")
-  - descartar tramos menores a ~20 m.
-- **Cada arco por separado** (no se unen chicanes/complejos).
-- Signo de `κ` → izquierda/derecha.
-- Nombre automático `C1..Cn` por orden de aparición.
+- Entrada: línea central `nx,nz` y distancia acumulada `ns` (del propio `.ai`: 3750 pts, paso ≈1,54 m, largo ≈5757 m). Si `ns` no es monótona, se recalcula el arco desde `nx,nz`.
+- Rumbo `θ(s) = atan2(dz, dx)` desenrollado (sin saltos de 2π).
+- Curvatura **con signo** `κ(s)=(θ[b]−θ[a])/(s[b]−s[a])` con ventana `±6` pts; radio `R = 1/|κ|`.
+- Umbrales con histéresis: entra en curva cuando `R < R_CURVA=300`, sale cuando `R > R_RECTA=1200`; descarta arcos de largo `< CURVA_LARGO_MIN=20 m`.
+- **Corte por cambio de sentido** dentro de la curva (chicane): si el signo de `κ` se invierte mientras `R < R_CURVA`, se cierra el arco y se abre el siguiente.
+- Sentido: `dir = signo(Δθ)`; `dir>0` → **derecha**, `dir<0` → **izquierda**.
+- Salida por arco: `{ i0, i1, apex, sIni, sApex, sFin, largo, rmin, dir, gir, nombre }`.
 
-**Salida** (por curva): `{ i0, i1, apex, sEntry, sApex, sExit, largo, rmin, dir, dTheta, nombre }`.
+### Validación con Monza (11 arcos, coincide con los giros oficiales)
+| # | s (m) | largo | Rmin | sentido | tramo |
+|---|-------|-------|------|---------|-------|
+| C1 | 899–950 | 50 | 24 | der | Rettifilo (1) |
+| C2 | 950–1034 | 84 | 25 | izq | Rettifilo (2) |
+| C3 | 1289–1779 | 490 | 272 | der | Curva Grande |
+| C4 | 2099–2161 | 62 | 35 | izq | Roggia 1 |
+| C5 | 2161–2232 | 71 | 42 | der | Roggia 2 |
+| C6 | 2455–2673 | 218 | 82 | der | Lesmo 1 |
+| C7 | 2816–2945 | 129 | 65 | der | Lesmo 2 |
+| C8 | 3894–3983 | 90 | 66 | izq | Ascari 1 |
+| C9 | 3989–4084 | 94 | 103 | der | Ascari 2 |
+| C10 | 4097–4235 | 138 | 117 | izq | Ascari 3 |
+| C11 | 5068–5483 | 414 | 81 | der | Parabólica |
 
-**Validación ya hecha contra Monza** (11 curvas reales: 7 der / 4 izq), umbral `R<300`:
-- `899–947` (R22, +) y `950–1008` (R24, −) → **Variante del Rettifilo** (chicane R-L).
-- `2100–2157` (R34, −) y `2161–2219` (R40, +) → **Variante della Roggia** (chicane).
-- `2457–2632` (R81, +) → **Lesmo 1**; `2818–2921` (R65, +) → **Lesmo 2**.
-- `3894–3976` (R66, −), `3989–4073` (R102, +), `4099–4184` (R115, −) → **Variante Ascari** (L-R-L).
-- `5071–5407` (R80, +) → **Parabólica**.
-- `~1288–1464` (R~270) → **Curva Grande** (requiere `R<300`; se parte en 2 arcos, aceptable por "cada arco separado").
+Anclas verificadas: Curva Grande y Parabólica **derecha**; Ascari **L-R-L** (`izquierda-derecha-izquierda`).
 
-Nota: el campo `[4]` del `AiPointExtra` correlaciona con la curvatura calculada (r ≈ −0,857) pero su escala no es `1/R`; se usa solo como chequeo opcional, no como fuente.
+Nota: el campo `[4]` del `AiPointExtra` correlaciona con la curvatura (r ≈ −0,857) pero su escala no es `1/R`; no se usa.
 
-### Constantes a exponer (calibración sin tocar lógica)
-`R_CURVA`, `R_RECTA`, largo mínimo, ventana de suavizado.
+### Constantes (calibración sin tocar lógica)
+`R_CURVA`, `R_RECTA`, `CURVA_LARGO_MIN` (arriba de `app.js`); ventana de curvatura `kw=6` dentro de `detectarCurvas`.
 
-### 2. Mapear curvas al eje de distancia común
-Riesgo clave: el `.ai` mide ~5757 m y **no comparte origen de distancia con las vueltas**.
-- Construir mapa `s_ai → d_grid` proyectando cada punto del `.ai` al punto más cercano de la línea central de la vuelta de referencia (`lapRef().grid.x/z`), búsqueda coarse→fine.
-- Guardar `state.curvas` ya expresado en distancia de `state.grid`, para reutilizar todo el andamiaje existente (sectores, charts, mapas).
-- Recalcular el mapa si cambia la vuelta de referencia.
-- Se computa una vez al cargar el `.ai` en `cargarPistaAi`, después de `parsearAi`.
+## 2. Mapeo de curvas al eje de distancia común
+El `.ai` mide ~5757 m y **no comparte origen de distancia con las vueltas**.
 
-### 3. Métricas por curva (por vuelta, sobre `l.grid`)
-Para cada curva y cada vuelta válida:
-- velocidad mínima (`vMin`), v en entrada/apex/salida.
-- tiempo dentro de la curva (`time[sExit] − time[sEntry]`).
-- punto de frenada (primer `brake` > umbral antes de la entrada) y de reaceleración (`throttle` > umbral a la salida).
-- `rmin`, longitud, Δ rumbo (`dTheta`).
+`mapearCurvas(env, curvas, ref)` proyecta los límites de cada arco (`i0`, `apex`, `i1`) al punto más cercano de la línea central de la vuelta REF (`ref.grid.x/z`) y guarda `d0`, `dApex`, `d1` en distancia de `state.grid`. Maneja el cruce de la meta sumando `maxDist`.
 
-### 4. UI
-- **Nuevo tab "Curvas"**:
-  - botón en `index.html` (nav de tabs, ~línea 85–90) + panel `id="panel-curvas"`.
-  - rama nueva en `renderTabActiva` (`app.js:744`); `activarTab` ya es genérico por `data-tab`.
-  - tabla de métricas por curva (patrón `tabla-resumen`, `app.js:1459+`).
-  - gráfico de barras "tiempo por curva" (patrón `drawSectores`, `app.js:1131`).
-- **Mapa coloreado/etiquetado por curva**: modo nuevo en `drawMapaSectores` / `construirTrazada` reutilizando `colorMap`, con etiquetas `C1..Cn` sobre el apex.
-- **Comparación por curva** entre vuelta A y B: delta de tiempo y delta de `vMin` por curva (patrón A/B de `app.js:1532`).
+`calcularCurvas(ref)` cachea el resultado por `ref.id | nombre .ai | maxDist` y se recalcula cuando cambia la REF o la pista. Se invoca desde `renderCurvas`.
 
-### 5. Verificación
-- Extender `ai_smoke.js`: `detectarCurvas` → nº de curvas esperado, presencia de Curva Grande, Ascari con signos −,+,−, intervalos crecientes; mapeo `s_ai→d_grid` monótono y sin saltos.
-- `node --check` + smokes node existentes (sin automatización de navegador).
+## 3. Métricas por curva y por vuelta (`metricasCurva(l, c)` sobre `l.grid`)
+- velocidad mínima (`vMin`) y en entrada (`vIni`), apex (`vApex`) y salida (`vFin`);
+- tiempo dentro de la curva (`time[i1] − time[i0]`);
+- punto de frenada (primer `brake > 0.45`) y de reaceleración (primer `throttle > 0.9` desde el apex);
+- `rmin`, largo y `Δθ` de la geometría del arco.
 
-### Riesgos / decisiones abiertas
-1. **Mapeo geométrico `s_ai → grid`** es lo más delicado (secciones casi paralelas). Propuesta: proyección al punto más cercano de la vuelta de referencia.
-2. **Curva Grande como 2 arcos** (por "cada arco separado"). Alternativa: unir arcos del mismo signo con recta corta entre medio.
+## 4. UI (implementado)
+- **Tab "Curvas"** en `index.html` (nav) + `panel-curvas`.
+- `renderTabActiva` → `renderCurvas(laps)` (`app.js`); `activarTab` genérico por `data-tab`.
+- `drawMapaCurvas`: vista top-down de la REF con cada arco coloreado (paleta) y etiqueta `C1..Cn` sobre el apex.
+- `drawCurvasTiempos`: barras "tiempo por curva" (una barra por vuelta) + tooltip `tt-curvas`.
+- `drawTractionCurvas`: un **círculo de tracción (g-g) por arco**, con escala común y color por vuelta. Orientación: **acelerador arriba, freno abajo, der derecha, izq izquierda**. El canvas es **cuadrado** (`aspect-ratio: 1/1`, `max-width: 240px`) y el dibujo usa `size = min(w,h)`, para que la circunferencia quede siempre redonda. Un `ResizeObserver` repinta al escalar la ventana.
+- **Click en una tarjeta de tracción** → abre el overlay `#zoom-teorico` (reutilizado, con `zoomTeorico.modo='traccion'`) con el diagrama de esa curva **en grande**, con zoom (rueda) y paneo (arrastre). El título del overlay pasa a `Tracción · C# (sentido) · R# m`. Helper `pintarCirculoTraction` compartido entre el mini y el zoom.
+- **Marcadores de slip** dentro de cada círculo: **triángulo ámbar** = rueda deslizando (spin) y **X roja** = rueda bloqueada. Se detecta con `slip_ratio` de las ruedas **delanteras** (los traseros vienen con outliers en el export), clampeado a [−1, 1] y solo con `velocidad > 30 km/h`. Constantes: `SLIP_SPIN = 0.3`, `SLIP_LOCK = -0.5`, `SLIP_VEL_MIN = 30`.
+- `renderTablaCurvas`: **una tarjeta por curva** (grid responsive `auto-fit minmax(340px,1fr)`); dentro, una **fila de tiles por vuelta** (v mín, v apex, T curva, freno, reaceleración) con marca del mejor tiempo.
+
+## 5. Verificación
+- `ai_smoke.js`: ancho constante, `env.ns`, nº de arcos = 11, orden creciente, Curva Grande y Parabólica derecha, Ascari L-R-L, mapeo identidad+monótono. `exit=0`.
+- `smoke_visualizador.js`: sin regresiones nuevas (queda un `[FAIL] no hay rects de barras` preexistente, ajeno a curvas).
+- `node --check` OK.
+
+### Riesgos / decisiones
+1. **Mapeo `s_ai → grid`** es lo más delicado (secciones casi paralelas / chicanes): se resolvió por proyección al punto más cercano de la REF. En chicanes los límites del intervalo pueden desplazarse unos metros.
+2. **Curva Grande**: con `R_CURVA=300` entra como un único arco (largo ~490 m, Rmin ~272). No se parte en 2.
+3. **Comparación por curva** (A/B): diferida a fase 2.
 
 ### Archivos afectados
-- `visualizador/app.js`: `detectarCurvas` (nueva), `parsearAi`, `cargarPistaAi`, `state.curvas`, `renderTabActiva`, `drawMapaSectores`/`construirTrazada`, comparación.
+- `visualizador/app.js`: `parsearAi` (guarda `ns`), `detectarCurvas`, `mapearCurvas`, `calcularCurvas`, `indicesCurva`, `sentidoCurva`, `metricasCurva`, `renderCurvas`, `drawMapaCurvas`, `drawCurvasTiempos`, `drawTractionCurvas`, `puntosDeCurva`, `pintarCirculoTraction`, `dibujarCirculoTraction`, `abrirZoomTraction`, `dibujarZoomTeorico` (rama tracción), `marcaTriangulo`, `marcaCruz`, `hoverCurvas`, `renderTablaCurvas`, `ocultarTooltip`, `state.curvas`, ALIAS/series/grid de `slipFL/FR/RL/RR`.
 - `visualizador/index.html`: tab + panel "Curvas".
 - `ai_smoke.js` (temp de verificación): aserciones de `detectarCurvas`.
