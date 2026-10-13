@@ -9,7 +9,7 @@
 const SYNC_KEY = 'ac-tele-lab';
 const PALETA = ['#38bdf8', '#f472b6', '#4ade80', '#facc15', '#a78bfa', '#fb923c', '#22d3ee', '#f87171', '#c084fc', '#fde047'];
 const G = 9.80665;
-const N_SECTORES = 10;
+const N_SECTORES = 3;
 const GRID_PUNTOS_MAX = 10000;      // puntos máximos de la grilla de distancia común
 const GRID_PASO_MIN = 0.1;          // paso mínimo (m) entre puntos de la grilla
 const ICONO_OJO = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -56,6 +56,7 @@ const state = {
   charts: { lines: [], inputs: [] },
   mapa: { canal: 'speed', frenada: true, cambios: false, tresD: false, rot: 0, alt: 3, visual: 'canal', bordes: true, zoom: 1, panX: 0, panY: 0, s0: 1, cx: 0, cy: 0, resetView: true, projKey: '', projRes: null },
   mapaSectores: { tresD: false, rot: 0, alt: 3 },
+  pistaAi: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -441,8 +442,13 @@ async function cargarArchivos(fileList) {
   const files = Array.from(fileList);
   if (!files.length) return;
   try {
+    // La pista (fast_lane.ai) puede venir suelta o junto con el replay/CSV.
+    const ais = files.filter((f) => /\.ai$/i.test(f.name));
+    const restantes = files.filter((f) => !/\.ai$/i.test(f.name));
+    if (ais.length) await cargarPistaAi(ais);
+
     const nuevas = [];
-    for (const f of files) {
+    for (const f of restantes) {
       if (/\.csv$/i.test(f.name)) {
         const lap = construirVueltaCSV(await parsearArchivoCSV(f));
         lap.csv = true;
@@ -458,7 +464,7 @@ async function cargarArchivos(fileList) {
           nuevas.push(l);
         }
       } else {
-        throw new Error(`"${f.name}": extensión no soportada (CSV o .acreplay).`);
+        throw new Error(`"${f.name}": extensión no soportada (CSV, .acreplay o fast_lane.ai).`);
       }
     }
     for (const l of nuevas) {
@@ -475,8 +481,8 @@ async function cargarArchivos(fileList) {
     if (state.refId === null && vs.length) state.refId = vs[0].id;
     if (state.lapBId === null && vs.length > 1) state.lapBId = vs[1].id;
     ocultarError();
-    mostrarDashboard();
-    recomputar();
+    if (puedeEntrar()) { mostrarDashboard(); recomputar(); }
+    else mostrarError(FALTA_PISTA);
   } catch (e) {
     mostrarError(e.message || String(e));
   }
@@ -1193,14 +1199,7 @@ function drawMapaSectores() {
   const corte = state.maxDist / N_SECTORES;
   const gx = ref.grid.x, gz = ref.grid.z, gy = ref.grid.y;
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.strokeStyle = 'rgba(148,163,184,0.18)';
-  ctx.lineWidth = 5;
-  ctx.beginPath();
-  for (let i = 0; i < gx.length; i++) {
-    const [px, py] = view.tf(...view.proj(gx[i], gz[i], gy[i]));
-    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-  }
-  ctx.stroke();
+  if (state.mapa.bordes) drawBordePista(ctx, view.tf, view.proj, envPista([ref]));
   const ptsBySector = Array.from({ length: N_SECTORES }, () => []);
   for (let i = 0; i < gx.length; i++) {
     const s = Math.min(Math.floor(state.grid[i] / corte), N_SECTORES - 1);
@@ -1256,7 +1255,7 @@ function construirTrazada(laps) {
     const i1 = clamp(Math.round(((s + 1) * corte) / state.gridStep), 0, n - 1);
     tramos.push({ s, best, i0, i1 });
   }
-  const env = envolventePista(laps);
+  const env = envPista(laps);
   return { p, corte, n, matriz, tramos, env };
 }
 
@@ -1578,48 +1577,6 @@ function normalTrazado(nx, nz, i) {
   return [-dz / m, dx / m];
 }
 
-/* Silueta de la pista: banda formada por los bordes extremos reales de todas las trazadas.
-   La línea base es la posición media de todas las vueltas visibles, NO la de referencia:
-   así cada trazada (incluida la REF) queda donde pasa en realidad y no forzada al medio. */
-function envolventePista(laps) {
-  const n = state.grid.length;
-  const validas = laps.filter((l) => l && l.grid);
-  if (!validas.length || n < 3) return null;
-  const nx = new Array(n).fill(0), nz = new Array(n).fill(0), ny = new Array(n).fill(0);
-  const cnt = new Array(n).fill(0);
-  for (const l of validas) {
-    const g = l.grid;
-    for (let i = 0; i < n; i++) {
-      if (!Number.isFinite(g.x[i]) || !Number.isFinite(g.z[i])) continue;
-      nx[i] += g.x[i]; nz[i] += g.z[i]; cnt[i]++;
-      if (Number.isFinite(g.y[i])) ny[i] += g.y[i];
-    }
-  }
-  for (let i = 0; i < n; i++) {
-    if (cnt[i]) { nx[i] /= cnt[i]; nz[i] /= cnt[i]; if (ny[i]) ny[i] /= cnt[i]; }
-  }
-  const wl = new Array(n).fill(0), wr = new Array(n).fill(0);
-  for (const l of validas) {
-    const g = l.grid;
-    for (let i = 1; i < n - 1; i++) {
-      const dx = g.x[i] - nx[i], dz = g.z[i] - nz[i];
-      if (!Number.isFinite(dx) || !Number.isFinite(dz)) continue;
-      const [nmx, nmz] = normalTrazado(nx, nz, i);
-      const sig = dx * nmx + dz * nmz;
-      if (sig > wl[i]) wl[i] = sig;
-      if (-sig > wr[i]) wr[i] = -sig;
-    }
-  }
-  // borde izquierdo = la trazada más a la izquierda; derecho = la más a la derecha (con margen y mínimo)
-  // MIN_LADO alto: garantiza que la pista se vea como banda aunque haya una sola vuelta visible.
-  const MARGEN = 1.5, MIN_LADO = 7;
-  for (let i = 0; i < n; i++) {
-    wl[i] = Math.max(wl[i] + MARGEN, MIN_LADO);
-    wr[i] = Math.max(wr[i] + MARGEN, MIN_LADO);
-  }
-  return { nx, nz, ny, wl, wr };
-}
-
 /* Dibuja la banda de pista (relleno + bordes), sin ejes. */
 function drawBordePista(ctx, tf, proj, env) {
   const { nx, nz, ny, wl, wr } = env;
@@ -1644,6 +1601,86 @@ function drawBordePista(ctx, tf, proj, env) {
     for (let i = 1; i < n; i++) ctx.lineTo(arr[i][0], arr[i][1]);
     ctx.stroke();
   }
+}
+
+/* ---------- pista de referencia desde fast_lane.ai ---------- */
+
+/* Parsea un fast_lane.ai de Assetto Corsa: cabecera (4 int32, n = 2º),
+   n puntos de 20 bytes (x,y,z,dist,id) y un bloque opcional de 72 bytes/pto
+   con los semianchos izquierdo/derecho en los floats 6 y 7.
+   Devuelve { nx, nz, ny, wl, wr } con ancho constante (rigido). */
+function parsearAi(arrayBuffer) {
+  const dv = new DataView(arrayBuffer);
+  const bytes = new Uint8Array(arrayBuffer);
+  let pos = 0;
+  const i32 = () => { const v = dv.getInt32(pos, true); pos += 4; return v; };
+  const f32 = () => { const v = dv.getFloat32(pos, true); pos += 4; return v; };
+  i32(); const n = i32(); i32(); i32();
+  if (!(n >= 3) || n > 5000000 || pos + n * 20 > bytes.byteLength) throw new Error('fast_lane.ai: archivo inválido.');
+  const nx = new Array(n), ny = new Array(n), nz = new Array(n);
+  for (let i = 0; i < n; i++) { nx[i] = f32(); ny[i] = f32(); nz[i] = f32(); f32(); i32(); }
+  const bordeI = new Array(n).fill(NaN), bordeD = new Array(n).fill(NaN);
+  if (pos + n * 72 <= bytes.byteLength) {
+    for (let i = 0; i < n; i++) {
+      const base = pos + i * 72;
+      const li = dv.getFloat32(base + 6 * 4, true);
+      const ld = dv.getFloat32(base + 7 * 4, true);
+      if (Number.isFinite(li) && li > 0 && li < 200) bordeI[i] = li;
+      if (Number.isFinite(ld) && ld > 0 && ld < 200) bordeD[i] = ld;
+    }
+  }
+  // Ancho constante (rigido): un unico semiancho real, igual en todos los puntos.
+  const MEDIO = 6;
+  const sumas = [];
+  for (let i = 0; i < n; i++) if (Number.isFinite(bordeI[i]) && Number.isFinite(bordeD[i])) sumas.push(bordeI[i] + bordeD[i]);
+  sumas.sort((a, b) => a - b);
+  const semiancho = sumas.length ? sumas[sumas.length >> 1] / 2 : MEDIO;
+  const wl = new Array(n).fill(semiancho);
+  const wr = new Array(n).fill(semiancho);
+  return { nx, nz, ny, wl, wr };
+}
+
+/* Banda de pista: referencia real y fija del fast_lane.ai (no se adapta a las vueltas). */
+function envPista() {
+  return (state.pistaAi && state.pistaAi.env) || null;
+}
+
+async function cargarPistaAi(fileList) {
+  const ai = Array.from(fileList).find((f) => /\.ai$/i.test(f.name));
+  if (!ai) return;
+  try {
+    const env = parsearAi(await ai.arrayBuffer());
+    state.pistaAi = { env, nombre: ai.name };
+    actualizarBotonPista();
+    if (puedeEntrar()) {
+      const entrando = $('dashboard').classList.contains('oculto');
+      ocultarError();
+      mostrarDashboard();
+      if (entrando) recomputar();   // recomputar() ya redibuja la pestaña activa
+      else renderTabActiva();
+    }
+  } catch (e) {
+    mostrarError(e.message || String(e));
+  }
+}
+
+function quitarPistaAi() {
+  state.pistaAi = null;
+  actualizarBotonPista();
+  if (state.laps.length) {
+    $('dashboard').classList.add('oculto');
+    $('zona-carga').classList.remove('oculto');
+    $('btn-limpiar').disabled = true;
+    mostrarError(FALTA_PISTA);
+  }
+}
+
+function actualizarBotonPista() {
+  const btn = $('btn-pista');
+  const quitar = $('btn-pista-quitar');
+  const cargado = !!(state.pistaAi && state.pistaAi.env);
+  if (quitar) quitar.hidden = !cargado;
+  if (btn) btn.textContent = cargado ? `Pista: ${state.pistaAi.nombre}` : 'Cargar pista (fast_lane.ai)';
 }
 
 function drawCanal(ctx, laps, cache, tf, canal, vMin, vMax) {
@@ -1769,13 +1806,29 @@ function proyectarLaps(laps, cfg) {
     }
     cache.push(pts);
   }
+  // Encuadre fijo: incluir la banda real del .ai para que la pista entre completa
+  // y no quede recortada por el tamano de las vueltas.
+  const E = state.pistaAi && state.pistaAi.env;
+  if (E) {
+    const en = E.nx.length;
+    for (let i = 0; i < en; i++) {
+      const [nmx, nmz] = normalTrazado(E.nx, E.nz, i);
+      const ey = Number.isFinite(E.ny[i]) ? E.ny[i] : 0;
+      for (const sgn of [1, -1]) {
+        const w = sgn > 0 ? E.wl[i] : E.wr[i];
+        const [px, py] = proj(E.nx[i] + sgn * nmx * w, E.nz[i] + sgn * nmz * w, ey);
+        if (px < minX) minX = px; if (px > maxX) maxX = px;
+        if (py < minY) minY = py; if (py > maxY) maxY = py;
+      }
+    }
+  }
   return { proj, cache, minX, maxX, minY, maxY };
 }
 
 /* Cache de proyección: no reproyectar en cada frame de zoom/pan. plano=true fuerza vista top-down fija
    (las mini-mapas por vuelta nunca rotan con el 3D del mapa principal). */
 function obtenerProyeccion(laps, plano) {
-  const key = laps.map((l) => l.id).join(',') + '|' + (plano ? 'plano' : state.mapa.tresD + '|' + state.mapa.rot + '|' + state.mapa.alt);
+  const key = laps.map((l) => l.id).join(',') + '|' + (plano ? 'plano' : state.mapa.tresD + '|' + state.mapa.rot + '|' + state.mapa.alt) + '|ai:' + (state.pistaAi ? state.pistaAi.nombre : '');
   if (state.mapa.projKey === key && state.mapa.projRes) return state.mapa.projRes;
   state.mapa.projKey = key;
   state.mapa.projRes = plano ? proyectarLaps(laps, { tresD: false, rot: 0, alt: 0 }) : proyectarLaps(laps);
@@ -1904,7 +1957,7 @@ function renderTrazadas() {
   const cv0 = canvases[0];
   if (!cv0) return;
   construirVista(laps, cv0, p);
-  const env = state.mapa.bordes ? envolventePista(laps) : null;
+  const env = state.mapa.bordes ? envPista(laps) : null;
   const view = { proj: p.proj, cache: p.cache, env };
   laps.forEach((l, i) => {
     const cv = canvases[i];
@@ -2019,6 +2072,10 @@ function mostrarDashboard() { $('zona-carga').classList.add('oculto'); $('dashbo
 function mostrarError(msg) { const e = $('error-aviso'); e.textContent = '⚠ ' + msg; e.classList.remove('oculto'); }
 function ocultarError() { $('error-aviso').classList.add('oculto'); }
 
+/* Para entrar al análisis hacen falta un replay/CSV y la pista (fast_lane.ai). */
+function puedeEntrar() { return state.laps.length > 0 && !!(state.pistaAi && state.pistaAi.env); }
+const FALTA_PISTA = 'Falta cargar la pista (fast_lane.ai) para entrar al análisis.';
+
 function activarTab(tab) {
   state.tab = tab;
   document.querySelectorAll('.tab').forEach((b) => {
@@ -2036,6 +2093,12 @@ function init() {
   const input = $('input-archivos');
   $('btn-abrir').addEventListener('click', () => input.click());
   input.addEventListener('change', (e) => { cargarArchivos(e.target.files); input.value = ''; });
+
+  const inputPista = $('input-pista');
+  $('btn-pista').addEventListener('click', () => inputPista.click());
+  inputPista.addEventListener('change', (e) => { if (e.target.files.length) cargarPistaAi(e.target.files); inputPista.value = ''; });
+  $('btn-pista-quitar').addEventListener('click', quitarPistaAi);
+  actualizarBotonPista();
 
   const zona = $('zona-carga');
   ['dragenter', 'dragover'].forEach((ev) => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.add('encima'); }));
