@@ -69,12 +69,13 @@ El `.ai` mide ~5757 m y **no comparte origen de distancia con las vueltas**.
 - `drawCurvasTiempos`: barras "tiempo por curva" (una barra por vuelta) + tooltip `tt-curvas`.
 - `drawTractionCurvas`: un **círculo de tracción (g-g) por arco**, con escala común y color por vuelta. Orientación: **acelerador arriba, freno abajo, der derecha, izq izquierda**. El canvas es **cuadrado** (`aspect-ratio: 1/1`, `max-width: 240px`) y el dibujo usa `size = min(w,h)`, para que la circunferencia quede siempre redonda. Un `ResizeObserver` repinta al escalar la ventana.
 - **Click en una tarjeta de tracción** → abre el overlay `#zoom-teorico` (reutilizado, con `zoomTeorico.modo='traccion'`) con el diagrama de esa curva **en grande**, con zoom (rueda) y paneo (arrastre). El título del overlay pasa a `Tracción · C# (sentido) · R# m`. Helper `pintarCirculoTraction` compartido entre el mini y el zoom.
-- **Marcadores de slip** dentro de cada círculo: **triángulo ámbar** = rueda deslizando (spin) y **X roja** = rueda bloqueada. Se detecta con `slip_ratio` de las ruedas **delanteras** (los traseros vienen con outliers en el export), clampeado a [−1, 1] y solo con `velocidad > 30 km/h`. Constantes: `SLIP_SPIN = 0.3`, `SLIP_LOCK = -0.5`, `SLIP_VEL_MIN = 30`.
+- **Marcadores de slip** dentro de cada círculo: **triángulo ámbar** = rueda deslizando (spin) y **X roja** = rueda bloqueada. Se detecta con `slip_ratio` de las ruedas **delanteras** (los traseros vienen con outliers en el export), clampeado a [−1, 1] y solo con `velocidad > 30 km/h`. Constantes: `SLIP_SPIN = 0.3`, `SLIP_LOCK = -0.5`, `SLIP_VEL_MIN = 30`. El `slip_ratio` se toma del **CSV** (`slip_ratio_FL/FR/RL/RR`) **y del `.acreplay`**: `parsearReplay` lo lee del frame en el offset **188** (4×`f16`: FL, FR, RL, RR, mismo layout que `core/.../lector/acreplay.py`), así los marcadores aparecen al cargar un replay sin exportar CSV.
 - `renderTablaCurvas`: **una tarjeta por curva** (grid responsive `auto-fit minmax(340px,1fr)`); dentro, una **fila de tiles por vuelta** (v mín, v apex, T curva, freno, reaceleración) con marca del mejor tiempo.
 
 ## 5. Verificación
 - `ai_smoke.js`: ancho constante, `env.ns`, nº de arcos = 11, orden creciente, Curva Grande y Parabólica derecha, Ascari L-R-L, mapeo identidad+monótono. `exit=0`.
 - `smoke_visualizador.js`: sin regresiones nuevas (queda un `[FAIL] no hay rects de barras` preexistente, ajeno a curvas).
+- `replay_e2e.js`: parsea el `.ai` real (11 arcos) + un `.acreplay` real → 17 vueltas, `grid.slipFL` poblado, marcadores presentes (spin/lock) y `renderTabActiva()` sin excepciones.
 - `node --check` OK.
 
 ### Riesgos / decisiones

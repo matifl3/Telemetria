@@ -388,7 +388,7 @@ async function parsearReplay(file) {
     }
 
     const X = [], Y = [], Z = [], V = [], GE = [], GAS = [], FREN = [], VUELTA = [], TIME = [];
-    const RPM = [], STEER = [], YAW = [], LF = [], RF = [], LR = [], RR = [], FUEL = [];
+    const RPM = [], STEER = [], YAW = [], LF = [], RF = [], LR = [], RR = [], FUEL = [], SLIP = [];
     for (let i = 0; i < frames; i++) {
       const o = pos;
       pos += 256;
@@ -412,6 +412,7 @@ async function parsearReplay(file) {
       GAS.push(u8[o + 244]);
       FREN.push(u8[o + 245]);
       VUELTA.push(u8[o + 246]);
+      SLIP.push([halfToFloat(dv.getUint16(o + 188, true)), halfToFloat(dv.getUint16(o + 190, true)), halfToFloat(dv.getUint16(o + 192, true)), halfToFloat(dv.getUint16(o + 194, true))]); // slip_ratio: 4×f16 (FL, FR, RL, RR)
       if (i < frames - 1) pos += 20 + wings * 4;
     }
     pos += wings * 4;
@@ -431,13 +432,14 @@ async function parsearReplay(file) {
     for (const lap of laps) {
       const idxs = lap.indices;
       if (idxs.length < 2) continue;
-      const serie = { x: [], z: [], y: [], speed: [], throttle: [], brake: [], gear: [], time: [], rpm: [], steer: [], yaw: [], loadFL: [], loadFR: [], loadRL: [], loadRR: [], fuel: [] };
+      const serie = { x: [], z: [], y: [], speed: [], throttle: [], brake: [], gear: [], time: [], rpm: [], steer: [], yaw: [], loadFL: [], loadFR: [], loadRL: [], loadRR: [], slipFL: [], slipFR: [], slipRL: [], slipRR: [], fuel: [] };
       for (const i of idxs) {
         serie.x.push(X[i]); serie.y.push(Y[i]); serie.z.push(Z[i]);
         serie.speed.push(V[i]); serie.throttle.push(GAS[i]); serie.brake.push(FREN[i]);
         serie.gear.push(GE[i]); serie.time.push(TIME[i]);
         serie.rpm.push(RPM[i]); serie.steer.push(STEER[i]); serie.yaw.push(YAW[i]);
         serie.loadFL.push(LF[i]); serie.loadFR.push(RF[i]); serie.loadRL.push(LR[i]); serie.loadRR.push(RR[i]);
+        serie.slipFL.push(SLIP[i][0]); serie.slipFR.push(SLIP[i][1]); serie.slipRL.push(SLIP[i][2]); serie.slipRR.push(SLIP[i][3]);
         serie.fuel.push(FUEL[i]);
       }
       const distArr = distanciaAcumulada(serie.x, serie.z);
@@ -978,7 +980,7 @@ function puntosDeCurva(laps, cx) {
     for (let i = i0; i <= i1; i++) {
       if (!Number.isFinite(al[i]) || !Number.isFinite(at[i])) continue;
       let spin = false, lock = false;
-      if (Number.isFinite(vel[i]) && vel[i] * 3.6 > SLIP_VEL_MIN) {
+      if (Number.isFinite(vel[i]) && vel[i] > SLIP_VEL_MIN) {
         const s1 = Number.isFinite(sf[i]) ? clampSlip(sf[i]) : 0;
         const s2 = Number.isFinite(sr[i]) ? clampSlip(sr[i]) : 0;
         if (Math.max(s1, s2) > SLIP_SPIN) spin = true;
