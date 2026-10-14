@@ -273,6 +273,17 @@
             <div class="grafico-titulo">Métricas por curva <span class="unidad">una fila por vuelta</span></div>
             <div id="tabla-curvas" class="curvas-grid"></div>
           </div>
+          <div class="panel-vs">
+            <div>A: <span id="vs-a-curvas" class="mono">–</span></div>
+            <label>vs B
+              <select id="sel-lap-b-curvas"></select>
+            </label>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Delta por curva <span class="unidad">A − B · ventana = arco</span></div>
+            <canvas id="ch-curva-delta"></canvas>
+            <div id="tabla-curva-delta" class="tabla-delta-wrap"></div>
+          </div>
         </div>
       </section>
     </section>
@@ -320,6 +331,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js"></script>
-  <script src="app.js?v=12"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>

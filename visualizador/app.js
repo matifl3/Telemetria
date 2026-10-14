@@ -837,12 +837,14 @@ function renderCurvas(laps) {
     if (t) t.innerHTML = '<em class="vacio">Sin curvas detectadas. Cargá el fast_lane.ai.</em>';
     const c = prepCanvas('ch-curvas', 260);
     if (c) { c.ctx.fillStyle = '#8b97a8'; c.ctx.font = '12px "Segoe UI"'; c.ctx.fillText('sin curvas', 12, 20); }
+    renderDeltaCurvas(ref);
     return;
   }
   drawMapaCurvas(curvas);
   drawCurvasTiempos(laps, curvas);
   drawTractionCurvas(laps, curvas);
   renderTablaCurvas(laps, curvas);
+  renderDeltaCurvas(ref);
 }
 
 function drawCurvasTiempos(laps, curvas) {
@@ -967,6 +969,91 @@ function renderTablaCurvas(laps, curvas) {
       }).join('') +
       '</div></div>';
   }).join('');
+}
+
+/* ---------- delta A/B por curva (fase 2) ---------- */
+
+/* Compara dos vueltas curva por curva. Ventana = arco i0..i1 (idéntica a `tCurva`).
+   ΔT > 0 = A más lento; Δv > 0 = A con más velocidad. */
+function deltaCurvas(A, B) {
+  const fi = Number.isFinite;
+  return state.curvas.map((c) => {
+    const a = metricasCurva(A, c), b = metricasCurva(B, c);
+    return {
+      c,
+      dT: a.tCurva - b.tCurva,
+      dvMin: a.vMin - b.vMin,
+      dvApex: a.vApex - b.vApex,
+      dFren: fi(a.dFren) && fi(b.dFren) ? a.dFren - b.dFren : NaN,
+      dAcel: fi(a.dAcel) && fi(b.dAcel) ? a.dAcel - b.dAcel : NaN,
+    };
+  });
+}
+
+function fmtDelta(v, unidad, dec) {
+  if (!Number.isFinite(v)) return '–';
+  return (v >= 0 ? '+' : '') + v.toFixed(dec) + (unidad ? ' ' + unidad : '');
+}
+
+/* Clase de color según qué lado gana. `mejor`: 'menor' (ΔT, menos es mejor),
+   'mayor' (Δv, más es mejor) o null (sin color). */
+function claseDelta(v, mejor) {
+  if (!Number.isFinite(v) || Math.abs(v) < 0.001 || !mejor) return '';
+  const gana = mejor === 'menor' ? v < 0 : v > 0;
+  return gana ? 'delta-gana' : 'delta-pierde';
+}
+
+function drawBarrasDelta(A, B, dif) {
+  const c = prepCanvas('ch-curva-delta', 220);
+  if (!c) return;
+  const { ctx, w, h } = c;
+  ctx.font = '11px "Segoe UI"';
+  if (!dif) { ctx.fillStyle = '#8b97a8'; ctx.fillText('Elegí dos vueltas distintas (A vs B).', 12, 20); return; }
+  const vals = dif.map((d) => d.dT).filter(Number.isFinite);
+  if (!vals.length) { ctx.fillStyle = '#8b97a8'; ctx.fillText('sin tiempos de curva', 12, 20); return; }
+  const maxAbs = Math.max(...vals.map(Math.abs), 0.001);
+  const pad = 30, n = dif.length, groupW = (w - pad * 2) / n, cy = h / 2 + 6;
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.beginPath(); ctx.moveTo(pad, cy); ctx.lineTo(w - pad, cy); ctx.stroke();
+  ctx.textAlign = 'center';
+  dif.forEach((d, i) => {
+    if (!Number.isFinite(d.dT)) return;
+    const x = pad + i * groupW;
+    const bh = (d.dT / maxAbs) * (h / 2 - pad);
+    ctx.fillStyle = d.dT >= 0 ? '#f87171' : '#4ade80';
+    ctx.fillRect(x + 3, d.dT >= 0 ? cy - bh : cy, Math.max(groupW - 6, 1), Math.abs(bh));
+    ctx.fillStyle = '#8b97a8';
+    ctx.fillText(d.c.nombre, x + groupW / 2, h - 8);
+  });
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#8b97a8';
+  ctx.fillText(`Δ tiempo por curva (s)  ·  ${A.name} − ${B.name}  (rojo = A pierde)`, 4, 14);
+}
+
+function tablaDeltaHTML(dif) {
+  const filas = dif.map((d) => `<tr>
+      <td class="mono">${d.c.nombre}</td>
+      <td>${sentidoCurva(d.c) === 'izquierda' ? 'izq' : 'der'}</td>
+      <td class="mono ${claseDelta(d.dT, 'menor')}">${fmtDelta(d.dT, 's', 2)}</td>
+      <td class="mono ${claseDelta(d.dvMin, 'mayor')}">${fmtDelta(d.dvMin, 'km/h', 1)}</td>
+      <td class="mono">${fmtDelta(d.dFren, 'm', 1)}</td>
+      <td class="mono">${fmtDelta(d.dAcel, 'm', 1)}</td>
+    </tr>`).join('');
+  return `<table class="tabla-delta">
+    <thead><tr>
+      <th>Curva</th><th>Sentido</th><th>ΔT</th><th>Δv mín</th><th>Δ frenada</th><th>Δ reaceleración</th>
+    </tr></thead>
+    <tbody>${filas}</tbody></table>`;
+}
+
+function renderDeltaCurvas(A) {
+  poblarSelB();
+  const B = lapB();
+  const hay = A && B && A.id !== B.id && state.curvas.length;
+  const dif = hay ? deltaCurvas(A, B) : null;
+  drawBarrasDelta(A, B, dif);
+  const cont = $('tabla-curva-delta');
+  if (cont) cont.innerHTML = hay ? tablaDeltaHTML(dif) : '<em class="vacio">Elegí dos vueltas distintas (A vs B).</em>';
 }
 
 /* Puntos g-g (con marcadores de slip) de una curva, sobre la grilla común. */
@@ -1111,17 +1198,15 @@ function dibujarCirculoTraction(cv, pts, maxG) {
 
 
 function poblarSelB() {
-  const sel = $('sel-lap-b');
-  if (!sel) return;
   const laps = visibleLaps();
   if (!laps.some((l) => l.id === state.lapBId)) {
     const sig = laps.find((l) => l.id !== state.refId);
     state.lapBId = sig ? sig.id : (laps[0] || { id: null }).id;
   }
-  const vsA = $('vs-a');
   const ref = lapRef();
-  sel.innerHTML = laps.map((l) => `<option value="${l.id}"${l.id === state.lapBId ? ' selected' : ''}>${l.name}</option>`).join('');
-  if (vsA) vsA.textContent = ref ? ref.name : '–';
+  const opts = laps.map((l) => `<option value="${l.id}"${l.id === state.lapBId ? ' selected' : ''}>${l.name}</option>`).join('');
+  for (const id of ['sel-lap-b', 'sel-lap-b-curvas']) { const s = $(id); if (s) s.innerHTML = opts; }
+  for (const id of ['vs-a', 'vs-a-curvas']) { const el = $(id); if (el) el.textContent = ref ? ref.name : '–'; }
 }
 
 function renderComparacion(laps) {
@@ -2553,6 +2638,7 @@ function init() {
   adjuntarVistaMapa($('mapa'));
 
   const selB = $('sel-lap-b'); if (selB) selB.addEventListener('change', (e) => { state.lapBId = e.target.value; renderTabActiva(); });
+  const selBC = $('sel-lap-b-curvas'); if (selBC) selBC.addEventListener('change', (e) => { state.lapBId = e.target.value; renderTabActiva(); });
 
   $('btn-limpiar').addEventListener('click', () => {
     destroyCharts(); state.laps = []; state.refId = null; state.lapBId = null; state.idx = 0; state.dist = 0; state.playing = false; state.colorIdx = 0;

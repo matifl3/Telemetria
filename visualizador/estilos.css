@@ -532,6 +532,25 @@ html, body {
 .stat b { font-size: 12px; font-family: "Cascadia Code", "Consolas", monospace; color: var(--texto); }
 .stat label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
 
+/* Curvas: delta A/B por curva */
+.tabla-delta-wrap { overflow-x: auto; margin-top: 8px; }
+.tabla-delta { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tabla-delta th, .tabla-delta td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--borde);
+  white-space: nowrap;
+}
+.tabla-delta th {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.tabla-delta tbody tr:hover td { background: var(--panel-2); }
+.tabla-delta .delta-gana { color: var(--gas); }
+.tabla-delta .delta-pierde { color: var(--freno); }
+
 /* Curvas: círculo de tracción por curva */
 .traction-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 14px; }
 .traction-curva {

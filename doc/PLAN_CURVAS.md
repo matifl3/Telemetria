@@ -9,7 +9,7 @@ Detectar las curvas de la pista a partir de la línea central del `.ai` y usarla
 - panel/tab **"Curvas"** con métricas por curva y por vuelta,
 - **pintar/etiquetar el mapa** por curva (`C1..Cn`).
 
-Pendiente (fase 2): **comparación por curva** entre dos vueltas (delta de tiempo y de `vMin`).
+Pendiente (fase 2): **comparación por curva** entre dos vueltas (delta de tiempo y de `vMin`). → **Implementado** (ver §6).
 
 Decisiones: cada arco por separado (sin unir chicanes); nombres automáticos `C1..Cn`; segundo umbral para curvas rápidas; mapeo al eje de distancia por proyección a la vuelta REF; `.ai` obligatorio (el tab siempre está disponible dentro del dashboard).
 
@@ -81,9 +81,20 @@ El `.ai` mide ~5757 m y **no comparte origen de distancia con las vueltas**.
 ### Riesgos / decisiones
 1. **Mapeo `s_ai → grid`** es lo más delicado (secciones casi paralelas / chicanes): se resolvió por proyección al punto más cercano de la REF. En chicanes los límites del intervalo pueden desplazarse unos metros.
 2. **Curva Grande**: con `R_CURVA=300` entra como un único arco (largo ~490 m, Rmin ~272). No se parte en 2.
-3. **Comparación por curva** (A/B): diferida a fase 2.
+3. **Comparación por curva** (A/B): implementada en §6.
+
+## 6. Comparación A/B por curva (fase 2)
+- `deltaCurvas(A, B)` (`app.js`): para cada curva de `state.curvas`, cruza `metricasCurva(A,c)` vs `metricasCurva(B,c)` → `dT` (s), `dvMin`/`dvApex` (km/h), `dFren`/`dAcel` (m). **Positivo = A más lento / con más o menos velocidad según la métrica.**
+- **Ventana = el arco `i0..i1`** (idéntica a `tCurva`): el tiempo ganado en la frenada/recta previa se atribuye al tramo anterior; por eso `Σ ΔT por curva ≠ Δ de vuelta`.
+- UI (tab Curvas): selector A/B propio (`#sel-lap-b-curvas` + `#vs-a-curvas`, comparte `state.lapBId` con el tab Comparación) + barras de `ΔT` por curva (`drawBarrasDelta`, rojo = A pierde / verde = A gana) + tabla `C1..Cn` (`tablaDeltaHTML`: ΔT, Δv mín, Δ frenada, Δ reaceleración) con color verde/rojo. `renderDeltaCurvas(A, B)` se llama al final de `renderCurvas`.
+- No se toca el tab Comparación (sigue con los 3 sectores).
+
+### Verificación
+- `delta_curvas_smoke.js`: `deltaCurvas(A,A)` → todo 0; `deltaCurvas(A,B)` finito en las 11 curvas y con diferencias; `renderCurvas` sin excepciones; tabla y selector renderizados. `TODO OK`.
+
 
 ### Archivos afectados
-- `visualizador/app.js`: `parsearAi` (guarda `ns`), `detectarCurvas`, `mapearCurvas`, `calcularCurvas`, `indicesCurva`, `sentidoCurva`, `metricasCurva`, `renderCurvas`, `drawMapaCurvas`, `drawCurvasTiempos`, `drawTractionCurvas`, `puntosDeCurva`, `pintarCirculoTraction`, `dibujarCirculoTraction`, `abrirZoomTraction`, `dibujarZoomTeorico` (rama tracción), `marcaTriangulo`, `marcaCruz`, `hoverCurvas`, `renderTablaCurvas`, `ocultarTooltip`, `state.curvas`, ALIAS/series/grid de `slipFL/FR/RL/RR`.
-- `visualizador/index.html`: tab + panel "Curvas".
-- `ai_smoke.js` (temp de verificación): aserciones de `detectarCurvas`.
+- `visualizador/app.js`: `parsearAi` (guarda `ns`), `detectarCurvas`, `mapearCurvas`, `calcularCurvas`, `indicesCurva`, `sentidoCurva`, `metricasCurva`, `renderCurvas`, `drawMapaCurvas`, `drawCurvasTiempos`, `drawTractionCurvas`, `puntosDeCurva`, `pintarCirculoTraction`, `dibujarCirculoTraction`, `abrirZoomTraction`, `dibujarZoomTeorico` (rama tracción), `marcaTriangulo`, `marcaCruz`, `hoverCurvas`, `renderTablaCurvas`, `deltaCurvas`, `renderDeltaCurvas`, `drawBarrasDelta`, `tablaDeltaHTML`, `fmtDelta`, `claseDelta`, `poblarSelB`, `ocultarTooltip`, `state.curvas`, ALIAS/series/grid de `slipFL/FR/RL/RR`.
+- `visualizador/index.html`: tab + panel "Curvas" (+ selector A/B y delta por curva).
+- `visualizador/estilos.css`: `.curva-*`, `.traction-*`, `.tabla-delta`/`.delta-gana`/`.delta-pierde`.
+- `delta_curvas_smoke.js` (temp de verificación): aserciones de `deltaCurvas`/render.
