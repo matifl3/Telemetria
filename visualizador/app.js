@@ -15,8 +15,8 @@ const GRID_PASO_MIN = 0.1;          // paso mínimo (m) entre puntos de la grill
 const R_CURVA = 300;                // radio (m) por debajo del cual se considera curva
 const R_RECTA = 1200;               // radio (m) por encima del cual se sale de la curva (histéresis)
 const CURVA_LARGO_MIN = 20;         // largo mínimo (m) de un arco para conservarlo
-const SLIP_SPIN = 0.3;               // slip_ratio > esto → rueda deslizando (triángulo)
-const SLIP_LOCK = -0.5;              // slip_ratio < esto → rueda bloqueada (X)
+const SLIP_SPIN = 0.15;              // slip_ratio > esto → rueda deslizando (triángulo)
+const SLIP_LOCK = -0.3;              // slip_ratio < esto → rueda bloqueada (X)
 const SLIP_VEL_MIN = 30;             // km/h mínima para evaluar slip (evita ruido a baja velocidad)
 const ICONO_OJO = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
 const ICONO_OJO_TACHADO = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
@@ -1036,14 +1036,21 @@ function tablaDeltaHTML(dif) {
       <td>${sentidoCurva(d.c) === 'izquierda' ? 'izq' : 'der'}</td>
       <td class="mono ${claseDelta(d.dT, 'menor')}">${fmtDelta(d.dT, 's', 2)}</td>
       <td class="mono ${claseDelta(d.dvMin, 'mayor')}">${fmtDelta(d.dvMin, 'km/h', 1)}</td>
-      <td class="mono">${fmtDelta(d.dFren, 'm', 1)}</td>
-      <td class="mono">${fmtDelta(d.dAcel, 'm', 1)}</td>
+      <td class="mono ${claseDelta(d.dvApex, 'mayor')}">${fmtDelta(d.dvApex, 'km/h', 1)}</td>
+      <td class="mono ${claseDelta(d.dFren, 'mayor')}">${fmtDelta(d.dFren, 'm', 1)}</td>
+      <td class="mono ${claseDelta(d.dAcel, 'menor')}">${fmtDelta(d.dAcel, 'm', 1)}</td>
     </tr>`).join('');
   return `<table class="tabla-delta">
     <thead><tr>
-      <th>Curva</th><th>Sentido</th><th>ΔT</th><th>Δv mín</th><th>Δ frenada</th><th>Δ reaceleración</th>
+      <th>Curva</th><th>Sentido</th>
+      <th title="Δ tiempo en la curva (s). Negativo = A más rápido">ΔT</th>
+      <th title="Δ velocidad mínima (km/h). Positivo = A más rápido en el punto lento">Δv mín</th>
+      <th title="Δ velocidad en el ápex (km/h). Positivo = A más rápido">Δv ápex</th>
+      <th title="Δ distancia del punto de frenada (m). Positivo = A frena más tarde">Δ frenada</th>
+      <th title="Δ distancia de reaceleración (m). Negativo = A vuelve antes a fondo">Δ reaceleración</th>
     </tr></thead>
-    <tbody>${filas}</tbody></table>`;
+    <tbody>${filas}</tbody></table>
+    <p class="delta-leyenda">Verde = A mejor en esa métrica · rojo = A peor (todo relativo a B).</p>`;
 }
 
 function renderDeltaCurvas(A) {
