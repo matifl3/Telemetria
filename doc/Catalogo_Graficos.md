@@ -22,7 +22,7 @@ Ideas de gráficos para la app de análisis (`visualizador/`), clasificadas por
 
 ## Canales disponibles
 
-Los datos por frame (ver `doc/Columnas_CSV.md`) permiten:
+Los datos por frame permiten:
 
 - **Auto**: tiempo, `velocidad_kmh`, `vel_x/y/z`, `acc_x/y/z/total`, `rpm`,
   `marcha`, `gas`, `freno`, `steer_angle`, `pos_x/y/z`, `rot_x/y/z`,
@@ -152,5 +152,4 @@ Comparación directa entre vueltas elegidas (usar la vuelta de referencia "REF")
 
 
 
-Ver también: `doc/Columnas_CSV.md` (dato de cada columna) y
-`doc/FormatoTelemetria.md` (offsets del `.acreplay`).
+Ver también: `doc/FormatoTelemetria.md` (offsets del `.acreplay`).

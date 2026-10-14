@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AC Telemetry Lab</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.min.css" />
-  <link rel="stylesheet" href="estilos.css?v=6" />
+  <link rel="stylesheet" href="estilos.css?v=7" />
 </head>
 <body>
   <header class="topbar">
@@ -17,8 +17,8 @@
       </div>
     </div>
     <div class="estado-carga">
-      <button id="btn-abrir" class="btn primario">Cargar CSV o replay</button>
-      <input id="input-archivos" type="file" accept=".csv,.acreplay" multiple hidden />
+      <button id="btn-abrir" class="btn primario">Cargar replay (.acreplay)</button>
+      <input id="input-archivos" type="file" accept=".acreplay" multiple hidden />
       <button id="btn-pista" class="btn fantasma">Cargar pista (fast_lane.ai)</button>
       <input id="input-pista" type="file" accept=".ai" multiple hidden />
       <button id="btn-pista-quitar" class="btn fantasma" hidden>Quitar pista</button>
@@ -31,16 +31,9 @@
       <div class="drop-inner">
         <div class="drop-icono" aria-hidden="true"><svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17V4"/><path d="M6 10l6-6 6 6"/><path d="M4 21h16"/></svg></div>
         <h2>Arrastrá tus telemetrías acá</h2>
-        <p>CSV (como los que exporta el core) <strong>o</strong> replays <code>.acreplay</code> (se parsean solos). Tras un replay elegís qué vueltas analizar en las pestañas por vuelta; la pestaña <strong>Conjunto usa todas las vueltas válidas</strong> (salidas/largadas, entradas y cortadas no cuentan).</p>
+        <p>Replays <code>.acreplay</code> (se parsean solos). Elegís qué vueltas analizar en las pestañas por vuelta; la pestaña <strong>Conjunto usa todas las vueltas válidas</strong> (salidas/largadas, entradas y cortadas no cuentan).</p>
         <p>Para entrar al análisis cargá además la <strong>pista</strong> <code>fast_lane.ai</code> (carpeta <code>ai\</code> de la pista) con el botón <em>Cargar pista</em> — es la referencia exacta contra la que se dibuja la trazada.</p>
-        <p class="hint">
-          Columnas esperadas (se detectan por nombre): <code>distance</code>,
-          <code>timestamp</code>/<code>t</code>, <code>speed</code>/<code>velocidad_kmh</code>,
-          <code>throttle</code>/<code>gas</code>, <code>brake</code>/<code>freno</code>,
-          <code>gear</code>/<code>marcha</code>, <code>rpm</code>, <code>steer_angle</code>,
-          <code>x</code>/<code>pos_x</code>, <code>z</code>/<code>pos_z</code>,
-          <code>carga_FL/FR/RL/RR</code>, <code>fuel</code>. Si no hay <code>distance</code>, se calcula desde x/z.
-        </p>
+      </div>
       </div>
     </section>
 
@@ -329,8 +322,7 @@
     </div>
   </section>
 
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js"></script>
-  <script src="app.js?v=14"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>

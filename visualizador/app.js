@@ -2,7 +2,7 @@
 
 /* ============================================================
    AC Telemetry Lab
-   Carga CSV / .acreplay, gráficos sincronizados (uPlot),
+   Carga de replays .acreplay, gráficos sincronizados (uPlot),
    mapas y estadísticas por vuelta y de conjunto.
    ============================================================ */
 
@@ -20,30 +20,6 @@ const SLIP_LOCK = -0.3;              // slip_ratio < esto → rueda bloqueada (X
 const SLIP_VEL_MIN = 30;             // km/h mínima para evaluar slip (evita ruido a baja velocidad)
 const ICONO_OJO = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
 const ICONO_OJO_TACHADO = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
-
-const ALIAS = {
-  distance: ['distance', 'dist', 'distancia', 'lap_distance', 'distance_m', 'lapdist', 'dist_m'],
-  time: ['timestamp', 'time', 't', 'tiempo', 'tiempo_s', 'time_s', 'tiempo_vuelta_s'],
-  speed: ['speed', 'velocidad_kmh', 'velocidad', 'speed_kmh', 'vel', 'velocity_kmh', 'vkmh'],
-  throttle: ['throttle', 'gas', 'acelerador', 'throttle_pct', 'gas_pct', 'acelerador_pct'],
-  brake: ['brake', 'freno', 'brake_pct', 'freno_pct', 'frenado_pct'],
-  gear: ['gear', 'marcha', 'ngear', 'gear_number'],
-  rpm: ['rpm', 'revoluciones', 'engine_rpm'],
-  steer: ['steer_angle', 'steer', 'volante', 'steering', 'steerangle'],
-  x: ['x', 'pos_x', 'position_x', 'world_x', 'posx', 'positionx', 'pos_x_m', 'x_m'],
-  y: ['pos_y', 'y', 'position_y', 'world_y', 'posy', 'positiony', 'pos_y_m', 'y_m', 'elevacion'],
-  z: ['z', 'pos_z', 'position_z', 'world_z', 'posz', 'positionz', 'pos_z_m', 'z_m'],
-  yaw: ['rot_y', 'rotation_y', 'yaw', 'roty'],
-  fuel: ['fuel', 'combustible', 'nafta', 'fuel_level', 'fuel_nivel'],
-  loadFL: ['carga_fl', 'load_fl', 'carga_di', 'load_fl_'],
-  loadFR: ['carga_fr', 'load_fr', 'carga_dd'],
-  loadRL: ['carga_rl', 'load_rl', 'carga_ti'],
-  loadRR: ['carga_rr', 'load_rr', 'carga_td'],
-  slipFL: ['slip_ratio_fl', 'slipfl', 'slip_fl'],
-  slipFR: ['slip_ratio_fr', 'slipfr', 'slip_fr'],
-  slipRL: ['slip_ratio_rl', 'sliprl', 'slip_rl'],
-  slipRR: ['slip_ratio_rr', 'sliprr', 'slip_rr'],
-};
 
 const state = {
   laps: [],
@@ -75,34 +51,6 @@ const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /* ---------- utilidades numéricas ---------- */
-
-function aNumero(v) {
-  if (v === null || v === undefined || v === '') return NaN;
-  const n = typeof v === 'number' ? v : parseFloat(String(v).replace(',', '.'));
-  return Number.isFinite(n) ? n : NaN;
-}
-
-function normCol(name) {
-  return String(name).replace(/^\uFEFF/, '').trim().toLowerCase();
-}
-
-function columnasDe(fields) {
-  const mapa = {};
-  const bajas = (fields || []).map((f) => ({ orig: f, low: normCol(f) }));
-  for (const [clave, opciones] of Object.entries(ALIAS)) {
-    const encontrado = bajas.find((f) => opciones.includes(f.low));
-    if (encontrado) mapa[clave] = encontrado.orig;
-  }
-  if (mapa.x === undefined) {
-    const e = bajas.find((f) => /^(pos|position|world|car|coche)[_\s]?x(_?m)?$/.test(f.low) || f.low === 'x');
-    if (e) mapa.x = e.orig;
-  }
-  if (mapa.z === undefined) {
-    const e = bajas.find((f) => /^(pos|position|world|car|coche)[_\s]?z(_?m)?$/.test(f.low) || f.low === 'z');
-    if (e) mapa.z = e.orig;
-  }
-  return mapa;
-}
 
 function normalizarPedal(valores) {
   let max = 0;
@@ -174,19 +122,6 @@ function colorMap(t) {
 
 /* ---------- carga ---------- */
 
-function parsearArchivoCSV(file) {
-  return new Promise((resolve, reject) => {
-    Papa.parse(file, {
-      header: true,
-      dynamicTyping: true,
-      skipEmptyLines: true,
-      transformHeader: (h) => h.replace(/^\uFEFF/, '').trim(),
-      complete: (res) => resolve({ file, rows: res.data, fields: res.meta.fields || [] }),
-      error: (err) => reject(err),
-    });
-  });
-}
-
 function unwrap(rads) {
   const out = new Array(rads.length);
   if (!rads.length) return out;
@@ -201,7 +136,7 @@ function unwrap(rads) {
   return out;
 }
 
-/** Rumbo a partir de posiciones (x, z), para CSVs sin columna de yaw. */
+/** Rumbo a partir de posiciones (x, z), respaldo cuando la serie de yaw viene vacía o nula. */
 function rumboDePosiciones(x, z) {
   const n = Math.min(x.length, z.length);
   const out = new Array(n);
@@ -280,29 +215,6 @@ function crearLap(name, s, visible = true) {
     },
     grid: null,
   };
-}
-
-function construirVueltaCSV({ file, rows, fields }) {
-  const cols = columnasDe(fields);
-  if (cols.x === undefined || cols.z === undefined) {
-    const nombres = (fields || []).slice(0, 14).join(', ');
-    throw new Error(
-      `"${file.name}": faltan columnas de posición (busco x/z o pos_x/pos_z). ` +
-      `Columnas detectadas: ${nombres}${(fields || []).length > 14 ? '…' : ''}`
-    );
-  }
-  const col = (clave) => (cols[clave] === undefined ? rows.map(() => NaN) : rows.map((r) => aNumero(r[cols[clave]])));
-  const series = {
-    x: col('x'), z: col('z'), y: col('y'),
-    speed: col('speed'), time: col('time'), gear: col('gear'),
-    throttle: col('throttle'), brake: col('brake'),
-    rpm: col('rpm'), steer: col('steer'), yaw: col('yaw'),
-    loadFL: col('loadFL'), loadFR: col('loadFR'), loadRL: col('loadRL'), loadRR: col('loadRR'),
-    slipFL: col('slipFL'), slipFR: col('slipFR'), slipRL: col('slipRL'), slipRR: col('slipRR'),
-    fuel: col('fuel'),
-  };
-  if (cols.distance !== undefined) series.dist = col('distance');
-  return crearLap(file.name.replace(/\.csv$/i, ''), series);
 }
 
 /* ---------- validez de vueltas ---------- */
@@ -461,18 +373,14 @@ async function cargarArchivos(fileList) {
   const files = Array.from(fileList);
   if (!files.length) return;
   try {
-    // La pista (fast_lane.ai) puede venir suelta o junto con el replay/CSV.
+    // La pista (fast_lane.ai) puede venir suelta o junto con el replay.
     const ais = files.filter((f) => /\.ai$/i.test(f.name));
     const restantes = files.filter((f) => !/\.ai$/i.test(f.name));
     if (ais.length) await cargarPistaAi(ais);
 
     const nuevas = [];
     for (const f of restantes) {
-      if (/\.csv$/i.test(f.name)) {
-        const lap = construirVueltaCSV(await parsearArchivoCSV(f));
-        lap.csv = true;
-        nuevas.push(lap);
-      } else if (/\.acreplay$/i.test(f.name)) {
+      if (/\.acreplay$/i.test(f.name)) {
         const candidatas = await parsearReplay(f);
         const elegidas = await preguntarVueltas(f.name, candidatas); // Set de índices
         for (let i = 0; i < candidatas.length; i++) {
@@ -483,7 +391,7 @@ async function cargarArchivos(fileList) {
           nuevas.push(l);
         }
       } else {
-        throw new Error(`"${f.name}": extensión no soportada (CSV, .acreplay o fast_lane.ai).`);
+        throw new Error(`"${f.name}": extensión no soportada (.acreplay o fast_lane.ai).`);
       }
     }
     for (const l of nuevas) {
@@ -493,7 +401,6 @@ async function cargarArchivos(fileList) {
       l.vmedia = dur > 0 && Number.isFinite(l.dist) ? l.dist / dur : 0;
     }
     clasificarVueltas(nuevas);
-    for (const l of nuevas) if (l.csv) l.visible = l.valida;
     if (!nuevas.length) return;
     state.laps.push(...nuevas);
     const vs = visibleLaps();
@@ -2576,7 +2483,7 @@ function mostrarDashboard() { $('zona-carga').classList.add('oculto'); $('dashbo
 function mostrarError(msg) { const e = $('error-aviso'); e.textContent = '⚠ ' + msg; e.classList.remove('oculto'); }
 function ocultarError() { $('error-aviso').classList.add('oculto'); }
 
-/* Para entrar al análisis hacen falta un replay/CSV y la pista (fast_lane.ai). */
+/* Para entrar al análisis hacen falta un replay y la pista (fast_lane.ai). */
 function puedeEntrar() { return state.laps.length > 0 && !!(state.pistaAi && state.pistaAi.env); }
 const FALTA_PISTA = 'Falta cargar la pista (fast_lane.ai) para entrar al análisis.';
 

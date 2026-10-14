@@ -1,92 +1,70 @@
-# Telemetría AC
+# AC Telemetry Lab
 
-Aplicación web para **extraer, segmentar por vuelta y exportar** la telemetría de
-**Assetto Corsa** (AC1) a partir de archivos guardados por el juego.
+Visualizador web para **analizar y comparar** la telemetría de **Assetto Corsa
+(AC1)** a partir de los replays `.acreplay` (versión 16) guardados por el juego.
+Corre **enteramente en el navegador**: no requiere instalar nada ni levantar un
+servidor.
 
-> Estado: **Fase 1 (core + CLI) y Fase 3 (web Flask) implementadas** y validadas
-> con un replay real. Falta el soporte `.nkt` (Fase 2). Ver `doc/Plan_Trabajo.md`.
+> Estado: analizador funcional con las pestañas **Vuelta**, **Mapa**, **Conjunto**,
+> **Comparación** y **Curvas** (detección de curvas, tracción por curva, marcadores
+> de slip y delta A/B por curva).
 
 ---
 
-## 1. Objetivo
+## 1. Qué hace
 
-Permitir que un usuario cargue un archivo de telemetría de Assetto Corsa y obtenga,
-sin herramientas externas, un **CSV por vuelta** con las señales de conducción
-(velocidad, RPM, marcha, acelerador, freno, dirección, deslizamiento/carga por
-rueda, tiempos de vuelta, etc.) para analizarlas o graficarlas luego.
+- **Parsea `.acreplay` en el navegador** (binario v16) y separa la sesión en
+  **vueltas**.
+- Dibuja ~30 gráficos sincronizados (uPlot) por vuelta y de **conjunto**, un
+  **mapa** de trazadas sobre la pista real, comparación entre vueltas y una
+  pestaña de **Curvas** con métricas por curva.
+- Usa la **pista** `fast_lane.ai` como referencia geométrica para dibujar la
+  trazada y detectar las curvas.
 
-## 2. Alcance
-
-| Aspecto | Definición |
-|---|---|
-| Juego soportado | Assetto Corsa (AC1) |
-| Fuentes de datos | Replays `.acreplay` (versión 16) y export `.nkt` de AiM Race Studio |
-| Modalidad | Archivos guardados (post-sesión). **No** captura en vivo |
-| Salida | Un archivo **CSV por vuelta** |
-| Interfaz final | Aplicación web (**Python + Flask**) |
-| Core de datos | **Python** (parser + segmentación + exportación) — Fase 1 |
-| Integración | La web **importa el core como librería** (sin duplicar lógica) |
-
-**Fuera de alcance (por ahora):** captura en vivo (UDP 9996 / shared memory),
-ACC/ACE, comparación gráfica entre vueltas, cuentas de usuario, nube.
-
-## 3. Stack
-
-Un solo lenguaje: **Python 3.10+**.
-
-- **Core (`core/`):** parseo binario con `struct`/`zlib`, segmentación por vuelta
-  y exportación a CSV. Se expone como **CLI** (primer entregable) y como
-  **librería**.
-- **Web (`web/`):** aplicación **Flask** que sube archivos, usa el core como
-  librería (sin duplicar lógica), lista las vueltas y sirve los CSV. Plantillas
-  con **Jinja2**.
-- **Sin `subprocess` ni segundo runtime:** al ser todo Python, la web importa el
-  core directamente.
-
-## 4. Estructura del repositorio (propuesta)
-
-```
-Telemetria/
-├── README.md                     # este archivo
-├── doc/                          # documentación del proyecto
-│   ├── Requisitos.txt            # requisitos funcionales y no funcionales
-│   ├── Arquitectura.md           # diseño de capas e integración
-│   ├── FormatoTelemetria.md      # referencia de .acreplay v16 y .nkt
-│   ├── Columnas_CSV.md           # diccionario de datos del CSV exportado
-│   ├── Manual_Usuario.md         # guía de uso
-│   └── Plan_Trabajo.md           # fases y roadmap
-├── Paquetes de telemetria/       # archivos de muestra (.acreplay / .nkt)
-├── core/                         # CAPA PYTHON (parser + CLI)
-│   ├── src/telemetria/
-│   │   ├── lector/               # parsers de archivos de entrada
-│   │   ├── procesamiento/        # segmentación por vuelta y exportación
-│   │   └── cli.py                # interfaz de línea de comandos (+ JSON)
-│   ├── tests/
-│   ├── requirements.txt
-│   └── pyproject.toml
-└── web/                          # CAPA WEB (Flask)
-    ├── app.py                    # app Flask + rutas
-    ├── plantillas/               # HTML (Jinja2)
-    ├── estatico/                 # CSS/JS
-    └── requirements.txt
-```
-
-## 5. Uso previsto (resumen)
+## 2. Uso
 
 1. En Assetto Corsa, correr la sesión y **guardar el replay** (queda en
    `Documents\Assetto Corsa\replay\`).
-2. Abrir la aplicación web (Flask), **subir** el archivo `.acreplay` (o `.nkt`).
-3. La web usa el core Python, que genera los CSV; la app lista las **vueltas
-   detectadas** con su tiempo.
-4. Descargar el **CSV de la vuelta** elegida.
+2. Abrir `visualizador/index.html` en el navegador (Chrome/Edge/Firefox).
+3. **Cargar replay (.acreplay)** y elegir qué vueltas analizar.
+4. **Cargar pista (fast_lane.ai)** — carpeta `ai\` de la pista (por ejemplo
+   `...\content\tracks\monza\lfmv2\ai\fast_lane.ai`). Es obligatoria para entrar
+   al análisis.
 
-Detalle paso a paso en `doc/Manual_Usuario.md`.
+## 3. Pestañas
 
-## 6. Documentación
+| Pestaña | Contenido |
+|---|---|
+| **Vuelta** | Gráficos por vuelta (velocidad, pedales, marchas, RPM, G, cargas, etc.), sincronizados y con cursor. |
+| **Mapa** | Trazada sobre la pista, canales (velocidad, frenada, cambios…), vista 3D rotable, zoom/pan.
+| **Conjunto** | Estadísticas de todas las vueltas válidas + mapa por sectores (vista 3D).
+| **Comparación** | Diferencias entre dos vueltas (A/B).
+| **Curvas** | Detección de curvas desde `fast_lane.ai`, tracción (g-g) por curva con marcadores de slip, y **delta A/B por curva**.
 
-- [`doc/Requisitos.txt`](doc/Requisitos.txt) — qué debe hacer la app.
-- [`doc/Arquitectura.md`](doc/Arquitectura.md) — cómo está construida.
-- [`doc/FormatoTelemetria.md`](doc/FormatoTelemetria.md) — formato de los archivos.
-- [`doc/Columnas_CSV.md`](doc/Columnas_CSV.md) — qué contiene cada columna del CSV.
-- [`doc/Manual_Usuario.md`](doc/Manual_Usuario.md) — uso.
-- [`doc/Plan_Trabajo.md`](doc/Plan_Trabajo.md) — plan por fases.
+## 3. Stack
+
+- **JavaScript + HTML/CSS**, sin build. `visualizador/app.js` + `index.html` +
+  `estilos.css`.
+- Gráficos con **[uPlot](https://github.com/leeoniya/uPlot)** cargado por CDN.
+- Sin frameworks ni gestor de paquetes: es abrir el `index.html`.
+
+## 4. Estructura
+
+```
+Telemetria/
+├─ visualizador/            # la aplicación (abrir index.html)
+│  ├─ index.html
+│  ├─ app.js
+│  └─ estilos.css
+├─ doc/
+│  ├─ FormatoTelemetria.md  # offsets y señales del .acreplay v16
+│  ├─ PLAN_CURVAS.md        # diseño/implementación de la pestaña Curvas
+│  └─ Catalogo_Graficos.md  # catálogo de gráficos del visualizador
+└─ Paquetes de telemetria/  # archivos de muestra (.acreplay / fast_lane.ai)
+```
+
+## 5. Documentación
+
+- [`doc/FormatoTelemetria.md`](doc/FormatoTelemetria.md) — formato de los archivos de entrada.
+- [`doc/PLAN_CURVAS.md`](doc/PLAN_CURVAS.md) — pestaña Curvas y delta A/B.
+- [`doc/Catalogo_Graficos.md`](doc/Catalogo_Graficos.md) — catálogo de gráficos.
