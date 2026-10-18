@@ -9,7 +9,7 @@
 const SYNC_KEY = 'ac-tele-lab';
 const PALETA = ['#38bdf8', '#f472b6', '#4ade80', '#facc15', '#a78bfa', '#fb923c', '#22d3ee', '#f87171', '#c084fc', '#fde047'];
 const G = 9.80665;
-const N_SECTORES = 10;
+const N_SECTORES = 3;
 const GRID_PUNTOS_MAX = 10000;      // puntos máximos de la grilla de distancia común
 const GRID_PASO_MIN = 0.1;          // paso mínimo (m) entre puntos de la grilla
 const ICONO_OJO = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -53,6 +53,7 @@ const state = {
   _tick: 0,
   colorIdx: 0,
   tab: 'vuelta',
+  curvas: [],
   charts: { lines: [], inputs: [] },
   mapa: { canal: 'speed', frenada: true, cambios: false, tresD: false, rot: 0, alt: 3, visual: 'canal', bordes: true, zoom: 1, panX: 0, panY: 0, s0: 1, cx: 0, cy: 0, resetView: true, projKey: '', projRes: null },
   mapaSectores: { tresD: false, rot: 0, alt: 3 },
@@ -672,7 +673,7 @@ function opcionesGrafico(cont, height, yRango, yLabel) {
       { stroke: '#8b97a8', grid: { stroke: 'rgba(255,255,255,0.05)' }, ticks: { stroke: '#2a3444' }, font: '12px "Segoe UI", sans-serif', label: 'Distancia (m)', labelFont: '12px "Segoe UI", sans-serif', size: 42, values: (u, vals) => vals.map((v) => Math.round(v)) },
       { stroke: '#8b97a8', grid: { stroke: 'rgba(255,255,255,0.05)' }, ticks: { stroke: '#2a3444' }, font: '12px "Segoe UI", sans-serif', label: yLabel, labelFont: '12px "Segoe UI", sans-serif', size: 52, labelSize: 26 },
     ],
-    hooks: { setCursor: [onCursor] },
+    hooks: { setCursor: [onCursor], draw: [dibujarCurvasEnGrafico] },
   };
 }
 
@@ -723,6 +724,7 @@ function moverCursor() {
 function renderTabActiva() {
   destroyCharts();
   _ultimoCursorPx = -1;
+  state.curvas = detectarCurvas(lapRef());
   if (!state.laps.length) return;
   if (state.tab === 'conjunto') {
     // No cuentan las vueltas de salida/largada ni las cortadas/incompletas.
@@ -1232,6 +1234,7 @@ function drawMapaSectores() {
   ctx.textAlign = 'left';
   ctx.fillStyle = '#8b97a8';
   ctx.fillText('S/F', mx + 8, my - 6);
+  dibujarNumerosCurvas(ctx, view.tf, view.proj, state.curvas);
   ctx.textAlign = 'left'; ctx.font = '10px "Segoe UI"';
   ctx.fillStyle = '#8b97a8';
   ctx.fillText('S1', 8, h - 8);
@@ -1702,6 +1705,169 @@ function drawMarcadoresRef(ctx, tf, proj, lapV) {
   ctx.font = '11px "Segoe UI"'; ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillText('S/F', mx + 8, my - 6);
 }
 
+/* ---------- detección y numeración de curvas ---------- */
+const CURVA_RADIO_MAX = 400;  // m: radio máximo para considerar un tramo "curva" (curvatura mínima)
+const CURVA_G_MIN = 0.30;     // g: G lateral mínimo del pico para validar que la curva es real
+const CURVA_MIN_LARGO = 15;   // m: extensión mínima de una curva
+const CURVA_GAP = 20;         // m: hueco máximo que une dos tramos del mismo sentido (doble ápice)
+const CURVA_VENTANA = 12;     // m: media ventana (a cada lado) para estimar la curvatura
+const CURVA_SUAVIZADO = 3;    // ± muestras de suavizado de la curvatura
+
+/* Firma de dirección de una señal (±1) con zona muerta para no contar ruido. */
+function firmaDireccion(v, thr) { return (Number.isFinite(v) && Math.abs(v) > thr) ? (v > 0 ? 1 : -1) : 0; }
+
+/* Detecta las curvas combinando: curvatura de la trayectoria (κ, geometría) + G lateral (validación
+   física) + volante/yaw (desempate de sentido). Cada giro es una curva T propia; chicanes y
+   enlazadas quedan separadas por el cambio de sentido. Devuelve, por curva:
+   { n, idx, dist, x, z, y, k, radio, latG, dir, distEntrada, distSalida }, ordenadas desde la largada. */
+function detectarCurvas(ref) {
+  if (!ref || !ref.grid) return [];
+  const g = ref.grid, n = g.x.length;
+  if (n < 9) return [];
+  const paso = state.gridStep || 1;
+  const w = Math.max(1, Math.round(CURVA_VENTANA / paso));
+  if (n <= 2 * w) return [];
+
+  // 1) curvatura con signo: κ = 2·(área con signo)/(a·b·c) del triángulo (i-w, i, i+w)
+  const kappa = new Array(n).fill(0);
+  for (let i = w; i < n - w; i++) {
+    const ax = g.x[i - w], az = g.z[i - w];
+    const bx = g.x[i], bz = g.z[i];
+    const cx = g.x[i + w], cz = g.z[i + w];
+    if (!Number.isFinite(ax) || !Number.isFinite(az) || !Number.isFinite(bx) ||
+        !Number.isFinite(bz) || !Number.isFinite(cx) || !Number.isFinite(cz)) continue;
+    const abx = bx - ax, abz = bz - az;
+    const bcx = cx - bx, bcz = cz - bz;
+    const cax = ax - cx, caz = az - cz;
+    const a = Math.hypot(abx, abz), b = Math.hypot(bcx, bcz), c = Math.hypot(cax, caz);
+    if (a < 1e-6 || b < 1e-6 || c < 1e-6) continue;
+    kappa[i] = (2 * (abx * bcz - abz * bcx)) / (a * b * c);
+  }
+  // 2) suavizado
+  const s = CURVA_SUAVIZADO;
+  const suf = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    let acc = 0, cnt = 0;
+    for (let j = i - s; j <= i + s; j++) if (j >= 0 && j < n && Number.isFinite(kappa[j])) { acc += kappa[j]; cnt++; }
+    suf[i] = cnt ? acc / cnt : 0;
+  }
+  const kMin = 1 / CURVA_RADIO_MAX;
+
+  // 3) G lateral (validación física) + señales de dirección alineadas a κ (volante/yaw = desempate)
+  const latG = new Array(n);
+  const dyaw = new Array(n).fill(0);
+  let maxSteer = 0, maxDyaw = 0;
+  for (let i = 0; i < n; i++) {
+    latG[i] = Number.isFinite(g.accLat[i]) ? Math.abs(g.accLat[i]) / G : 0;
+    if (Number.isFinite(g.steer[i])) maxSteer = Math.max(maxSteer, Math.abs(g.steer[i]));
+    if (i > 0 && Number.isFinite(g.yaw[i]) && Number.isFinite(g.yaw[i - 1])) {
+      dyaw[i] = g.yaw[i] - g.yaw[i - 1];
+      maxDyaw = Math.max(maxDyaw, Math.abs(dyaw[i]));
+    }
+  }
+  const thrSteer = 0.15 * maxSteer, thrYaw = 0.15 * maxDyaw;
+  let accS = 0, accY = 0;
+  for (let i = 0; i < n; i++) {
+    if (Math.abs(suf[i]) < kMin) continue;
+    const dk = suf[i] > 0 ? 1 : -1;
+    const ds = firmaDireccion(g.steer[i], thrSteer); if (ds) accS += dk * ds;
+    const dy = firmaDireccion(dyaw[i], thrYaw); if (dy) accY += dk * dy;
+  }
+  const useSteer = maxSteer > 0 && thrSteer > 0 && accS !== 0, sSteer = accS > 0 ? 1 : -1;
+  const useYaw = maxDyaw > 0 && thrYaw > 0 && accY !== 0, sYaw = accY > 0 ? 1 : -1;
+  const dirAt = (i) => {
+    const dk = suf[i] > 0 ? 1 : (suf[i] < 0 ? -1 : 0);
+    let sum = dk;
+    if (useSteer) sum += firmaDireccion(g.steer[i], thrSteer) * sSteer;
+    if (useYaw) sum += firmaDireccion(dyaw[i], thrYaw) * sYaw;
+    return sum > 0 ? 1 : (sum < 0 ? -1 : (dk || 1));
+  };
+
+  // 4) candidatos por curvatura (geometría) -> tramos contiguos
+  const runs = [];
+  let ini = -1;
+  for (let i = 0; i < n; i++) {
+    const cand = Number.isFinite(suf[i]) && Math.abs(suf[i]) >= kMin;
+    if (cand) { if (ini < 0) ini = i; }
+    else if (ini >= 0) { runs.push([ini, i - 1]); ini = -1; }
+  }
+  if (ini >= 0) runs.push([ini, n - 1]);
+
+  // 5) por tramo: ápice (|κ| máx) y sentido (con desempate de volante/yaw)
+  const info = runs.map(([a, b]) => {
+    let ap = a, best = Math.abs(suf[a]);
+    for (let i = a; i <= b; i++) { const v = Math.abs(suf[i]); if (v > best) { best = v; ap = i; } }
+    let sum = 0;
+    for (let i = a; i <= b; i++) sum += dirAt(i);
+    return { a, b, ap, best, dir: sum >= 0 ? 1 : -1 };
+  });
+
+  // 6) unir tramos del mismo sentido separados por un hueco corto (doble ápice)
+  const merged = [];
+  for (const r of info) {
+    const u = merged[merged.length - 1];
+    if (u && u.dir === r.dir && (state.grid[r.a] - state.grid[u.b]) <= CURVA_GAP) {
+      u.b = r.b;
+      if (r.best > u.best) { u.best = r.best; u.ap = r.ap; }
+    } else merged.push({ ...r });
+  }
+
+  // 7) validar (largo mínimo + G lateral real) y armar salida
+  const curvas = [];
+  for (const r of merged) {
+    if (state.grid[r.b] - state.grid[r.a] < CURVA_MIN_LARGO) continue;
+    let picoG = 0;
+    for (let i = r.a; i <= r.b; i++) if (latG[i] > picoG) picoG = latG[i];
+    if (picoG < CURVA_G_MIN) continue;
+    const ap = r.ap;
+    curvas.push({
+      idx: ap, dist: state.grid[ap], x: g.x[ap], z: g.z[ap], y: g.y[ap],
+      k: r.best, radio: r.best > 0 ? 1 / r.best : Infinity, latG: picoG, dir: r.dir,
+      distEntrada: state.grid[r.a], distSalida: state.grid[r.b],
+    });
+  }
+  curvas.sort((p, q) => p.dist - q.dist);
+  curvas.forEach((c, i) => { c.n = i + 1; });
+  return curvas;
+}
+
+/* Dibuja T1, T2, ... sobre un mapa usando su transform y proyección. */
+function dibujarNumerosCurvas(ctx, tf, proj, curvas) {
+  if (!curvas || !curvas.length) return;
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = 'bold 11px "Segoe UI", sans-serif';
+  for (const c of curvas) {
+    const [px, py] = tf(...proj(c.x, c.z, c.y));
+    if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
+    ctx.beginPath(); ctx.arc(px, py, 9, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(13,18,26,0.78)'; ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(226,232,240,0.85)'; ctx.stroke();
+    ctx.fillStyle = '#e2e8f0'; ctx.fillText('T' + c.n, px, py + 0.5);
+  }
+  ctx.restore();
+}
+
+/* Marcas verticales con el número de curva en los gráficos de líneas (uPlot). */
+function dibujarCurvasEnGrafico(u) {
+  const curvas = state.curvas;
+  if (!curvas || !curvas.length || !u || !u.ctx || !u.bbox) return;
+  const ctx = u.ctx, b = u.bbox;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(b.left, b.top, b.width, b.height); ctx.clip();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.font = '10px "Segoe UI", sans-serif';
+  for (const c of curvas) {
+    const x = u.valToPos(c.dist, 'x');
+    if (!Number.isFinite(x) || x < b.left - 1 || x > b.left + b.width + 1) continue;
+    ctx.strokeStyle = 'rgba(148,163,184,0.16)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, b.top); ctx.lineTo(x, b.top + b.height); ctx.stroke();
+    ctx.fillStyle = 'rgba(203,213,225,0.6)';
+    ctx.fillText('T' + c.n, x, b.top + 1);
+  }
+  ctx.restore();
+}
+
 function adjuntarVistaMapa(cv) {
   if (!cv) return;
   cv.style.cursor = 'grab';
@@ -1852,6 +2018,7 @@ function pintarMapaCanal(cv, laps) {
   drawCanal(ctx, laps, view.cache, view.tf, canal, vMin, vMax);
   drawMarcadoresRef(ctx, view.tf, view.proj, lapRef());
   dibujarPosicion(ctx, laps, view);
+  dibujarNumerosCurvas(ctx, view.tf, view.proj, state.curvas);
 }
 
 /* Mini-mapa de una vuelta: banda de pista (silueta) + trazada de color fina por encima. */
@@ -1873,6 +2040,7 @@ function pintarMapaTrazada(cv, lap, laps, view, cacheIdx) {
   }
   drawMarcadoresRef(ctx, view.tf, view.proj, lap);
   dibujarPosicion(ctx, [lap], view);
+  dibujarNumerosCurvas(ctx, view.tf, view.proj, state.curvas);
 }
 
 /* Grilla: un mapa por vuelta visible. */
