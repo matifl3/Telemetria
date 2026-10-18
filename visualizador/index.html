@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AC Telemetry Lab</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.min.css" />
-  <link rel="stylesheet" href="estilos.css" />
+  <link rel="stylesheet" href="estilos.css?v=7" />
 </head>
 <body>
   <header class="topbar">
@@ -17,8 +17,11 @@
       </div>
     </div>
     <div class="estado-carga">
-      <button id="btn-abrir" class="btn primario">Cargar CSV o replay</button>
-      <input id="input-archivos" type="file" accept=".csv,.acreplay" multiple hidden />
+      <button id="btn-abrir" class="btn primario">Cargar replay (.acreplay)</button>
+      <input id="input-archivos" type="file" accept=".acreplay" multiple hidden />
+      <button id="btn-pista" class="btn fantasma">Cargar pista (fast_lane.ai)</button>
+      <input id="input-pista" type="file" accept=".ai" multiple hidden />
+      <button id="btn-pista-quitar" class="btn fantasma" hidden>Quitar pista</button>
       <button id="btn-limpiar" class="btn fantasma" disabled>Limpiar</button>
     </div>
   </header>
@@ -28,15 +31,9 @@
       <div class="drop-inner">
         <div class="drop-icono" aria-hidden="true"><svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17V4"/><path d="M6 10l6-6 6 6"/><path d="M4 21h16"/></svg></div>
         <h2>Arrastrá tus telemetrías acá</h2>
-        <p>CSV (como los que exporta el core) <strong>o</strong> replays <code>.acreplay</code> (se parsean solos). Tras un replay elegís qué vueltas analizar en las pestañas por vuelta; la pestaña <strong>Conjunto usa todas las vueltas válidas</strong> (salidas/largadas, entradas y cortadas no cuentan).</p>
-        <p class="hint">
-          Columnas esperadas (se detectan por nombre): <code>distance</code>,
-          <code>timestamp</code>/<code>t</code>, <code>speed</code>/<code>velocidad_kmh</code>,
-          <code>throttle</code>/<code>gas</code>, <code>brake</code>/<code>freno</code>,
-          <code>gear</code>/<code>marcha</code>, <code>rpm</code>, <code>steer_angle</code>,
-          <code>x</code>/<code>pos_x</code>, <code>z</code>/<code>pos_z</code>,
-          <code>carga_FL/FR/RL/RR</code>, <code>fuel</code>. Si no hay <code>distance</code>, se calcula desde x/z.
-        </p>
+        <p>Replays <code>.acreplay</code> (se parsean solos). Elegís qué vueltas analizar en las pestañas por vuelta; la pestaña <strong>Conjunto usa todas las vueltas válidas</strong> (salidas/largadas, entradas y cortadas no cuentan).</p>
+        <p>Para entrar al análisis cargá además la <strong>pista</strong> <code>fast_lane.ai</code> (carpeta <code>ai\</code> de la pista) con el botón <em>Cargar pista</em> — es la referencia exacta contra la que se dibuja la trazada.</p>
+      </div>
       </div>
     </section>
 
@@ -83,6 +80,7 @@
           <button class="tab" type="button" role="tab" id="tab-mapa" aria-selected="false" aria-controls="panel-mapa" data-tab="mapa">Mapa</button>
           <button class="tab" type="button" role="tab" id="tab-conjunto" aria-selected="false" aria-controls="panel-conjunto" data-tab="conjunto">Conjunto</button>
           <button class="tab" type="button" role="tab" id="tab-comparacion" aria-selected="false" aria-controls="panel-comparacion" data-tab="comparacion">Comparación</button>
+          <button class="tab" type="button" role="tab" id="tab-curvas" aria-selected="false" aria-controls="panel-curvas" data-tab="curvas">Curvas</button>
         </nav>
 
         <div id="panel-vuelta" class="tab-panel activo" role="tabpanel" aria-labelledby="tab-vuelta">
@@ -115,10 +113,6 @@
             <div id="chart-load" class="plot"></div>
           </div>
           <div class="grafico-card">
-            <div class="grafico-titulo">Círculo de tracción <span class="unidad">acel/freno × lateral (g)</span></div>
-            <canvas id="chart-traction"></canvas>
-          </div>
-          <div class="grafico-card">
             <div class="grafico-titulo">Acelerador / Freno por vuelta <span class="unidad">0–1</span></div>
             <div id="chart-inputs" class="plot"></div>
           </div>
@@ -149,7 +143,7 @@
               <label class="check"><input id="mapa-cambios" type="checkbox" /> Marcas de cambio</label>
               <label class="check"><input id="mapa-3d" type="checkbox" /> 3D</label>
             </div>
-            <p class="mapa-hint"><strong>Trazada por vuelta</strong>: cada vuelta en su propio mapa, con la <strong>pista</strong> como banda gris (silueta de todas las vueltas: su centro es la posición media, no la REF) y su <strong>trazada</strong> de color como línea fina en su posición real. Rueda = zoom · arrastrar = panorámica · doble clic = encuadrar.</p>
+            <p class="mapa-hint"><strong>Trazada por vuelta</strong>: cada vuelta en su propio mapa, con la <strong>pista</strong> como banda gris (del <code>fast_lane.ai</code>) y su <strong>trazada</strong> de color como línea fina en su posición real. Rueda = zoom · arrastrar = panorámica · doble clic = encuadrar.</p>
             <div id="mapa-3d-controles" class="mapa-3d-controles" style="display:none">
               <label>Rotación <input id="mapa-rot" type="range" min="-180" max="180" value="0" step="1" /></label>
               <label>Elevación <input id="mapa-alt" type="range" min="0" max="15" value="3" step="0.5" /></label>
@@ -200,7 +194,7 @@
           </div>
           <div class="fila-doble">
             <div class="grafico-card">
-              <div class="grafico-titulo">Mapa por sectores <span class="unidad">vuelta REF · mismo corte</span></div>
+              <div class="grafico-titulo">Mapa por sectores <span class="unidad">vuelta REF · 3 sectores</span></div>
               <div class="mapa-controles" style="margin-bottom:6px">
                 <label class="check"><input id="msect-3d" type="checkbox" /> 3D</label>
                 <div id="msect-3d-controles" class="mapa-3d-controles">
@@ -252,6 +246,38 @@
             <canvas id="ch-minidelta"></canvas>
           </div>
         </div>
+
+        <div id="panel-curvas" class="tab-panel" role="tabpanel" aria-labelledby="tab-curvas">
+          <p class="hint" style="text-align:left; margin:0 0 10px; max-width:none">Las curvas se detectan sobre la curvatura de la línea central del <strong>fast_lane.ai</strong>. Cada arco se numera <strong>C1..Cn</strong> en orden de recorrido.</p>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Mapa por curvas <span class="unidad">vuelta REF · arcos coloreados</span></div>
+            <canvas id="ch-mapa-curvas"></canvas>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Tiempo por curva <span class="unidad">por vuelta</span></div>
+            <canvas id="ch-curvas"></canvas>
+            <div id="tt-curvas" class="grafico-tooltip" hidden></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Círculo de tracción por curva <span class="unidad">acel/freno × lateral (g)</span></div>
+            <div id="traction-curvas" class="traction-grid"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Métricas por curva <span class="unidad">una fila por vuelta</span></div>
+            <div id="tabla-curvas" class="curvas-grid"></div>
+          </div>
+          <div class="panel-vs">
+            <div>A: <span id="vs-a-curvas" class="mono">–</span></div>
+            <label>vs B
+              <select id="sel-lap-b-curvas"></select>
+            </label>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Delta por curva <span class="unidad">A − B · ventana = arco</span></div>
+            <canvas id="ch-curva-delta"></canvas>
+            <div id="tabla-curva-delta" class="tabla-delta-wrap"></div>
+          </div>
+        </div>
       </section>
     </section>
 
@@ -296,8 +322,7 @@
     </div>
   </section>
 
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>

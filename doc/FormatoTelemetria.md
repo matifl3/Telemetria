@@ -157,7 +157,7 @@ Orden de ruedas: **FL, FR, RL, RR** (delantera izq./der., trasera izq./der.).
   `wipers`, `turn_signals`, `low_beams` y opciones extra.
 - Un chunk INI (largo > 255) contiene los nombres de piloto de CSP.
 
-### 2.6 Resumen de señales útiles para el CSV
+### 2.6 Resumen de señales útiles
 
 `t` (frame × intervalo), `speed` (derivada de `velocity`), `rpm`, `gear`,
 `gas`, `brake`, `steer_angle`, `current_lap`, `current_lap_time`,
@@ -175,17 +175,9 @@ Orden de ruedas: **FL, FR, RL, RR** (delantera izq./der., trasera izq./der.).
   documentado públicamente**.
 - AC lo genera en `Documents\Assetto Corsa\aim\telemetry_dump.nkt` y se
   **sobreescribe** cada sesión.
-- Hoy la forma confiable de leerlo es abrirlo con **AiM Race Studio** y exportar
-  a CSV desde ahí.
-
-**Riesgo (RNF-06):** no hay parser público conocido. Estrategias:
-
-1. **Fase 2 / opción A:** permitir que el usuario importe el **CSV exportado por
-   Race Studio** (formato de entrada alternativo y estable). Es la vía de menor
-   riesgo.
-2. **Opción B:** reverse-engineering del `.nkt` (mayor esfuerzo e incertidumbre).
-
-Recomendación: implementar la opción A primero y dejar B como investigación.
+- **No soportado** por el visualizador: hoy la única vía confiable es abrirlo con
+  **AiM Race Studio**. La aplicación trabaja exclusivamente con replays
+  `.acreplay`.
 
 ---
 

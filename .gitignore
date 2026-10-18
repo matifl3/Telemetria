@@ -1,15 +1,8 @@
 # --- Replays / telemetria pesada: NUNCA versionar ---
 *.acreplay
 *.nkt
+Paquetes de telemetria/
 
 # --- Datos generados por la app ---
 datos/
 salida/
-core/salida/
-
-# --- Python ---
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.venv/
-venv/

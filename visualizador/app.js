@@ -2,7 +2,7 @@
 
 /* ============================================================
    AC Telemetry Lab
-   Carga CSV / .acreplay, gráficos sincronizados (uPlot),
+   Carga de replays .acreplay, gráficos sincronizados (uPlot),
    mapas y estadísticas por vuelta y de conjunto.
    ============================================================ */
 
@@ -12,28 +12,14 @@ const G = 9.80665;
 const N_SECTORES = 3;
 const GRID_PUNTOS_MAX = 10000;      // puntos máximos de la grilla de distancia común
 const GRID_PASO_MIN = 0.1;          // paso mínimo (m) entre puntos de la grilla
+const R_CURVA = 300;                // radio (m) por debajo del cual se considera curva
+const R_RECTA = 1200;               // radio (m) por encima del cual se sale de la curva (histéresis)
+const CURVA_LARGO_MIN = 20;         // largo mínimo (m) de un arco para conservarlo
+const SLIP_SPIN = 0.15;              // slip_ratio > esto → rueda deslizando (triángulo)
+const SLIP_LOCK = -0.3;              // slip_ratio < esto → rueda bloqueada (X)
+const SLIP_VEL_MIN = 30;             // km/h mínima para evaluar slip (evita ruido a baja velocidad)
 const ICONO_OJO = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
 const ICONO_OJO_TACHADO = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
-
-const ALIAS = {
-  distance: ['distance', 'dist', 'distancia', 'lap_distance', 'distance_m', 'lapdist', 'dist_m'],
-  time: ['timestamp', 'time', 't', 'tiempo', 'tiempo_s', 'time_s', 'tiempo_vuelta_s'],
-  speed: ['speed', 'velocidad_kmh', 'velocidad', 'speed_kmh', 'vel', 'velocity_kmh', 'vkmh'],
-  throttle: ['throttle', 'gas', 'acelerador', 'throttle_pct', 'gas_pct', 'acelerador_pct'],
-  brake: ['brake', 'freno', 'brake_pct', 'freno_pct', 'frenado_pct'],
-  gear: ['gear', 'marcha', 'ngear', 'gear_number'],
-  rpm: ['rpm', 'revoluciones', 'engine_rpm'],
-  steer: ['steer_angle', 'steer', 'volante', 'steering', 'steerangle'],
-  x: ['x', 'pos_x', 'position_x', 'world_x', 'posx', 'positionx', 'pos_x_m', 'x_m'],
-  y: ['pos_y', 'y', 'position_y', 'world_y', 'posy', 'positiony', 'pos_y_m', 'y_m', 'elevacion'],
-  z: ['z', 'pos_z', 'position_z', 'world_z', 'posz', 'positionz', 'pos_z_m', 'z_m'],
-  yaw: ['rot_y', 'rotation_y', 'yaw', 'roty'],
-  fuel: ['fuel', 'combustible', 'nafta', 'fuel_level', 'fuel_nivel'],
-  loadFL: ['carga_fl', 'load_fl', 'carga_di', 'load_fl_'],
-  loadFR: ['carga_fr', 'load_fr', 'carga_dd'],
-  loadRL: ['carga_rl', 'load_rl', 'carga_ti'],
-  loadRR: ['carga_rr', 'load_rr', 'carga_td'],
-};
 
 const state = {
   laps: [],
@@ -55,42 +41,17 @@ const state = {
   tab: 'vuelta',
   curvas: [],
   charts: { lines: [], inputs: [] },
+  curvas: [],
+  curvasKey: null,
   mapa: { canal: 'speed', frenada: true, cambios: false, tresD: false, rot: 0, alt: 3, visual: 'canal', bordes: true, zoom: 1, panX: 0, panY: 0, s0: 1, cx: 0, cy: 0, resetView: true, projKey: '', projRes: null },
   mapaSectores: { tresD: false, rot: 0, alt: 3 },
+  pistaAi: null,
 };
 
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /* ---------- utilidades numéricas ---------- */
-
-function aNumero(v) {
-  if (v === null || v === undefined || v === '') return NaN;
-  const n = typeof v === 'number' ? v : parseFloat(String(v).replace(',', '.'));
-  return Number.isFinite(n) ? n : NaN;
-}
-
-function normCol(name) {
-  return String(name).replace(/^\uFEFF/, '').trim().toLowerCase();
-}
-
-function columnasDe(fields) {
-  const mapa = {};
-  const bajas = (fields || []).map((f) => ({ orig: f, low: normCol(f) }));
-  for (const [clave, opciones] of Object.entries(ALIAS)) {
-    const encontrado = bajas.find((f) => opciones.includes(f.low));
-    if (encontrado) mapa[clave] = encontrado.orig;
-  }
-  if (mapa.x === undefined) {
-    const e = bajas.find((f) => /^(pos|position|world|car|coche)[_\s]?x(_?m)?$/.test(f.low) || f.low === 'x');
-    if (e) mapa.x = e.orig;
-  }
-  if (mapa.z === undefined) {
-    const e = bajas.find((f) => /^(pos|position|world|car|coche)[_\s]?z(_?m)?$/.test(f.low) || f.low === 'z');
-    if (e) mapa.z = e.orig;
-  }
-  return mapa;
-}
 
 function normalizarPedal(valores) {
   let max = 0;
@@ -162,19 +123,6 @@ function colorMap(t) {
 
 /* ---------- carga ---------- */
 
-function parsearArchivoCSV(file) {
-  return new Promise((resolve, reject) => {
-    Papa.parse(file, {
-      header: true,
-      dynamicTyping: true,
-      skipEmptyLines: true,
-      transformHeader: (h) => h.replace(/^\uFEFF/, '').trim(),
-      complete: (res) => resolve({ file, rows: res.data, fields: res.meta.fields || [] }),
-      error: (err) => reject(err),
-    });
-  });
-}
-
 function unwrap(rads) {
   const out = new Array(rads.length);
   if (!rads.length) return out;
@@ -189,7 +137,7 @@ function unwrap(rads) {
   return out;
 }
 
-/** Rumbo a partir de posiciones (x, z), para CSVs sin columna de yaw. */
+/** Rumbo a partir de posiciones (x, z), respaldo cuando la serie de yaw viene vacía o nula. */
 function rumboDePosiciones(x, z) {
   const n = Math.min(x.length, z.length);
   const out = new Array(n);
@@ -260,32 +208,14 @@ function crearLap(name, s, visible = true) {
       loadFR: s.loadFR || dist.map(() => NaN),
       loadRL: s.loadRL || dist.map(() => NaN),
       loadRR: s.loadRR || dist.map(() => NaN),
+      slipFL: s.slipFL || dist.map(() => NaN),
+      slipFR: s.slipFR || dist.map(() => NaN),
+      slipRL: s.slipRL || dist.map(() => NaN),
+      slipRR: s.slipRR || dist.map(() => NaN),
       fuel: s.fuel || dist.map(() => NaN),
     },
     grid: null,
   };
-}
-
-function construirVueltaCSV({ file, rows, fields }) {
-  const cols = columnasDe(fields);
-  if (cols.x === undefined || cols.z === undefined) {
-    const nombres = (fields || []).slice(0, 14).join(', ');
-    throw new Error(
-      `"${file.name}": faltan columnas de posición (busco x/z o pos_x/pos_z). ` +
-      `Columnas detectadas: ${nombres}${(fields || []).length > 14 ? '…' : ''}`
-    );
-  }
-  const col = (clave) => (cols[clave] === undefined ? rows.map(() => NaN) : rows.map((r) => aNumero(r[cols[clave]])));
-  const series = {
-    x: col('x'), z: col('z'), y: col('y'),
-    speed: col('speed'), time: col('time'), gear: col('gear'),
-    throttle: col('throttle'), brake: col('brake'),
-    rpm: col('rpm'), steer: col('steer'), yaw: col('yaw'),
-    loadFL: col('loadFL'), loadFR: col('loadFR'), loadRL: col('loadRL'), loadRR: col('loadRR'),
-    fuel: col('fuel'),
-  };
-  if (cols.distance !== undefined) series.dist = col('distance');
-  return crearLap(file.name.replace(/\.csv$/i, ''), series);
 }
 
 /* ---------- validez de vueltas ---------- */
@@ -371,7 +301,7 @@ async function parsearReplay(file) {
     }
 
     const X = [], Y = [], Z = [], V = [], GE = [], GAS = [], FREN = [], VUELTA = [], TIME = [];
-    const RPM = [], STEER = [], YAW = [], LF = [], RF = [], LR = [], RR = [], FUEL = [];
+    const RPM = [], STEER = [], YAW = [], LF = [], RF = [], LR = [], RR = [], FUEL = [], SLIP = [];
     for (let i = 0; i < frames; i++) {
       const o = pos;
       pos += 256;
@@ -395,6 +325,7 @@ async function parsearReplay(file) {
       GAS.push(u8[o + 244]);
       FREN.push(u8[o + 245]);
       VUELTA.push(u8[o + 246]);
+      SLIP.push([halfToFloat(dv.getUint16(o + 188, true)), halfToFloat(dv.getUint16(o + 190, true)), halfToFloat(dv.getUint16(o + 192, true)), halfToFloat(dv.getUint16(o + 194, true))]); // slip_ratio: 4×f16 (FL, FR, RL, RR)
       if (i < frames - 1) pos += 20 + wings * 4;
     }
     pos += wings * 4;
@@ -414,13 +345,14 @@ async function parsearReplay(file) {
     for (const lap of laps) {
       const idxs = lap.indices;
       if (idxs.length < 2) continue;
-      const serie = { x: [], z: [], y: [], speed: [], throttle: [], brake: [], gear: [], time: [], rpm: [], steer: [], yaw: [], loadFL: [], loadFR: [], loadRL: [], loadRR: [], fuel: [] };
+      const serie = { x: [], z: [], y: [], speed: [], throttle: [], brake: [], gear: [], time: [], rpm: [], steer: [], yaw: [], loadFL: [], loadFR: [], loadRL: [], loadRR: [], slipFL: [], slipFR: [], slipRL: [], slipRR: [], fuel: [] };
       for (const i of idxs) {
         serie.x.push(X[i]); serie.y.push(Y[i]); serie.z.push(Z[i]);
         serie.speed.push(V[i]); serie.throttle.push(GAS[i]); serie.brake.push(FREN[i]);
         serie.gear.push(GE[i]); serie.time.push(TIME[i]);
         serie.rpm.push(RPM[i]); serie.steer.push(STEER[i]); serie.yaw.push(YAW[i]);
         serie.loadFL.push(LF[i]); serie.loadFR.push(RF[i]); serie.loadRL.push(LR[i]); serie.loadRR.push(RR[i]);
+        serie.slipFL.push(SLIP[i][0]); serie.slipFR.push(SLIP[i][1]); serie.slipRL.push(SLIP[i][2]); serie.slipRR.push(SLIP[i][3]);
         serie.fuel.push(FUEL[i]);
       }
       const distArr = distanciaAcumulada(serie.x, serie.z);
@@ -442,13 +374,14 @@ async function cargarArchivos(fileList) {
   const files = Array.from(fileList);
   if (!files.length) return;
   try {
+    // La pista (fast_lane.ai) puede venir suelta o junto con el replay.
+    const ais = files.filter((f) => /\.ai$/i.test(f.name));
+    const restantes = files.filter((f) => !/\.ai$/i.test(f.name));
+    if (ais.length) await cargarPistaAi(ais);
+
     const nuevas = [];
-    for (const f of files) {
-      if (/\.csv$/i.test(f.name)) {
-        const lap = construirVueltaCSV(await parsearArchivoCSV(f));
-        lap.csv = true;
-        nuevas.push(lap);
-      } else if (/\.acreplay$/i.test(f.name)) {
+    for (const f of restantes) {
+      if (/\.acreplay$/i.test(f.name)) {
         const candidatas = await parsearReplay(f);
         const elegidas = await preguntarVueltas(f.name, candidatas); // Set de índices
         for (let i = 0; i < candidatas.length; i++) {
@@ -459,7 +392,7 @@ async function cargarArchivos(fileList) {
           nuevas.push(l);
         }
       } else {
-        throw new Error(`"${f.name}": extensión no soportada (CSV o .acreplay).`);
+        throw new Error(`"${f.name}": extensión no soportada (.acreplay o fast_lane.ai).`);
       }
     }
     for (const l of nuevas) {
@@ -469,15 +402,14 @@ async function cargarArchivos(fileList) {
       l.vmedia = dur > 0 && Number.isFinite(l.dist) ? l.dist / dur : 0;
     }
     clasificarVueltas(nuevas);
-    for (const l of nuevas) if (l.csv) l.visible = l.valida;
     if (!nuevas.length) return;
     state.laps.push(...nuevas);
     const vs = visibleLaps();
     if (state.refId === null && vs.length) state.refId = vs[0].id;
     if (state.lapBId === null && vs.length > 1) state.lapBId = vs[1].id;
     ocultarError();
-    mostrarDashboard();
-    recomputar();
+    if (puedeEntrar()) { mostrarDashboard(); recomputar(); }
+    else mostrarError(FALTA_PISTA);
   } catch (e) {
     mostrarError(e.message || String(e));
   }
@@ -583,6 +515,8 @@ function recomputar() {
       accLong: RL(r.dist, r.accLong), accLat: RL(r.dist, r.accLat), accTotal: RL(r.dist, r.accTotal),
       loadFL: RL(r.dist, r.loadFL), loadFR: RL(r.dist, r.loadFR),
       loadRL: RL(r.dist, r.loadRL), loadRR: RL(r.dist, r.loadRR),
+      slipFL: RL(r.dist, r.slipFL), slipFR: RL(r.dist, r.slipFR),
+      slipRL: RL(r.dist, r.slipRL), slipRR: RL(r.dist, r.slipRR),
       fuel: RL(r.dist, r.fuel),
     };
   }
@@ -623,6 +557,7 @@ function renderListaVueltas() {
       `<button class="vuelta-eye ${l.visible ? 'on' : ''}" title="${l.visible ? 'Ocultar la vuelta' : 'Mostrar la vuelta'}" aria-label="${l.visible ? 'Ocultar la vuelta' : 'Mostrar la vuelta'}" aria-pressed="${!!l.visible}">${l.visible ? ICONO_OJO : ICONO_OJO_TACHADO}</button>`;
     li.querySelector('.vuelta-info').addEventListener('click', () => {
       state.refId = l.id; renderListaVueltas(); renderReadoutsBase(); updateUI();
+      if (state.tab === 'curvas') renderTabActiva();
     });
     const ojo = li.querySelector('.vuelta-eye');
     ojo.addEventListener('click', (ev) => {
@@ -738,6 +673,7 @@ function renderTabActiva() {
   if (state.tab === 'vuelta') renderVuelta(laps);
   else if (state.tab === 'mapa') renderMapa(laps);
   else if (state.tab === 'comparacion') renderComparacion(laps);
+  else if (state.tab === 'curvas') renderCurvas(laps);
 }
 
 function renderVuelta(laps) {
@@ -776,8 +712,6 @@ function renderVuelta(laps) {
     ];
     state.charts.inputs.push(new uPlot(oIn, [state.grid, l.grid.throttle, l.grid.brake], div));
   });
-
-  drawTraction(laps);
 }
 
 function renderMapa(laps) {
@@ -802,18 +736,393 @@ function renderConjunto(laps) {
   renderTeorica(laps);
 }
 
+/* ---------- pestaña Curvas ---------- */
+
+function renderCurvas(laps) {
+  const ref = lapRef();
+  const curvas = ref ? calcularCurvas(ref) : [];
+  if (!curvas.length) {
+    const t = $('tabla-curvas');
+    if (t) t.innerHTML = '<em class="vacio">Sin curvas detectadas. Cargá el fast_lane.ai.</em>';
+    const c = prepCanvas('ch-curvas', 260);
+    if (c) { c.ctx.fillStyle = '#8b97a8'; c.ctx.font = '12px "Segoe UI"'; c.ctx.fillText('sin curvas', 12, 20); }
+    renderDeltaCurvas(ref);
+    return;
+  }
+  drawMapaCurvas(curvas);
+  drawCurvasTiempos(laps, curvas);
+  drawTractionCurvas(laps, curvas);
+  renderTablaCurvas(laps, curvas);
+  renderDeltaCurvas(ref);
+}
+
+function drawCurvasTiempos(laps, curvas) {
+  const c = prepCanvas('ch-curvas', 260);
+  if (!c) return;
+  const { ctx, w, h, cv } = c;
+  const tab = laps.map((l) => ({ l, s: curvas.map((cx) => metricasCurva(l, cx).tCurva) }));
+  const todos = tab.flatMap((m) => m.s).filter(Number.isFinite);
+  if (!todos.length) { ctx.fillStyle = '#8b97a8'; ctx.font = '12px "Segoe UI"'; ctx.fillText('sin tiempos de curva', 12, 20); return; }
+  const maxS = Math.max(...todos);
+  const pad = 28, groupW = (w - pad * 2) / curvas.length;
+  const barW = groupW / (laps.length + 1);
+  const rects = [];
+  tab.forEach((m, li) => m.s.forEach((v, ci) => {
+    if (!Number.isFinite(v)) return;
+    const x = pad + ci * groupW + li * barW + 1;
+    const bh = (v / maxS) * (h - pad * 2 - 12);
+    ctx.fillStyle = hexA(m.l.color, 0.9);
+    ctx.fillRect(x, h - pad - bh, Math.max(barW - 2, 1), bh);
+    rects.push({ x, y: h - pad - bh, w: Math.max(barW - 2, 1), h: bh, v, name: m.l.name, color: m.l.color, ci });
+  }));
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#8b97a8'; ctx.font = (curvas.length > 22 ? '9px' : '11px') + ' "Segoe UI"';
+  for (let i = 0; i < curvas.length; i++) ctx.fillText(curvas[i].nombre, pad + i * groupW + groupW / 2, h - 15);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+  ctx.fillText('tiempo por curva (s)', 4, 14);
+  cv._curvaRects = rects;
+  cv.onmousemove = hoverCurvas;
+  cv.onmouseleave = ocultarTooltip;
+}
+
+function hoverCurvas(ev) {
+  const cv = ev.currentTarget;
+  const tt = $('tt-curvas');
+  if (!tt || !cv._curvaRects) return;
+  const card = cv.parentElement;
+  const r = card.getBoundingClientRect();
+  const b = cv._curvaRects.find((q) =>
+    ev.offsetX >= q.x && ev.offsetX <= q.x + q.w && ev.offsetY >= q.y && ev.offsetY <= q.y + q.h);
+  if (!b) { tt.hidden = true; return; }
+  const cx = state.curvas[b.ci];
+  tt.textContent = `${cx.nombre} (${sentidoCurva(cx)}) · ${b.name}: ${fmtTiempo(b.v)}`;
+  tt.style.left = `${ev.clientX - r.left + 14}px`;
+  tt.style.top = `${ev.clientY - r.top + 12}px`;
+  if (tt.hidden) tt.hidden = false;
+}
+
+/* Vista propia (top-down) de la vuelta REF con cada arco coloreado y etiquetado. */
+function drawMapaCurvas(curvas) {
+  const ref = lapRef();
+  const c = prepCanvas('ch-mapa-curvas', 260);
+  if (!c || !ref || !ref.grid) return;
+  const { ctx } = c;
+  const p = proyectarLaps([ref], { tresD: false, rot: 0, alt: 0 });
+  const view = construirVistaLocal(c.cv, p);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (state.mapa.bordes) drawBordePista(ctx, view.tf, view.proj, envPista([ref]));
+  const gx = ref.grid.x, gz = ref.grid.z, gy = ref.grid.y;
+  ctx.strokeStyle = 'rgba(148,163,184,0.28)'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i < gx.length; i++) {
+    const [x, y] = view.tf(...view.proj(gx[i], gz[i], gy[i]));
+    if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+  }
+  ctx.stroke();
+  ctx.textAlign = 'center'; ctx.font = '10px "Segoe UI"';
+  curvas.forEach((cx, k) => {
+    const { i0, i1 } = indicesCurva(cx);
+    const col = PALETA[k % PALETA.length];
+    ctx.strokeStyle = col; ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    for (let i = i0; i <= i1; i++) {
+      const [x, y] = view.tf(...view.proj(gx[i], gz[i], gy[i]));
+      if (i === i0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    const ja = clamp(Math.round(cx.dApex / state.gridStep), 0, gx.length - 1);
+    const [ax, ay] = view.tf(...view.proj(gx[ja], gz[ja], gy[ja]));
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(ax, ay, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#e7edf5';
+    ctx.fillText(cx.nombre, ax, ay - 7);
+  });
+}
+
+/* Bloques por curva: cada curva es una tarjeta encuadrada; dentro, una fila de
+   tiles de estadísticas por vuelta. */
+function renderTablaCurvas(laps, curvas) {
+  const cont = $('tabla-curvas');
+  if (!cont) return;
+  const mejores = curvas.map(() => Infinity);
+  for (const l of laps) curvas.forEach((cx, i) => {
+    const t = metricasCurva(l, cx).tCurva;
+    if (Number.isFinite(t) && t < mejores[i]) mejores[i] = t;
+  });
+  const multi = laps.length > 1;
+  cont.innerHTML = curvas.map((cx, i) => {
+    const filas = laps.map((l) => ({ l, m: metricasCurva(l, cx) }));
+    return `<div class="curva-bloque">
+      <div class="curva-cab">
+        <span class="curva-nombre">${cx.nombre}</span>
+        <span class="curva-dato">${sentidoCurva(cx) === 'izquierda' ? 'izq' : 'der'}</span>
+        <span class="curva-dato">${cx.largo.toFixed(0)} m</span>
+        <span class="curva-dato">R ${cx.rmin.toFixed(0)} m</span>
+      </div>
+      <div class="curva-filas">` +
+      filas.map((f) => {
+        const esMejor = multi && Number.isFinite(f.m.tCurva) && f.m.tCurva <= mejores[i] + 1e-6;
+        const stat = (valor, etiqueta, mono) =>
+          `<span class="stat"><b class="${mono ? 'mono' : ''}">${valor}</b><label>${etiqueta}</label></span>`;
+        return `<div class="curva-fila">
+          <span class="curva-vuelta"><i style="background:${f.l.color}"></i>${f.l.name}</span>
+          <span class="curva-stats">` +
+            stat(Number.isFinite(f.m.vMin) ? f.m.vMin.toFixed(0) : '–', 'v mín', true) +
+            stat(Number.isFinite(f.m.vApex) ? f.m.vApex.toFixed(0) : '–', 'v apex', true) +
+            stat(fmtTiempo(f.m.tCurva), 'T curva' + (esMejor ? ' · mejor' : ''), true) +
+            stat(Number.isFinite(f.m.dFren) ? f.m.dFren.toFixed(0) : '–', 'freno', true) +
+            stat(Number.isFinite(f.m.dAcel) ? f.m.dAcel.toFixed(0) : '–', 'reacel', true) +
+          `</span>
+        </div>`;
+      }).join('') +
+      '</div></div>';
+  }).join('');
+}
+
+/* ---------- delta A/B por curva (fase 2) ---------- */
+
+/* Compara dos vueltas curva por curva. Ventana = arco i0..i1 (idéntica a `tCurva`).
+   ΔT > 0 = A más lento; Δv > 0 = A con más velocidad. */
+function deltaCurvas(A, B) {
+  const fi = Number.isFinite;
+  return state.curvas.map((c) => {
+    const a = metricasCurva(A, c), b = metricasCurva(B, c);
+    return {
+      c,
+      dT: a.tCurva - b.tCurva,
+      dvMin: a.vMin - b.vMin,
+      dvApex: a.vApex - b.vApex,
+      dFren: fi(a.dFren) && fi(b.dFren) ? a.dFren - b.dFren : NaN,
+      dAcel: fi(a.dAcel) && fi(b.dAcel) ? a.dAcel - b.dAcel : NaN,
+    };
+  });
+}
+
+function fmtDelta(v, unidad, dec) {
+  if (!Number.isFinite(v)) return '–';
+  return (v >= 0 ? '+' : '') + v.toFixed(dec) + (unidad ? ' ' + unidad : '');
+}
+
+/* Clase de color según qué lado gana. `mejor`: 'menor' (ΔT, menos es mejor),
+   'mayor' (Δv, más es mejor) o null (sin color). */
+function claseDelta(v, mejor) {
+  if (!Number.isFinite(v) || Math.abs(v) < 0.001 || !mejor) return '';
+  const gana = mejor === 'menor' ? v < 0 : v > 0;
+  return gana ? 'delta-gana' : 'delta-pierde';
+}
+
+function drawBarrasDelta(A, B, dif) {
+  const c = prepCanvas('ch-curva-delta', 220);
+  if (!c) return;
+  const { ctx, w, h } = c;
+  ctx.font = '11px "Segoe UI"';
+  if (!dif) { ctx.fillStyle = '#8b97a8'; ctx.fillText('Elegí dos vueltas distintas (A vs B).', 12, 20); return; }
+  const vals = dif.map((d) => d.dT).filter(Number.isFinite);
+  if (!vals.length) { ctx.fillStyle = '#8b97a8'; ctx.fillText('sin tiempos de curva', 12, 20); return; }
+  const maxAbs = Math.max(...vals.map(Math.abs), 0.001);
+  const pad = 30, n = dif.length, groupW = (w - pad * 2) / n, cy = h / 2 + 6;
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.beginPath(); ctx.moveTo(pad, cy); ctx.lineTo(w - pad, cy); ctx.stroke();
+  ctx.textAlign = 'center';
+  dif.forEach((d, i) => {
+    if (!Number.isFinite(d.dT)) return;
+    const x = pad + i * groupW;
+    const bh = (d.dT / maxAbs) * (h / 2 - pad);
+    ctx.fillStyle = d.dT >= 0 ? '#f87171' : '#4ade80';
+    ctx.fillRect(x + 3, d.dT >= 0 ? cy - bh : cy, Math.max(groupW - 6, 1), Math.abs(bh));
+    ctx.fillStyle = '#8b97a8';
+    ctx.fillText(d.c.nombre, x + groupW / 2, h - 8);
+  });
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#8b97a8';
+  ctx.fillText(`Δ tiempo por curva (s)  ·  ${A.name} − ${B.name}  (rojo = A pierde)`, 4, 14);
+}
+
+function tablaDeltaHTML(dif) {
+  const filas = dif.map((d) => `<tr>
+      <td class="mono">${d.c.nombre}</td>
+      <td>${sentidoCurva(d.c) === 'izquierda' ? 'izq' : 'der'}</td>
+      <td class="mono ${claseDelta(d.dT, 'menor')}">${fmtDelta(d.dT, 's', 2)}</td>
+      <td class="mono ${claseDelta(d.dvMin, 'mayor')}">${fmtDelta(d.dvMin, 'km/h', 1)}</td>
+      <td class="mono ${claseDelta(d.dvApex, 'mayor')}">${fmtDelta(d.dvApex, 'km/h', 1)}</td>
+      <td class="mono ${claseDelta(d.dFren, 'mayor')}">${fmtDelta(d.dFren, 'm', 1)}</td>
+      <td class="mono ${claseDelta(d.dAcel, 'menor')}">${fmtDelta(d.dAcel, 'm', 1)}</td>
+    </tr>`).join('');
+  return `<table class="tabla-delta">
+    <thead><tr>
+      <th>Curva</th><th>Sentido</th>
+      <th title="Δ tiempo en la curva (s). Negativo = A más rápido">ΔT</th>
+      <th title="Δ velocidad mínima (km/h). Positivo = A más rápido en el punto lento">Δv mín</th>
+      <th title="Δ velocidad en el ápex (km/h). Positivo = A más rápido">Δv ápex</th>
+      <th title="Δ distancia del punto de frenada (m). Positivo = A frena más tarde">Δ frenada</th>
+      <th title="Δ distancia de reaceleración (m). Negativo = A vuelve antes a fondo">Δ reaceleración</th>
+    </tr></thead>
+    <tbody>${filas}</tbody></table>
+    <p class="delta-leyenda">Verde = A mejor en esa métrica · rojo = A peor (todo relativo a B).</p>`;
+}
+
+function renderDeltaCurvas(A) {
+  poblarSelB();
+  const B = lapB();
+  const hay = A && B && A.id !== B.id && state.curvas.length;
+  const dif = hay ? deltaCurvas(A, B) : null;
+  drawBarrasDelta(A, B, dif);
+  const cont = $('tabla-curva-delta');
+  if (cont) cont.innerHTML = hay ? tablaDeltaHTML(dif) : '<em class="vacio">Elegí dos vueltas distintas (A vs B).</em>';
+}
+
+/* Puntos g-g (con marcadores de slip) de una curva, sobre la grilla común. */
+function puntosDeCurva(laps, cx) {
+  const { i0, i1 } = indicesCurva(cx);
+  const clampSlip = (v) => clamp(v, -1, 1);
+  const pts = [];
+  for (const l of laps) {
+    const al = l.grid.accLong, at = l.grid.accLat;
+    const sf = l.grid.slipFL || [], sr = l.grid.slipFR || [], vel = l.grid.speed;
+    for (let i = i0; i <= i1; i++) {
+      if (!Number.isFinite(al[i]) || !Number.isFinite(at[i])) continue;
+      let spin = false, lock = false;
+      if (Number.isFinite(vel[i]) && vel[i] > SLIP_VEL_MIN) {
+        const s1 = Number.isFinite(sf[i]) ? clampSlip(sf[i]) : 0;
+        const s2 = Number.isFinite(sr[i]) ? clampSlip(sr[i]) : 0;
+        if (Math.max(s1, s2) > SLIP_SPIN) spin = true;
+        if (Math.min(s1, s2) < SLIP_LOCK) lock = true;
+      }
+      pts.push({ lat: at[i] / G, lon: al[i] / G, color: l.color, spin, lock });
+    }
+  }
+  return pts;
+}
+
+/* Círculo de tracción por curva: un mini g-g por arco, con escala común.
+   Orientación: acelerador arriba, freno abajo, der derecha, izq izquierda.
+   Marcadores: triángulo ámbar = rueda deslizando, X roja = rueda bloqueada.
+   Click en una tarjeta → abre el overlay con el diagrama en grande. */
+function drawTractionCurvas(laps, curvas) {
+  const cont = $('traction-curvas');
+  if (!cont) return;
+  const porCurva = curvas.map((cx) => puntosDeCurva(laps, cx));
+  let maxG = 1.5;
+  for (const pts of porCurva) {
+    const esc = pts.flatMap((p) => [Math.abs(p.lat), Math.abs(p.lon)]).sort((a, b) => a - b);
+    if (esc.length) maxG = Math.max(maxG, Math.ceil(esc[Math.floor(esc.length * 0.99)] * 2) / 2);
+  }
+  cont.innerHTML = '';
+  curvas.forEach((cx, k) => {
+    const card = document.createElement('div');
+    card.className = 'traction-curva';
+    card.style.cursor = 'pointer';
+    card.title = 'Click para ampliar';
+    const titulo = document.createElement('div');
+    titulo.className = 'traction-titulo';
+    titulo.innerHTML = `<span>${cx.nombre}</span><span class="unidad">${sentidoCurva(cx) === 'izquierda' ? 'izq' : 'der'} · R${cx.rmin.toFixed(0)} m</span>`;
+    const cv = document.createElement('canvas');
+    cv.className = 'traction-canvas';
+    card.appendChild(titulo);
+    card.appendChild(cv);
+    cont.appendChild(card);
+    dibujarCirculoTraction(cv, porCurva[k], maxG);
+    card.addEventListener('click', () => abrirZoomTraction(cx, laps, maxG));
+  });
+  observarTractionCurvas(cont, laps, curvas, maxG);
+}
+
+/* Abre el overlay (#zoom-teorico) con el diagrama de tracción de la curva en grande. */
+function abrirZoomTraction(cx, laps, maxG) {
+  const ov = $('zoom-teorico');
+  if (!ov) return;
+  zoomTeorico.modo = 'traccion';
+  zoomTeorico.data = { tipo: 'traccion', cx, pts: puntosDeCurva(laps, cx), maxG };
+  zoomTeorico.zoom = 1; zoomTeorico.panX = 0; zoomTeorico.panY = 0;
+  const titulo = $('zoom-titulo');
+  if (titulo) titulo.textContent = `Tracción · ${cx.nombre} (${sentidoCurva(cx)}) · R ${cx.rmin.toFixed(0)} m`;
+  ov.classList.remove('oculto');
+  ov.setAttribute('aria-hidden', 'false');
+  zoomTeorico.abierto = true;
+  dibujarZoomTeorico();
+  $('zoom-cerrar')?.focus();
+}
+
+/* Redibuja las tracciones si cambia el tamaño del contenedor (evita circulos deformados). */
+let _obsTraction = null;
+function observarTractionCurvas(cont, laps, curvas, maxG) {
+  if (typeof ResizeObserver === 'undefined') return;
+  if (_obsTraction) _obsTraction.disconnect();
+  const dibujar = () => dibujarTractionCurvas(laps, curvas);
+  _obsTraction = new ResizeObserver(dibujar);
+  _obsTraction.observe(cont);
+}
+
+function marcaTriangulo(ctx, x, y, s, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y - s);
+  ctx.lineTo(x - s, y + s);
+  ctx.lineTo(x + s, y + s);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function marcaCruz(ctx, x, y, s, color) {
+  ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x - s, y - s); ctx.lineTo(x + s, y + s);
+  ctx.moveTo(x + s, y - s); ctx.lineTo(x - s, y + s);
+  ctx.stroke();
+}
+
+/* Dibuja el g-g en un contexto ya preparado (lo usan el mini y el zoom). */
+function pintarCirculoTraction(ctx, w, h, pts, maxG) {
+  const size = Math.min(w, h);
+  const cx = w / 2, cy = h / 2, R = size / 2 - 20;
+  const px = (lat) => cx + (lat / maxG) * R;
+  const py = (lon) => cy - (lon / maxG) * R;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1;
+  for (const r of [0.5, 1]) { ctx.beginPath(); ctx.arc(cx, cy, r * R, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '11px "Segoe UI"'; ctx.textAlign = 'center';
+  ctx.fillText('acel.', cx, cy - R - 6);
+  ctx.fillText('frena', cx, cy + R + 14);
+  ctx.textAlign = 'right'; ctx.fillText('der.', cx + R, cy - 5);
+  ctx.textAlign = 'left'; ctx.fillText('izq.', cx - R, cy - 5);
+  ctx.textAlign = 'left';
+  for (const p of pts) {
+    const X = px(p.lat), Y = py(p.lon);
+    ctx.fillStyle = hexA(p.color, 0.35);
+    ctx.fillRect(X - 1, Y - 1, 2, 2);
+    if (p.spin) marcaTriangulo(ctx, X, Y, 5, '#facc15');
+    if (p.lock) marcaCruz(ctx, X, Y, 5, '#f87171');
+  }
+  ctx.fillStyle = '#8b97a8'; ctx.font = '10px "Segoe UI"';
+  ctx.fillText(`±${maxG.toFixed(1)} g`, 8, 16);
+}
+
+function dibujarCirculoTraction(cv, pts, maxG) {
+  let w = cv.clientWidth, h = cv.clientHeight;
+  if (!w && h) w = h;
+  else if (!h && w) h = w;
+  if (!w || !h) return;
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  const ctx = cv.getContext('2d');
+  if (!ctx) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  pintarCirculoTraction(ctx, w, h, pts, maxG);
+}
+
+
 function poblarSelB() {
-  const sel = $('sel-lap-b');
-  if (!sel) return;
   const laps = visibleLaps();
   if (!laps.some((l) => l.id === state.lapBId)) {
     const sig = laps.find((l) => l.id !== state.refId);
     state.lapBId = sig ? sig.id : (laps[0] || { id: null }).id;
   }
-  const vsA = $('vs-a');
   const ref = lapRef();
-  sel.innerHTML = laps.map((l) => `<option value="${l.id}"${l.id === state.lapBId ? ' selected' : ''}>${l.name}</option>`).join('');
-  if (vsA) vsA.textContent = ref ? ref.name : '–';
+  const opts = laps.map((l) => `<option value="${l.id}"${l.id === state.lapBId ? ' selected' : ''}>${l.name}</option>`).join('');
+  for (const id of ['sel-lap-b', 'sel-lap-b-curvas']) { const s = $(id); if (s) s.innerHTML = opts; }
+  for (const id of ['vs-a', 'vs-a-curvas']) { const el = $(id); if (el) el.textContent = ref ? ref.name : '–'; }
 }
 
 function renderComparacion(laps) {
@@ -841,37 +1150,6 @@ function prepCanvas(id, fallbackH) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
   return { cv, ctx, w, h };
-}
-
-function drawTraction(laps) {
-  const c = prepCanvas('chart-traction', 300);
-  if (!c) return;
-  const { ctx, w, h } = c;
-  const pts = [];
-  for (const l of laps) {
-    const { accLong, accLat } = l.raw;
-    const step = Math.max(1, Math.floor(accLong.length / 1500));
-    for (let i = 0; i < accLong.length; i += step) {
-      if (!Number.isFinite(accLong[i]) || !Number.isFinite(accLat[i])) continue;
-      pts.push([accLong[i] / G, accLat[i] / G, l.color]);
-    }
-  }
-  let maxG = 1;
-  if (pts.length) {
-    const esc = pts.flatMap(([x, y]) => [Math.abs(x), Math.abs(y)]).sort((a, b) => a - b);
-    maxG = Math.max(1, Math.ceil(esc[Math.floor(esc.length * 0.99)]));
-  }
-  const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 24;
-  const sx = (v) => cx + (v / maxG) * R;
-  const sy = (v) => cy - (v / maxG) * R;
-  ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1;
-  for (const r of [0.5, 1]) { ctx.beginPath(); ctx.arc(cx, cy, (r * R), 0, Math.PI * 2); ctx.stroke(); }
-  ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '11px "Segoe UI"';
-  ctx.fillText('acel.', cx + R - 34, cy - 8); ctx.fillText('frena', cx - R + 6, cy - 8);
-  ctx.fillText('izq.', cx - 16, cy + R - 8); ctx.fillText('der.', cx - 18, cy - R + 16);
-  for (const [x, y, color] of pts) { ctx.fillStyle = hexA(color, 0.25); ctx.fillRect(sx(x) - 1, sy(y) - 1, 2, 2); }
-  ctx.fillStyle = '#8b97a8'; ctx.fillText(`escala ±${maxG} g`, 8, 14);
 }
 
 /* ---------- carga por rueda ---------- */
@@ -1181,6 +1459,8 @@ function hoverSectores(ev) {
 function ocultarTooltip() {
   const tt = $('tt-sectores');
   if (tt) tt.hidden = true;
+  const tc = $('tt-curvas');
+  if (tc) tc.hidden = true;
 }
 
 /* Mapa de Conjunto: la vuelta REF dividida con el mismo corte de distancia
@@ -1195,14 +1475,7 @@ function drawMapaSectores() {
   const corte = state.maxDist / N_SECTORES;
   const gx = ref.grid.x, gz = ref.grid.z, gy = ref.grid.y;
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.strokeStyle = 'rgba(148,163,184,0.18)';
-  ctx.lineWidth = 5;
-  ctx.beginPath();
-  for (let i = 0; i < gx.length; i++) {
-    const [px, py] = view.tf(...view.proj(gx[i], gz[i], gy[i]));
-    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-  }
-  ctx.stroke();
+  if (state.mapa.bordes) drawBordePista(ctx, view.tf, view.proj, envPista([ref]));
   const ptsBySector = Array.from({ length: N_SECTORES }, () => []);
   for (let i = 0; i < gx.length; i++) {
     const s = Math.min(Math.floor(state.grid[i] / corte), N_SECTORES - 1);
@@ -1259,7 +1532,7 @@ function construirTrazada(laps) {
     const i1 = clamp(Math.round(((s + 1) * corte) / state.gridStep), 0, n - 1);
     tramos.push({ s, best, i0, i1 });
   }
-  const env = envolventePista(laps);
+  const env = envPista(laps);
   return { p, corte, n, matriz, tramos, env };
 }
 
@@ -1335,7 +1608,7 @@ function drawMapaTeorico(laps) {
 }
 
 /* Overlay ampliable de la trazada con zoom (rueda) y paneo (arrastre). */
-const zoomTeorico = { abierto: false, zoom: 1, panX: 0, panY: 0, data: null, arrastrando: false, lx: 0, ly: 0 };
+const zoomTeorico = { abierto: false, zoom: 1, panX: 0, panY: 0, data: null, arrastrando: false, lx: 0, ly: 0, modo: 'trazada' };
 
 function dibujarZoomTeorico() {
   const cv = $('ch-mapa-zoom');
@@ -1347,13 +1620,22 @@ function dibujarZoomTeorico() {
   if (!ctx || !ctx.setTransform) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
-  const base = construirVistaLocal(cv, zoomTeorico.data.p);
   const z = zoomTeorico.zoom, ox = zoomTeorico.panX, oy = zoomTeorico.panY;
-  const tf = (px, py) => {
-    const [x0, y0] = base.tf(px, py);
-    return [w / 2 + (x0 - w / 2) * z + ox, h / 2 + (y0 - h / 2) * z + oy];
-  };
-  pintarTrazada(ctx, w, h, { proj: zoomTeorico.data.p.proj, tf }, zoomTeorico.data);
+  if (zoomTeorico.modo === 'traccion') {
+    ctx.save();
+    ctx.translate(w / 2 + ox, h / 2 + oy);
+    ctx.scale(z, z);
+    ctx.translate(-w / 2, -h / 2);
+    pintarCirculoTraction(ctx, w, h, zoomTeorico.data.pts, zoomTeorico.data.maxG);
+    ctx.restore();
+  } else {
+    const base = construirVistaLocal(cv, zoomTeorico.data.p);
+    const tf = (px, py) => {
+      const [x0, y0] = base.tf(px, py);
+      return [w / 2 + (x0 - w / 2) * z + ox, h / 2 + (y0 - h / 2) * z + oy];
+    };
+    pintarTrazada(ctx, w, h, { proj: zoomTeorico.data.p.proj, tf }, zoomTeorico.data);
+  }
   const nivel = $('zoom-nivel');
   if (nivel) nivel.textContent = Math.round(z * 100) + '%';
 }
@@ -1361,6 +1643,7 @@ function dibujarZoomTeorico() {
 function abrirZoomTeorico() {
   const laps = state.laps.filter((l) => l.valida);
   if (!laps.length) return;
+  zoomTeorico.modo = 'trazada';
   zoomTeorico.data = construirTrazada(laps);
   zoomTeorico.zoom = 1; zoomTeorico.panX = 0; zoomTeorico.panY = 0;
   const ov = $('zoom-teorico');
@@ -1581,48 +1864,6 @@ function normalTrazado(nx, nz, i) {
   return [-dz / m, dx / m];
 }
 
-/* Silueta de la pista: banda formada por los bordes extremos reales de todas las trazadas.
-   La línea base es la posición media de todas las vueltas visibles, NO la de referencia:
-   así cada trazada (incluida la REF) queda donde pasa en realidad y no forzada al medio. */
-function envolventePista(laps) {
-  const n = state.grid.length;
-  const validas = laps.filter((l) => l && l.grid);
-  if (!validas.length || n < 3) return null;
-  const nx = new Array(n).fill(0), nz = new Array(n).fill(0), ny = new Array(n).fill(0);
-  const cnt = new Array(n).fill(0);
-  for (const l of validas) {
-    const g = l.grid;
-    for (let i = 0; i < n; i++) {
-      if (!Number.isFinite(g.x[i]) || !Number.isFinite(g.z[i])) continue;
-      nx[i] += g.x[i]; nz[i] += g.z[i]; cnt[i]++;
-      if (Number.isFinite(g.y[i])) ny[i] += g.y[i];
-    }
-  }
-  for (let i = 0; i < n; i++) {
-    if (cnt[i]) { nx[i] /= cnt[i]; nz[i] /= cnt[i]; if (ny[i]) ny[i] /= cnt[i]; }
-  }
-  const wl = new Array(n).fill(0), wr = new Array(n).fill(0);
-  for (const l of validas) {
-    const g = l.grid;
-    for (let i = 1; i < n - 1; i++) {
-      const dx = g.x[i] - nx[i], dz = g.z[i] - nz[i];
-      if (!Number.isFinite(dx) || !Number.isFinite(dz)) continue;
-      const [nmx, nmz] = normalTrazado(nx, nz, i);
-      const sig = dx * nmx + dz * nmz;
-      if (sig > wl[i]) wl[i] = sig;
-      if (-sig > wr[i]) wr[i] = -sig;
-    }
-  }
-  // borde izquierdo = la trazada más a la izquierda; derecho = la más a la derecha (con margen y mínimo)
-  // MIN_LADO alto: garantiza que la pista se vea como banda aunque haya una sola vuelta visible.
-  const MARGEN = 1.5, MIN_LADO = 7;
-  for (let i = 0; i < n; i++) {
-    wl[i] = Math.max(wl[i] + MARGEN, MIN_LADO);
-    wr[i] = Math.max(wr[i] + MARGEN, MIN_LADO);
-  }
-  return { nx, nz, ny, wl, wr };
-}
-
 /* Dibuja la banda de pista (relleno + bordes), sin ejes. */
 function drawBordePista(ctx, tf, proj, env) {
   const { nx, nz, ny, wl, wr } = env;
@@ -1647,6 +1888,213 @@ function drawBordePista(ctx, tf, proj, env) {
     for (let i = 1; i < n; i++) ctx.lineTo(arr[i][0], arr[i][1]);
     ctx.stroke();
   }
+}
+
+/* ---------- pista de referencia desde fast_lane.ai ---------- */
+
+/* Parsea un fast_lane.ai de Assetto Corsa: cabecera (4 int32, n = 2º),
+   n puntos de 20 bytes (x,y,z,dist,id) y un bloque opcional de 72 bytes/pto
+   con los semianchos izquierdo/derecho en los floats 6 y 7.
+   Devuelve { nx, nz, ny, ns, wl, wr } con ancho constante (rigido).
+   ns = distancia acumulada por punto (la del propio .ai). */
+function parsearAi(arrayBuffer) {
+  const dv = new DataView(arrayBuffer);
+  const bytes = new Uint8Array(arrayBuffer);
+  let pos = 0;
+  const i32 = () => { const v = dv.getInt32(pos, true); pos += 4; return v; };
+  const f32 = () => { const v = dv.getFloat32(pos, true); pos += 4; return v; };
+  i32(); const n = i32(); i32(); i32();
+  if (!(n >= 3) || n > 5000000 || pos + n * 20 > bytes.byteLength) throw new Error('fast_lane.ai: archivo inválido.');
+  const nx = new Array(n), ny = new Array(n), nz = new Array(n), ns = new Array(n);
+  for (let i = 0; i < n; i++) { nx[i] = f32(); ny[i] = f32(); nz[i] = f32(); ns[i] = f32(); i32(); }
+  const bordeI = new Array(n).fill(NaN), bordeD = new Array(n).fill(NaN);
+  if (pos + n * 72 <= bytes.byteLength) {
+    for (let i = 0; i < n; i++) {
+      const base = pos + i * 72;
+      const li = dv.getFloat32(base + 6 * 4, true);
+      const ld = dv.getFloat32(base + 7 * 4, true);
+      if (Number.isFinite(li) && li > 0 && li < 200) bordeI[i] = li;
+      if (Number.isFinite(ld) && ld > 0 && ld < 200) bordeD[i] = ld;
+    }
+  }
+  // Ancho constante (rigido): un unico semiancho real, igual en todos los puntos.
+  const MEDIO = 6;
+  const sumas = [];
+  for (let i = 0; i < n; i++) if (Number.isFinite(bordeI[i]) && Number.isFinite(bordeD[i])) sumas.push(bordeI[i] + bordeD[i]);
+  sumas.sort((a, b) => a - b);
+  const semiancho = sumas.length ? sumas[sumas.length >> 1] / 2 : MEDIO;
+  const wl = new Array(n).fill(semiancho);
+  const wr = new Array(n).fill(semiancho);
+  return { nx, nz, ny, ns, wl, wr };
+}
+
+/* Banda de pista: referencia real y fija del fast_lane.ai (no se adapta a las vueltas). */
+function envPista() {
+  return (state.pistaAi && state.pistaAi.env) || null;
+}
+
+/* ---------- detección de curvas sobre la línea central del .ai ---------- */
+
+/* Curvas base (en la distancia del propio .ai), cacheadas por env. */
+function curvasBase(env) {
+  if (!env._curvas) env._curvas = detectarCurvas(env);
+  return env._curvas;
+}
+
+/* Parte la línea central en arcos de curva a partir de su curvatura.
+   Entra en curva cuando R < R_CURVA y sale cuando R > R_RECTA (histéresis).
+   Cada arco se conserva por separado (sin unir chicanes). */
+function detectarCurvas(env) {
+  const { nx, nz, ns } = env;
+  const n = nx.length;
+  let s = ns;
+  let okS = Number.isFinite(ns[0]);
+  for (let i = 1; i < n && okS; i++) if (!(ns[i] > ns[i - 1])) okS = false;
+  if (!okS || !(ns[n - 1] > 0)) {
+    s = new Array(n); s[0] = 0;
+    for (let i = 1; i < n; i++) s[i] = s[i - 1] + Math.hypot(nx[i] - nx[i - 1], nz[i] - nz[i - 1]);
+  }
+  const th = new Array(n); th[0] = 0;
+  for (let i = 1; i < n; i++) {
+    let d = Math.atan2(nz[i] - nz[i - 1], nx[i] - nx[i - 1]) - th[i - 1];
+    d -= 2 * Math.PI * Math.round(d / (2 * Math.PI));
+    th[i] = th[i - 1] + d;
+  }
+  const kw = 6;
+  const ks = new Array(n), R = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const a = Math.max(0, i - kw), b = Math.min(n - 1, i + kw);
+    const ds = s[b] - s[a];
+    const k = ds > 0.5 ? (th[b] - th[a]) / ds : 0;
+    ks[i] = k;
+    R[i] = Math.abs(k) > 1e-6 ? 1 / Math.abs(k) : 1e6;
+  }
+  const curvas = [];
+  let dentro = false, i0 = 0, signo = 0;
+  const cerrar = (i1) => {
+    if (s[i1] - s[i0] < CURVA_LARGO_MIN) return;
+    let ap = i0, rmin = Infinity;
+    for (let i = i0; i <= i1; i++) if (R[i] < rmin) { rmin = R[i]; ap = i; }
+    const dth = th[i1] - th[i0];
+    curvas.push({ i0, i1, apex: ap, sIni: s[i0], sApex: s[ap], sFin: s[i1], largo: s[i1] - s[i0], rmin, dir: dth >= 0 ? 1 : -1, gir: Math.abs(dth) });
+  };
+  for (let i = 0; i < n; i++) {
+    if (!dentro) {
+      if (R[i] < R_CURVA) { dentro = true; i0 = i; signo = Math.sign(ks[i]); }
+    } else {
+      const sgn = Math.sign(ks[i]);
+      if (R[i] > R_RECTA) { cerrar(i); dentro = false; }
+      // Cambio de sentido dentro de la curva (chicane): cierra el arco y abre el siguiente.
+      else if (sgn && signo && sgn !== signo && R[i] < R_CURVA) { cerrar(i); i0 = i; signo = sgn; }
+    }
+  }
+  if (dentro) cerrar(n - 1);
+  curvas.forEach((c, k) => { c.idx = k + 1; c.nombre = 'C' + (k + 1); });
+  return curvas;
+}
+
+/* Proyecta los límites de cada arco (distancia sobre el .ai) al eje de distancia
+   de la vuelta REF: busca el punto más cercano de su línea central. */
+function mapearCurvas(env, curvas, ref) {
+  const gx = ref.grid.x, gz = ref.grid.z, m = gx.length;
+  const nes = (x, z) => {
+    let best = 0, bd = Infinity;
+    for (let j = 0; j < m; j++) {
+      const dx = gx[j] - x, dz = gz[j] - z;
+      const d = dx * dx + dz * dz;
+      if (d < bd) { bd = d; best = j; }
+    }
+    return best;
+  };
+  return curvas.map((c) => {
+    const d0 = state.grid[nes(env.nx[c.i0], env.nz[c.i0])];
+    let dA = state.grid[nes(env.nx[c.apex], env.nz[c.apex])];
+    let d1 = state.grid[nes(env.nx[c.i1], env.nz[c.i1])];
+    if (dA < d0) dA += state.maxDist;
+    if (d1 < dA) d1 += state.maxDist;
+    return Object.assign({}, c, { d0, dApex: dA, d1 });
+  });
+}
+
+/* Curvas mapeadas a la grilla común; se recalculan si cambia la REF o la pista. */
+function calcularCurvas(ref) {
+  const pista = state.pistaAi;
+  if (!pista || !ref || !ref.grid || !ref.grid.x || !ref.grid.x.length) { state.curvas = []; return state.curvas; }
+  const key = ref.id + '|' + pista.nombre + '|' + state.maxDist.toFixed(1);
+  if (state.curvas.length && state.curvasKey === key) return state.curvas;
+  state.curvas = mapearCurvas(pista.env, curvasBase(pista.env), ref);
+  state.curvasKey = key;
+  return state.curvas;
+}
+
+function indicesCurva(c) {
+  const n = state.grid.length;
+  return {
+    i0: clamp(Math.round(c.d0 / state.gridStep), 0, n - 1),
+    i1: clamp(Math.round(c.d1 / state.gridStep), 0, n - 1),
+  };
+}
+
+function sentidoCurva(c) { return c.dir > 0 ? 'derecha' : 'izquierda'; }
+
+/* Métricas de una vuelta dentro de una curva. */
+function metricasCurva(l, c) {
+  const { i0, i1 } = indicesCurva(c);
+  const g = l.grid;
+  let vMin = Infinity, iMin = i0;
+  for (let i = i0; i <= i1; i++) if (Number.isFinite(g.speed[i]) && g.speed[i] < vMin) { vMin = g.speed[i]; iMin = i; }
+  const t0 = g.time[i0], t1 = g.time[i1];
+  const tCurva = Number.isFinite(t0) && Number.isFinite(t1) && t1 >= t0 ? t1 - t0 : NaN;
+  let iFren = -1;
+  for (let i = i0; i <= i1; i++) if (Number.isFinite(g.brake[i]) && g.brake[i] > 0.45) { iFren = i; break; }
+  let iAcel = -1;
+  for (let i = iMin; i <= i1; i++) if (Number.isFinite(g.throttle[i]) && g.throttle[i] > 0.9) { iAcel = i; break; }
+  return {
+    vMin: Number.isFinite(vMin) ? vMin : NaN,
+    vIni: g.speed[i0], vApex: g.speed[iMin], vFin: g.speed[i1],
+    tCurva,
+    dFren: iFren >= 0 ? state.grid[iFren] : NaN,
+    dAcel: iAcel >= 0 ? state.grid[iAcel] : NaN,
+  };
+}
+
+
+async function cargarPistaAi(fileList) {
+  const ai = Array.from(fileList).find((f) => /\.ai$/i.test(f.name));
+  if (!ai) return;
+  try {
+    const env = parsearAi(await ai.arrayBuffer());
+    state.pistaAi = { env, nombre: ai.name };
+    actualizarBotonPista();
+    if (puedeEntrar()) {
+      const entrando = $('dashboard').classList.contains('oculto');
+      ocultarError();
+      mostrarDashboard();
+      if (entrando) recomputar();   // recomputar() ya redibuja la pestaña activa
+      else renderTabActiva();
+    }
+  } catch (e) {
+    mostrarError(e.message || String(e));
+  }
+}
+
+function quitarPistaAi() {
+  state.pistaAi = null;
+  actualizarBotonPista();
+  if (state.laps.length) {
+    $('dashboard').classList.add('oculto');
+    $('zona-carga').classList.remove('oculto');
+    $('btn-limpiar').disabled = true;
+    mostrarError(FALTA_PISTA);
+  }
+}
+
+function actualizarBotonPista() {
+  const btn = $('btn-pista');
+  const quitar = $('btn-pista-quitar');
+  const cargado = !!(state.pistaAi && state.pistaAi.env);
+  if (quitar) quitar.hidden = !cargado;
+  if (btn) btn.textContent = cargado ? `Pista: ${state.pistaAi.nombre}` : 'Cargar pista (fast_lane.ai)';
 }
 
 function drawCanal(ctx, laps, cache, tf, canal, vMin, vMax) {
@@ -1935,13 +2383,29 @@ function proyectarLaps(laps, cfg) {
     }
     cache.push(pts);
   }
+  // Encuadre fijo: incluir la banda real del .ai para que la pista entre completa
+  // y no quede recortada por el tamano de las vueltas.
+  const E = state.pistaAi && state.pistaAi.env;
+  if (E) {
+    const en = E.nx.length;
+    for (let i = 0; i < en; i++) {
+      const [nmx, nmz] = normalTrazado(E.nx, E.nz, i);
+      const ey = Number.isFinite(E.ny[i]) ? E.ny[i] : 0;
+      for (const sgn of [1, -1]) {
+        const w = sgn > 0 ? E.wl[i] : E.wr[i];
+        const [px, py] = proj(E.nx[i] + sgn * nmx * w, E.nz[i] + sgn * nmz * w, ey);
+        if (px < minX) minX = px; if (px > maxX) maxX = px;
+        if (py < minY) minY = py; if (py > maxY) maxY = py;
+      }
+    }
+  }
   return { proj, cache, minX, maxX, minY, maxY };
 }
 
 /* Cache de proyección: no reproyectar en cada frame de zoom/pan. plano=true fuerza vista top-down fija
    (las mini-mapas por vuelta nunca rotan con el 3D del mapa principal). */
 function obtenerProyeccion(laps, plano) {
-  const key = laps.map((l) => l.id).join(',') + '|' + (plano ? 'plano' : state.mapa.tresD + '|' + state.mapa.rot + '|' + state.mapa.alt);
+  const key = laps.map((l) => l.id).join(',') + '|' + (plano ? 'plano' : state.mapa.tresD + '|' + state.mapa.rot + '|' + state.mapa.alt) + '|ai:' + (state.pistaAi ? state.pistaAi.nombre : '');
   if (state.mapa.projKey === key && state.mapa.projRes) return state.mapa.projRes;
   state.mapa.projKey = key;
   state.mapa.projRes = plano ? proyectarLaps(laps, { tresD: false, rot: 0, alt: 0 }) : proyectarLaps(laps);
@@ -2072,7 +2536,7 @@ function renderTrazadas() {
   const cv0 = canvases[0];
   if (!cv0) return;
   construirVista(laps, cv0, p);
-  const env = state.mapa.bordes ? envolventePista(laps) : null;
+  const env = state.mapa.bordes ? envPista(laps) : null;
   const view = { proj: p.proj, cache: p.cache, env };
   laps.forEach((l, i) => {
     const cv = canvases[i];
@@ -2187,6 +2651,10 @@ function mostrarDashboard() { $('zona-carga').classList.add('oculto'); $('dashbo
 function mostrarError(msg) { const e = $('error-aviso'); e.textContent = '⚠ ' + msg; e.classList.remove('oculto'); }
 function ocultarError() { $('error-aviso').classList.add('oculto'); }
 
+/* Para entrar al análisis hacen falta un replay y la pista (fast_lane.ai). */
+function puedeEntrar() { return state.laps.length > 0 && !!(state.pistaAi && state.pistaAi.env); }
+const FALTA_PISTA = 'Falta cargar la pista (fast_lane.ai) para entrar al análisis.';
+
 function activarTab(tab) {
   state.tab = tab;
   document.querySelectorAll('.tab').forEach((b) => {
@@ -2204,6 +2672,12 @@ function init() {
   const input = $('input-archivos');
   $('btn-abrir').addEventListener('click', () => input.click());
   input.addEventListener('change', (e) => { cargarArchivos(e.target.files); input.value = ''; });
+
+  const inputPista = $('input-pista');
+  $('btn-pista').addEventListener('click', () => inputPista.click());
+  inputPista.addEventListener('change', (e) => { if (e.target.files.length) cargarPistaAi(e.target.files); inputPista.value = ''; });
+  $('btn-pista-quitar').addEventListener('click', quitarPistaAi);
+  actualizarBotonPista();
 
   const zona = $('zona-carga');
   ['dragenter', 'dragover'].forEach((ev) => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.add('encima'); }));
@@ -2246,6 +2720,7 @@ function init() {
   adjuntarVistaMapa($('mapa'));
 
   const selB = $('sel-lap-b'); if (selB) selB.addEventListener('change', (e) => { state.lapBId = e.target.value; renderTabActiva(); });
+  const selBC = $('sel-lap-b-curvas'); if (selBC) selBC.addEventListener('change', (e) => { state.lapBId = e.target.value; renderTabActiva(); });
 
   $('btn-limpiar').addEventListener('click', () => {
     destroyCharts(); state.laps = []; state.refId = null; state.lapBId = null; state.idx = 0; state.dist = 0; state.playing = false; state.colorIdx = 0;
