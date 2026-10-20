@@ -18,7 +18,6 @@ Referencia de los archivos que consume la app. Los números están en
 | Fuente | Genera | Ruta típica | En alcance |
 |---|---|---|---|
 | Replay `.acreplay` (v16) | El usuario ("Save Replay") | `Documents\Assetto Corsa\replay\` | **Sí (principal)** |
-| Export AiM `.nkt` | El juego, automático por sesión | `Documents\Assetto Corsa\aim\telemetry_dump.nkt` | **Sí (secundaria)** |
 | `ctelemetry` `.ct` | El juego, automático por vuelta | `Documents\Assetto Corsa\ctelemetry\player\` | No |
 | Resultados de carrera | El juego, automático | `Documents\Assetto Corsa\out\` | No |
 | Captura en vivo (shared memory / UDP) | Un programa externo | — | No |
@@ -26,10 +25,6 @@ Referencia de los archivos que consume la app. Los números están en
 
 - **`.acreplay`**: la fuente principal. Trae la telemetría **completa por frame**
   y la controla el usuario. Ver §2.
-- **`.nkt`**: automática, pero **se sobreescribe** en cada sesión (hay que
-  copiarla antes de correr otra) y es de formato propietario. Ver §3.
-- **`.ct`** (ctelemetry): automática por vuelta, pero **solo trae gas, freno,
-  marcha y velocidad**; descartada.
 - **`out\`**: tiempos/posiciones en JSON/INI, **sin** telemetría por frame.
 - Las demás quedan fuera de alcance (ver `Requisitos.txt`).
 
