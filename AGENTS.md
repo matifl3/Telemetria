@@ -88,6 +88,10 @@ porqué) y errores a evitar.
 
 ## Docs como fuente de verdad
 
+- `doc/constitucion.md` — los 6 principios innegociables (stack mínimo, spec
+  manda, lógica aparte de la UI, tests, sin persistencia, idioma). Rige por
+  encima del resto de este archivo: si una regla de acá contradice un
+  principio, se cambia la regla.
 - `doc/FormatoTelemetria.md` — offsets/layout de bytes del `.acreplay` v16.
   Confiar en él sobre los comentarios del código al cambiar el parser.
 - `doc/PLAN_CURVAS.md` — algoritmo de detección de curvas y calibración de
