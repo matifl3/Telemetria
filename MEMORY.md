@@ -22,3 +22,7 @@ aporte.
 ## Próximos pasos
 - Migración a Tauri (front) + Rust (parseo y backend) planeada, **no
   implementada**: la constitución define las reglas de ese trabajo.
+- Spec de la v2 en `spec/migracion-tauri-rust/spec.md`: paridad total, todos los
+  autos parseados y comparación entre autos (A/B de autos distintos, alineación
+  por distancia). El auto del jugador (`current_recording_index`) es la
+  referencia por defecto, con fallback al primer auto con vueltas.
