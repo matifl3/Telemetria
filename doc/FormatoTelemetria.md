@@ -6,8 +6,9 @@ Referencia de los archivos que consume la app. Los números están en
 Índice:
 - [1. Dónde están los archivos](#1-dónde-están-los-archivos)
 - [2. `.acreplay` versión 16](#2-acreplay-versión-16)
-- [3. `.nkt` (AiM Race Studio)](#3-nkt-aim-race-studio)
-- [4. Formatos relacionados](#4-formatos-relacionados)
+- [3. `fast_lane.ai` (línea central de la pista)](#3-fast_laneai-línea-central-de-la-pista)
+- [4. `.nkt` (AiM Race Studio)](#4-nkt-aim-race-studio)
+- [5. Formatos relacionados](#5-formatos-relacionados)
 
 ---
 
@@ -164,7 +165,70 @@ Orden de ruedas: **FL, FR, RL, RR** (delantera izq./der., trasera izq./der.).
 
 ---
 
-## 3. `.nkt` (AiM Race Studio)
+## 3. `fast_lane.ai` (línea central de la pista)
+
+Archivo binario little-endian con la **línea central** de la pista. Es la fuente
+obligatoria para entrar al análisis: de acá salen la banda de pista, la detección
+de curvas y el arco de pista (`s`) usado para alinear vueltas.
+
+### 3.1 Cabecera
+
+Cuatro `i32` consecutivos. El único que se usa es el **segundo**, que indica la
+cantidad de puntos `n`; los otros tres son reservados (no se interpretan).
+
+| Offset | Campo | Tipo |
+|---|---|---|
+| 0 | reservado | `i32` |
+| 4 | `n` (cantidad de puntos) | `i32` |
+| 8 | reservado | `i32` |
+| 12 | reservado | `i32` |
+
+### 3.2 Puntos (obligatorio, 20 bytes por punto)
+
+`n` registros consecutivos, en orden de recorrido:
+
+| Offset | Campo | Tipo |
+|---|---|---|
+| 0 | `x` | `f32` |
+| 4 | `y` | `f32` |
+| 8 | `z` | `f32` |
+| 12 | `ns` (distancia acumulada, m) | `f32` |
+| 16 | `id` de punto | `i32` |
+
+El registro ocupa 20 bytes exactos: no hay relleno después del `id`.
+
+### 3.3 Bloque opcional de 72 bytes por punto
+
+Si después de los `n` puntos quedan al menos `n × 72` bytes, hay un bloque
+opcional con datos de ancho de pista. Los **semianchos** izquierdo y derecho
+están en los `f32` número 6 y 7 del registro (offsets 24 y 28):
+
+| Offset dentro del registro | Campo |
+|---|---|
+| 0–23 | otros datos de pista (no usados) |
+| 24 | semiancho izquierdo (m) | `f32` |
+| 28 | semiancho derecho (m) | `f32` |
+| 32–71 | otros datos de pista (no usados) |
+
+Un semiancho se considera válido si es finito y está en `(0, 200)` m. El ancho
+utilizable es la mediana de `(izq + der) / 2` sobre los puntos válidos; si no hay
+ninguno, se usa un semiancho por defecto de 6 m. La app usa **ancho constante**
+(mismo semiancho en todos los puntos), igual que v1.
+
+### 3.4 Validación
+
+- `n >= 3` y `n <= 5_000_000`.
+- El archivo debe contener los `n × 20` bytes de puntos; si no, es inválido.
+- La ausencia del bloque de 72 bytes **no** invalida el archivo.
+- Si `ns` no es estrictamente creciente, se recalcula desde `x`/`z` sumando
+  distancias euclidianas. La longitud de pista es el último valor de `ns`.
+
+Si falla cualquiera de estas condiciones, el archivo se rechaza como pista
+inválida (RF-006).
+
+---
+
+## 4. `.nkt` (AiM Race Studio)
 
 - Formato **propietario de AiM** (usado por *Race Studio*), binario y **no
   documentado públicamente**.
@@ -176,7 +240,7 @@ Orden de ruedas: **FL, FR, RL, RR** (delantera izq./der., trasera izq./der.).
 
 ---
 
-## 4. Formatos relacionados
+## 5. Formatos relacionados
 
 - **`ctelemetry`** (`Documents\Assetto Corsa\ctelemetry\player\`): formato
   binario por vuelta, con estructura conocida (metadatos de usuario/pista/auto,

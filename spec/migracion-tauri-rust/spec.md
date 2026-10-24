@@ -10,7 +10,7 @@ Además, la v2 permite comparar vueltas de cualquier auto presente en el replay 
 - **Parser:** Únicamente `.acreplay` **versión 16**.
 - **Pista:** Uso obligatorio de `fast_lane.ai` para entrar al análisis.
 - **Carga de archivos:** Diálogo nativo de Tauri + arrastrar y soltar.
-- **Multi-auto:** Se parsean todos los autos del replay. El auto del jugador (`current_recording_index`) es la referencia por defecto; sus vueltas se muestran seleccionadas al cargar. El usuario puede activar vueltas de otros autos y compararlas entre sí o contra las propias en todas las pestañas.
+- **Multi-auto:** Se parsean todos los autos del replay. El auto del jugador (`current_recording_index`) es la referencia por defecto; sus vueltas se muestran seleccionadas al cargar. El usuario puede activar vueltas de otros autos y compararlas entre sí o contra las propias en `Vuelta`, `Mapa`, `Comparación` y `Curvas`. La pestaña `Conjunto` agrega solo las vueltas válidas del auto dueño de la REF.
 - **Lógica separada:** Parseo, clasificación de vueltas, detección de curvas y cálculos en crate `core` sin dependencia de Tauri. La UI solo recibe datos ya calculados.
 - **Sin persistencia:** Todo vive únicamente en memoria durante la sesión. Nada se guarda en disco.
 
@@ -59,11 +59,11 @@ Además, la v2 permite comparar vueltas de cualquier auto presente en el replay 
 - **RF-013** *When* termina la carga de un replay, *the system shall* seleccionar por defecto solo las vueltas válidas del auto de referencia (jugador o *fallback*). Las vueltas de otros autos *shall* quedar listadas pero desmarcadas.  
   **Por qué:** Evita saturar los gráficos y mapas al abrir replays con muchos autos.
 
-- **RF-014** *The system shall* permitir activar y desactivar vueltas de cualquier auto desde el selector de vueltas. Las vueltas activas de distintos autos *shall* poder convivir en `Vuelta`, `Mapa`, `Conjunto`, `Comparación` y `Curvas`.  
-  **Por qué:** Es el mecanismo concreto para comparar lo propio con otro auto.
+- **RF-014** *The system shall* permitir activar y desactivar vueltas de cualquier auto desde el selector de vueltas. Las vueltas activas de distintos autos *shall* poder convivir en `Vuelta`, `Mapa`, `Comparación` y `Curvas`. La pestaña `Conjunto` *shall* agregar solo las vueltas válidas del auto dueño de la REF, sin mezclar autos.  
+  **Por qué:** Es el mecanismo concreto para comparar lo propio con otro auto; las estadísticas de consistencia, fuel y vuelta teórica solo tienen sentido dentro de un mismo auto.
 
-- **RF-015** *When* el usuario elige las vueltas A y B, *the system shall* permitir que A y B pertenezcan a autos distintos. El delta acumulado, delta por curva y gráficos comparativos *shall* alinearse por distancia/curva igual que v1.  
-  **Por qué:** Mantiene comparabilidad sin introducir sincronización por reloj.
+- **RF-015** *When* el usuario elige las vueltas A y B, *the system shall* permitir que A y B pertenezcan a autos distintos. El delta acumulado, el delta por curva y los gráficos comparativos *shall* alinearse por **arco de pista** (`s` sobre la línea central de `fast_lane.ai`), no por distancia recorrida por cada vuelta.  
+  **Por qué:** El arco de pista identifica el mismo punto físico para dos trazadas distintas; la distancia recorrida sesga la comparación entre autos.
 
 - **RF-016** *If* un auto no tiene vueltas válidas, *the system shall* mantener sus vueltas visibles con el motivo y no permitir seleccionarlas.  
   **Por qué:** Evita comparaciones contra datos que la propia app descartó.
@@ -72,7 +72,7 @@ Además, la v2 permite comparar vueltas de cualquier auto presente en el replay 
 - **FO-001** Persistencia: `localStorage`, `IndexedDB`, archivos de configuración, historial/rutas recientes o auto-carga.
 - **FO-002** Captura en vivo: *shared memory*, UDP, integraciones con apps de terceros.
 - **FO-003** Soporte a otros formatos de telemetría: `.nkt` (AiM), `.ct`, `.ld` (MoTeC), JSON/CSV de resultados.
-- **FO-004** Sincronización por reloj absoluto de sesión o por tiempo real entre autos. La alineación sigue siendo por distancia/curva, como en v1.
+- **FO-004** Sincronización por reloj absoluto de sesión o por tiempo real entre autos. La alineación es por arco de pista (`s` sobre `fast_lane.ai`).
 - **FO-004b** Comparación simultánea de más de dos vueltas en el delta acumulado; el delta sigue siendo A/B (las superposiciones de gráficos sí admiten más).
 - **FO-005** Tolerancia a versiones distintas de `.acreplay`. Cualquier versión != 16 es rechazada (RF-001).
 - **FO-006** Permitir entrar al análisis sin `fast_lane.ai`. Queda bloqueado (RF-007).
@@ -86,7 +86,7 @@ Además, la v2 permite comparar vueltas de cualquier auto presente en el replay 
 - [ ] **Vueltas inválidas:** RF-003 implementado (rechazo solo si ningún auto tiene vueltas; si el jugador no tiene, se usa el primer auto con vueltas y se avisa).
 - [ ] **Pista:** RF-006/RF-007 obligatorios (rechazo con mensaje, bloqueo sin pista válida).
 - [ ] **Carga:** RF-008/RF-009 con diálogo nativo + *drag & drop* y política "rechazar y conservar lo anterior".
-- [ ] **Multi-auto:** RF-013/RF-014/RF-015/RF-016 implementados: vueltas de otros autos listadas, activables y comparables en las 5 pestañas, con A/B de autos distintos.
+- [ ] **Multi-auto:** RF-013/RF-014/RF-015/RF-016 implementados: vueltas de otros autos listadas, activables y comparables en `Vuelta`, `Mapa`, `Comparación` y `Curvas` (`Conjunto` solo con el auto de la REF), con A/B de autos distintos.
 - [ ] **Sin persistencia:** Verificado RF-010 (sin escrituras a disco).
 - [ ] **Paridad:** Las 5 pestañas (`Vuelta`, `Mapa`, `Conjunto`, `Comparación`, `Curvas`) y funcionalidades críticas (detección de curvas, *slip*, delta A/B) presentes.
 - [ ] **Tests:** `cargo test` en verde con tests de regresión para fixes de lógica (principio 4). Al menos cubiertos: rechazo v!=16, selección por `current_recording_index` con *fallback*, jugador sin vueltas pero otro auto con vueltas, clasificación independiente por auto, A/B de autos distintos, auto sin vueltas válidas no seleccionable, pista inválida/faltante.

@@ -1,7 +1,8 @@
 # Plan: detección y análisis de curvas desde el `.ai`
 
-Estado: **implementado** (tab "Curvas")
-Ámbito: `visualizador/app.js`, `visualizador/index.html`
+Estado: **diseñado para v2** (Tauri + Rust). En v1 la pestaña existe pero queda vacía
+por el bug de `detectarCurvas` duplicada (ver aviso al final).
+Ámbito v2: crate `core` (`curvas`), DTO de la pestaña Curvas y front `front/pestanas/curvas.js`.
 Base: pista de referencia `fast_lane.ai` (Monza noDRS, `lfmv2`)
 
 ## Objetivo
@@ -11,13 +12,17 @@ Detectar las curvas de la pista a partir de la línea central del `.ai` y usarla
 
 Pendiente (fase 2): **comparación por curva** entre dos vueltas (delta de tiempo y de `vMin`). → **Implementado** (ver §6).
 
-Decisiones: cada arco por separado (sin unir chicanes); nombres automáticos `C1..Cn`; segundo umbral para curvas rápidas; mapeo al eje de distancia por proyección a la vuelta REF; `.ai` obligatorio (el tab siempre está disponible dentro del dashboard).
+Decisiones v2: la detección corre **una sola vez por pista** sobre `fast_lane.ai` y se
+cachea en `Pista.curvas`; la numeración `C1..Cn` es estable y no depende de la vuelta ni
+del auto. Cada arco por separado (sin unir chicanes); segundo umbral para curvas rápidas;
+`.ai` obligatorio.
 
 ---
 
 ## 1. Detección (núcleo, geometría del `.ai`)
 
-`detectarCurvas(env)` en `visualizador/app.js`, junto a `parsearAi`.
+`detectarCurvas(env)` en `core/src/curvas.rs` (v2). En v1 vivía en
+`visualizador/app.js`, junto a `parsearAi`; ver el aviso sobre la duplicación al final.
 
 - Entrada: línea central `nx,nz` y distancia acumulada `ns` (del propio `.ai`: 3750 pts, paso ≈1,54 m, largo ≈5757 m). Si `ns` no es monótona, se recalcula el arco desde `nx,nz`.
 - Rumbo `θ(s) = atan2(dz, dx)` desenrollado (sin saltos de 2π).
@@ -49,8 +54,13 @@ Nota: el campo `[4]` del `AiPointExtra` correlaciona con la curvatura (r ≈ −
 ### Constantes (calibración sin tocar lógica)
 `R_CURVA`, `R_RECTA`, `CURVA_LARGO_MIN` (arriba de `app.js`); ventana de curvatura `kw=6` dentro de `detectarCurvas`.
 
-## 2. Mapeo de curvas al eje de distancia común
-El `.ai` mide ~5757 m y **no comparte origen de distancia con las vueltas**.
+## 2. Mapeo de curvas al eje de distancia común (solo v1)
+
+> **v1, no v2.** En v2 los gráficos, sectores, curvas y deltas usan directamente el arco
+> de pista `s` sobre `fast_lane.ai`; no hay mapeo a una vuelta de referencia. Esta sección
+> se conserva como historia del algoritmo que la v2 reemplaza.
+
+El `.ai` mide ~5757 m y **no comparte origen de distancia con las vueltas** en v1.
 
 `mapearCurvas(env, curvas, ref)` proyecta los límites de cada arco (`i0`, `apex`, `i1`) al punto más cercano de la línea central de la vuelta REF (`ref.grid.x/z`) y guarda `d0`, `dApex`, `d1` en distancia de `state.grid`. Maneja el cruce de la meta sumando `maxDist`.
 
@@ -73,6 +83,12 @@ El `.ai` mide ~5757 m y **no comparte origen de distancia con las vueltas**.
 - `renderTablaCurvas`: **una tarjeta por curva** (grid responsive `auto-fit minmax(340px,1fr)`); dentro, una **fila de tiles por vuelta** (v mín, v apex, T curva, freno, reaceleración) con marca del mejor tiempo.
 
 ## 5. Verificación
+
+> **Aviso:** los scripts smoke nombrados abajo (`ai_smoke.js`,
+> `smoke_visualizador.js`, `replay_e2e.js`, `delta_curvas_smoke.js`) **ya no existen** en el
+> repo; no buscarlos. La verificación de la v2 es `cargo test` en `core` (ver
+> `spec/migracion-tauri-rust/tareas.md`).
+
 - `ai_smoke.js`: ancho constante, `env.ns`, nº de arcos = 11, orden creciente, Curva Grande y Parabólica derecha, Ascari L-R-L, mapeo identidad+monótono. `exit=0`.
 - `smoke_visualizador.js`: sin regresiones nuevas (queda un `[FAIL] no hay rects de barras` preexistente, ajeno a curvas).
 - `replay_e2e.js`: parsea el `.ai` real (11 arcos) + un `.acreplay` real → 17 vueltas, `grid.slipFL` poblado, marcadores presentes (spin/lock) y `renderTabActiva()` sin excepciones.
@@ -99,3 +115,11 @@ El `.ai` mide ~5757 m y **no comparte origen de distancia con las vueltas**.
 - `visualizador/index.html`: tab + panel "Curvas" (+ selector A/B y delta por curva).
 - `visualizador/estilos.css`: `.curva-*`, `.traction-*`, `.tabla-delta`/`.delta-gana`/`.delta-pierde`.
 - `delta_curvas_smoke.js` (temp de verificación): aserciones de `deltaCurvas`/render.
+
+## 7. Deuda de v1 que la v2 corrige
+
+`visualizador/app.js` declara `detectarCurvas` **dos veces** (aprox. líneas 1947 y 2171).
+Por *hoisting* gana la segunda, que espera la grilla de una vuelta; `curvasBase(env)` le
+pasa la pista, obtiene una lista vacía y la pestaña Curvas queda sin datos. La v2 tiene
+**una sola implementación** sobre el `.ai` (ver `plan.md`, D-02) y un test de regresión
+que falla si aparecen curvas vacías en una pista con curvas reales.

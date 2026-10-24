@@ -6,3 +6,6 @@ Paquetes de telemetria/
 # --- Datos generados por la app ---
 datos/
 salida/
+
+# --- Rust (workspace de la v2) ---
+target/
