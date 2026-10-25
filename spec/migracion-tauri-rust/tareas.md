@@ -50,43 +50,43 @@ Camino crítico: fases 1 → 5 (parser, pista, vueltas, proyección, grilla).
   existen.
 
 ## Fase 1 — Esqueleto y parser (RF-001, 002, 005, 009, 012)
-
-- [ ] **T05 · Crear workspace y crate `core`** — RF-012 — *Hecho cuando:*
+ 
+- [x] **T05 · Crear workspace y crate `core`** — RF-012 — *Hecho cuando:*
   `cargo test -p core` compila y corre; `core/Cargo.toml` solo declara `serde`.
-- [ ] **T06 · Tipos de error en español** — RF-001/009 — *Hecho cuando:* el test
+- [x] **T06 · Tipos de error en español** — RF-001/009 — *Hecho cuando:* el test
   `motivo_version_15_en_espanol` verifica mensaje con nombre de archivo y versión.
-- [ ] **T07 · `lector`: u8/u16/u32 con límites** — RF-001 — *Hecho cuando:* los tests de
+- [x] **T07 · `lector`: u8/u16/u32 con límites** — RF-001 — *Hecho cuando:* los tests de
   lectura y avance de posición pasan.
-- [ ] **T08 · `lector`: f32/f64** — RF-001 — *Hecho cuando:* test de round-trip de bytes
+- [x] **T08 · `lector`: f32/f64** — RF-001 — *Hecho cuando:* test de round-trip de bytes
   little-endian.
-- [ ] **T09 · `lector`: f16** — RF-012 — *Hecho cuando:* test cubre normal, subnormal, ±∞
+- [x] **T09 · `lector`: f16** — RF-012 — *Hecho cuando:* test cubre normal, subnormal, ±∞
   y NaN.
-- [ ] **T10 · `lector`: `str` UTF-8** — RF-001/009 — *Hecho cuando:* test cubre cadena
+- [x] **T10 · `lector`: `str` UTF-8** — RF-001/009 — *Hecho cuando:* test cubre cadena
   válida, vacía, >1 MB y truncada.
-- [ ] **T11 · `lector`: salto con `checked_mul`** — RF-009 — *Hecho cuando:* saltar fuera
+- [x] **T11 · `lector`: salto con `checked_mul`** — RF-009 — *Hecho cuando:* saltar fuera
   del buffer devuelve `ErrorFormato` con offset, sin panic.
-- [ ] **T12 · Test de truncado sistemático** — RF-009 — *Hecho cuando:* truncar un fixture
+- [x] **T12 · Test de truncado sistemático** — RF-009 — *Hecho cuando:* truncar un fixture
   en cada sección produce error tipado en todos los casos.
-- [ ] **T13 · Structs `MetaReplay`/`Auto`/`Replay`** — RF-002 — *Hecho cuando:* se
+- [x] **T13 · Structs `MetaReplay`/`Auto`/`Replay`** — RF-002 — *Hecho cuando:* se
   construyen en un test y todos los campos tienen unidad documentada.
-- [ ] **T14 · Parsear encabezado y validar versión** — RF-001 — *Hecho cuando:* v16 acepta;
+- [x] **T14 · Parsear encabezado y validar versión** — RF-001 — *Hecho cuando:* v16 acepta;
   v15 y v17 devuelven `VersionNoSoportada`.
-- [ ] **T15 · Saltar frames de objetos de pista** — RF-001 — *Hecho cuando:* con 2 objetos ×
+- [x] **T15 · Saltar frames de objetos de pista** — RF-001 — *Hecho cuando:* con 2 objetos ×
   3 frames el primer auto se lee en la posición correcta.
-- [ ] **T16 · Encabezado por auto** — RF-002/005 — *Hecho cuando:* con 3 autos se leen
+- [x] **T16 · Encabezado por auto** — RF-002/005 — *Hecho cuando:* con 3 autos se leen
   `car_id`, piloto, nación, equipo, skin, frames y wings correctos.
-- [ ] **T17 · Frame de 256 B → canales crudos** — RF-005 — *Hecho cuando:* un frame con
+- [x] **T17 · Frame de 256 B → canales crudos** — RF-005 — *Hecho cuando:* un frame con
   valores conocidos produce speed/rpm/marcha/gas/freno/volante/tiempo/carga/slip
   esperados.
-- [ ] **T18 · Avance entre frames, wings y `extra_count`** — RF-005 — *Hecho cuando:* con
+- [x] **T18 · Avance entre frames, wings y `extra_count`** — RF-005 — *Hecho cuando:* con
   `wings=2` y `extra=1` el segundo frame se lee alineado.
-- [ ] **T19 · Pie CSP: detectar y descartar** — RF-009 — *Hecho cuando:* fixtures con y sin
+- [x] **T19 · Pie CSP: detectar y descartar** — RF-009 — *Hecho cuando:* fixtures con y sin
   pie producen los mismos autos y vueltas.
-- [ ] **T20 · Recorrido de todos los autos** — RF-002/005 — *Hecho cuando:* fixture de 3
+- [x] **T20 · Recorrido de todos los autos** — RF-002/005 — *Hecho cuando:* fixture de 3
   autos devuelve `autos.len()==3` en el orden del archivo.
-- [ ] **T21 · Fixture builder de replay mínimo** — RF-001 — *Hecho cuando:* el helper genera
+- [x] **T21 · Fixture builder de replay mínimo** — RF-001 — *Hecho cuando:* el helper genera
   bytes que el parser acepta de punta a punta.
-- [ ] **T22 · Fixture builder multi-auto parametrizado** — RF-002/005 — *Hecho cuando:*
+- [x] **T22 · Fixture builder multi-auto parametrizado** — RF-002/005 — *Hecho cuando:*
   permite variar autos, frames, versión y wings sin tocar el parser.
 
 ## Fase 2 — Pista (RF-006, 007, 011)
