@@ -86,7 +86,7 @@ fn t17_frame_a_canales_conocidos() {
     frame.slip_angle = [0.01, 0.02, 0.03, 0.04];
     frame.estado = 0b1000;
     frame.boost = 7;
-    constructor.autos[0].frames = vec![frame];
+    constructor.autos[0].frames = vec![frame.clone()];
 
     let replay = parsear_replay(&constructor.bytes(), "canales.acreplay").unwrap();
     let m = &replay.autos[0].muestras;

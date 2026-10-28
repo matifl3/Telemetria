@@ -250,7 +250,8 @@ mod pruebas {
         // NaN.
         assert!(medio_a_f32(0x7e00).is_nan());
 
-        let mut lector = Lector::nuevo(&0x3c00u16.to_le_bytes(), "x.acreplay");
+        let bytes = 0x3c00u16.to_le_bytes();
+        let mut lector = Lector::nuevo(&bytes, "x.acreplay");
         assert_eq!(lector.f16().unwrap(), 1.0);
     }
 
