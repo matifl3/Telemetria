@@ -9,3 +9,6 @@ salida/
 
 # --- Rust (workspace de la v2) ---
 target/
+
+# --- Temporales ---
+*.bak
