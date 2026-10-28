@@ -7,5 +7,6 @@ pub mod acreplay;
 pub mod error;
 pub mod lector;
 pub mod modelo;
+pub mod pista;
 
 pub use error::{ErrorFormato, Motivo, Resultado};

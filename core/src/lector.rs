@@ -55,7 +55,7 @@ impl<'a> Lector<'a> {
     }
 
     /// Toma `n` bytes y avanza. Valida el rango antes de tocar el buffer.
-    fn tomar(&mut self, n: usize) -> Resultado<&'a [u8]> {
+    pub fn tomar(&mut self, n: usize) -> Resultado<&'a [u8]> {
         let fin = match self.pos.checked_add(n) {
             Some(fin) => fin,
             None => {
