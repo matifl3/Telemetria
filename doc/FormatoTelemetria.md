@@ -215,6 +215,11 @@ utilizable es la mediana de `(izq + der) / 2` sobre los puntos válidos; si no h
 ninguno, se usa un semiancho por defecto de 6 m. La app usa **ancho constante**
 (mismo semiancho en todos los puntos), igual que v1.
 
+Un punto cuenta solo si **ambos** semianchos son válidos. La mediana es la
+verdadera (con cantidad par, promedio de los dos valores centrales); v1 tomaba el
+central superior, lo que cambia el ancho en centímetros. Los bytes sobrantes que
+no alcanzan para otro registro de 72 B se ignoran.
+
 ### 3.4 Validación
 
 - `n >= 3` y `n <= 5_000_000`.

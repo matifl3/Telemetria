@@ -91,21 +91,22 @@ Camino crítico: fases 1 → 5 (parser, pista, vueltas, proyección, grilla).
 
 ## Fase 2 — Pista (RF-006, 007, 011)
 
-- [ ] **T23 · Parsear cabecera de `.ai`** — RF-006 — *Hecho cuando:* fixture de 5 puntos
+- [x] **T23 · Parsear cabecera de `.ai`** — RF-006 — *Hecho cuando:* fixture de 5 puntos
   devuelve `n=5`.
-- [ ] **T24 · Parsear puntos (x, y, z, ns, id)** — RF-006 — *Hecho cuando:* test compara
+- [x] **T24 · Parsear puntos (x, y, z, ns, id)** — RF-006 — *Hecho cuando:* test compara
   valores exactos del fixture.
-- [ ] **T25 · Bloque de 72 B y semianchos** — RF-006 — *Hecho cuando:* con semianchos 5 y 7
+- [x] **T25 · Bloque de 72 B y semianchos** — RF-006 — *Hecho cuando:* con semianchos 5 y 7
   el resultado es 6.
-- [ ] **T26 · Fallback sin bloque de 72 B** — RF-006 — *Hecho cuando:* el fixture sin bloque
+- [x] **T26 · Fallback sin bloque de 72 B** — RF-006 — *Hecho cuando:* el fixture sin bloque
   carga igual y usa semiancho por defecto.
-- [ ] **T27 · Validaciones de pista** — RF-006/007 — *Hecho cuando:* `n=2`, truncado y
-  longitudes incoherentes devuelven `PistaInvalida`.
-- [ ] **T28 · Longitud de pista y `ns` recalculado** — RF-011 — *Hecho cuando:* con `ns` no
+- [x] **T27 · Validaciones de pista** — RF-006/007 — *Hecho cuando:* `n<3`, `n` fuera de
+  rango y coordenadas no finitas devuelven `PistaInvalida`; un archivo cortado devuelve
+  `ArchivoTruncado`.
+- [x] **T28 · Longitud de pista y `ns` recalculado** — RF-011 — *Hecho cuando:* con `ns` no
   monótono se recalcula y `longitud_m` es mayor que 0.
-- [ ] **T29 · Fixture de pista circular cerrada** — RF-006 — *Hecho cuando:* el helper
+- [x] **T29 · Fixture de pista circular cerrada** — RF-006 — *Hecho cuando:* el helper
   produce un `.ai` sintético válido y reutilizable.
-- [ ] **T30 · Tests de pista** — RF-006 — *Hecho cuando:* válida, inválida, con bloque y sin
+- [x] **T30 · Tests de pista** — RF-006 — *Hecho cuando:* válida, inválida, con bloque y sin
   bloque pasan.
 
 ## Fase 3 — Vueltas y clasificación (RF-004, 005, 011, 016)
