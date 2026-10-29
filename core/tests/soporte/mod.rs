@@ -2,7 +2,12 @@
 //!
 //! Todo se genera en memoria: no hay archivos binarios en el repo (principio 5).
 
+// Cada binario de test usa solo una parte del soporte (replay o pista).
+#![allow(dead_code)]
+
 use acreplay_core::acreplay::MAGIC_CSP;
+
+pub mod pista;
 
 /// Especificación de un frame con valores ya decodificados.
 #[derive(Debug, Clone)]
