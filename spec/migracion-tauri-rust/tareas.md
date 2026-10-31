@@ -111,45 +111,45 @@ Camino crítico: fases 1 → 5 (parser, pista, vueltas, proyección, grilla).
 
 ## Fase 3 — Vueltas y clasificación (RF-004, 005, 011, 016)
 
-- [ ] **T31 · Segmentar por `current_lap`** — RF-005 — *Hecho cuando:* secuencia 1-2-2-3
+- [x] **T31 · Segmentar por `current_lap`** — RF-005 — *Hecho cuando:* secuencia 1-2-2-3
   produce 3 segmentos con sus índices.
-- [ ] **T32 · Series base y tiempo relativo** — RF-011 — *Hecho cuando:* `t_rel[0] == 0` y
+- [x] **T32 · Series base y tiempo relativo** — RF-011 — *Hecho cuando:* `t_rel[0] == 0` y
   las longitudes coinciden con los frames del segmento.
-- [ ] **T33 · `dt` robusto** — RF-011 — *Hecho cuando:* con saltos y valores inválidos todo
+- [x] **T33 · `dt` robusto** — RF-011 — *Hecho cuando:* con saltos y valores inválidos todo
   `dt` es > 0 y usa el fallback.
-- [ ] **T34 · Yaw: unwrap y fallback por posiciones** — RF-011 — *Hecho cuando:* con yaw
+- [x] **T34 · Yaw: unwrap y fallback por posiciones** — RF-011 — *Hecho cuando:* con yaw
   todo cero se usa el rumbo calculado.
-- [ ] **T35 · Aceleraciones long/lat/total con clamp** — RF-011 — *Hecho cuando:* un caso de
+- [x] **T35 · Aceleraciones long/lat/total con clamp** — RF-011 — *Hecho cuando:* un caso de
   aceleración constante da el valor esperado.
-- [ ] **T36 · Normalizar pedales (1/100/255)** — RF-011 — *Hecho cuando:* las tres escalas
+- [x] **T36 · Normalizar pedales (1/100/255)** — RF-011 — *Hecho cuando:* las tres escalas
   quedan en 0..1.
-- [ ] **T37 · `tiempoDeVuelta` y cobertura** — RF-004 — *Hecho cuando:* devuelve el último
+- [x] **T37 · `tiempoDeVuelta` y cobertura** — RF-004 — *Hecho cuando:* devuelve el último
   tiempo válido y el máximo `s` de la vuelta.
-- [ ] **T38 · `clasificarVueltas` por auto** — RF-004 — *Hecho cuando:* con 3 autos, medianas
+- [x] **T38 · `clasificarVueltas` por auto** — RF-004 — *Hecho cuando:* con 3 autos, medianas
   y bordes se calculan por separado.
-- [ ] **T39 · Motivos y `seleccionable`** — RF-005/016 — *Hecho cuando:* salida, entrada,
+- [x] **T39 · Motivos y `seleccionable`** — RF-005/016 — *Hecho cuando:* salida, entrada,
   cortada e incompleta se asignan y las inválidas quedan no seleccionables.
-- [ ] **T40 · Etiqueta `piloto · car_id · Vn`** — RF-005 — *Hecho cuando:* el test compara la
+- [x] **T40 · Etiqueta `piloto · car_id · Vn`** — RF-005 — *Hecho cuando:* el test compara la
   cadena exacta.
 
 ## Fase 4 — Proyección a `s` (RF-015)
 
-- [ ] **T41 · API `proyectar(pista, x, z, idx_previo)`** — RF-015 — *Hecho cuando:* un punto
+- [x] **T41 · API `proyectar(pista, x, z, idx_previo)`** — RF-015 — *Hecho cuando:* un punto
   sobre la línea central da error 0 y devuelve su `s`.
-- [ ] **T42 · Ventana local + respaldo global** — RF-015 — *Hecho cuando:* en una trayectoria
+- [x] **T42 · Ventana local + respaldo global** — RF-015 — *Hecho cuando:* en una trayectoria
   sintética acierta todos los puntos y un contador demuestra menos comparaciones que el
   barrido completo.
-- [ ] **T43 · Umbral de error y muestras como hueco** — RF-015 — *Hecho cuando:* un punto a
+- [x] **T43 · Umbral de error y muestras como hueco** — RF-015 — *Hecho cuando:* un punto a
   100 m de la pista queda marcado y sin `s`.
-- [ ] **T44 · Unwrap de meta y rebase a 0** — RF-015 — *Hecho cuando:* una vuelta completa
+- [x] **T44 · Unwrap de meta y rebase a 0** — RF-015 — *Hecho cuando:* una vuelta completa
   termina con `s` monótona y arranca en 0.
-- [ ] **T45 · `ProyeccionDeficiente`** — RF-015 — *Hecho cuando:* superar el porcentaje de
+- [x] **T45 · `ProyeccionDeficiente`** — RF-015 — *Hecho cuando:* superar el porcentaje de
   muestras descartadas emite el aviso y la vuelta no es analizable.
-- [ ] **T46 · Test: dos trazadas, misma `s`** — RF-015 — *Hecho cuando:* una línea por
+- [x] **T46 · Test: dos trazadas, misma `s`** — RF-015 — *Hecho cuando:* una línea por
   dentro y otra por fuera de la misma curva difieren en `s` menos que un paso de grilla.
-- [ ] **T47 · Test: trompo y salida de pista** — RF-015 — *Hecho cuando:* `s` no retrocede y
+- [x] **T47 · Test: trompo y salida de pista** — RF-015 — *Hecho cuando:* `s` no retrocede y
   aparecen huecos donde corresponde.
-- [ ] **T48 · Test: cruce de meta** — RF-015 — *Hecho cuando:* no hay salto mayor a media
+- [x] **T48 · Test: cruce de meta** — RF-015 — *Hecho cuando:* no hay salto mayor a media
   pista en ningún punto.
 
 ## Fase 5 — Grilla común (RF-013, 014, 015)
