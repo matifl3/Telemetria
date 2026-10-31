@@ -42,6 +42,47 @@ impl PuntoFixture {
     }
 }
 
+/// Sentido de un arco sintético.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SentidoFixture {
+    Izquierda,
+    Derecha,
+}
+
+/// Tramo de una pista sintética: recta o arco.
+#[derive(Debug, Clone, Copy)]
+pub enum TramoFixture {
+    Recta { largo: f32 },
+    Arco {
+        radio: f32,
+        sentido: SentidoFixture,
+        grados: f32,
+    },
+}
+
+impl TramoFixture {
+    pub fn recta(largo: f32) -> Self {
+        TramoFixture::Recta { largo }
+    }
+
+    pub fn arco(radio: f32, sentido: SentidoFixture, grados: f32) -> Self {
+        TramoFixture::Arco {
+            radio,
+            sentido,
+            grados,
+        }
+    }
+
+    fn largo(&self) -> f32 {
+        match *self {
+            TramoFixture::Recta { largo } => largo,
+            TramoFixture::Arco { radio, grados, .. } => {
+                radio * grados.to_radians()
+            }
+        }
+    }
+}
+
 /// Constructor parametrizable de un `fast_lane.ai` sintético.
 #[derive(Debug, Clone)]
 pub struct ConstructorPista {
@@ -109,9 +150,105 @@ impl ConstructorPista {
         }
     }
 
+    /// Arma una línea central a partir de rectas y arcos, a `paso` metros.
+    ///
+    /// Sirve para pistas abiertas (recta-curva-recta) y para circuitos cerrados
+    /// (por ejemplo un óvalo de dos arcos de 180°). Si el último punto coincide
+    /// con el primero se descarta, igual que en un `.ai` real.
+    pub fn desde_tramos(tramos: &[TramoFixture], paso: f32) -> Self {
+        let paso = paso.max(0.25);
+        let mut x = 0.0f32;
+        let mut z = 0.0f32;
+        let mut rumbo = 0.0f32;
+        let mut arco = 0.0f32;
+        let mut puntos = vec![PuntoFixture::nuevo(x, z, arco)];
+
+        for tramo in tramos {
+            let largo = tramo.largo();
+            let pasos = (largo / paso).ceil().max(1.0) as usize;
+            let ds = largo / pasos as f32;
+            for _ in 0..pasos {
+                match *tramo {
+                    TramoFixture::Recta { .. } => {
+                        x += ds * rumbo.cos();
+                        z += ds * rumbo.sin();
+                    }
+                    TramoFixture::Arco {
+                        radio,
+                        sentido,
+                        ..
+                    } => {
+                        let signo = match sentido {
+                            SentidoFixture::Derecha => 1.0,
+                            SentidoFixture::Izquierda => -1.0,
+                        };
+                        let dtheta = signo * ds / radio.max(0.01);
+                        let medio = rumbo + dtheta / 2.0;
+                        x += ds * medio.cos();
+                        z += ds * medio.sin();
+                        rumbo += dtheta;
+                    }
+                }
+                arco += ds;
+                puntos.push(PuntoFixture::nuevo(x, z, arco));
+            }
+        }
+
+        // Un `.ai` real no repite el primer punto como último.
+        if puntos.len() > 3 {
+            let ultimo = puntos.last().unwrap();
+            let inicio = puntos[0];
+            let cierre = ((ultimo.x - inicio.x).powi(2) + (ultimo.z - inicio.z).powi(2)).sqrt();
+            if cierre < paso * 0.5 {
+                puntos.pop();
+            }
+        }
+
+        Self {
+            puntos,
+            n_declarado: None,
+            con_bloque_anchos: false,
+            relleno_final: 0,
+        }
+    }
+
+    /// Rota la lista de puntos para que `s_objetivo` quede en el índice 0.
+    pub fn rotar_a_s(mut self, s_objetivo: f32) -> Self {
+        if self.puntos.is_empty() {
+            return self;
+        }
+        let indice = self
+            .puntos
+            .iter()
+            .enumerate()
+            .min_by(|(_, a), (_, b)| {
+                (a.ns - s_objetivo)
+                    .abs()
+                    .total_cmp(&(b.ns - s_objetivo).abs())
+            })
+            .map(|(indice, _)| indice)
+            .unwrap_or(0);
+        self.puntos.rotate_left(indice);
+        self.recalcular_arco();
+        self
+    }
+
+    /// Recalcula `ns` desde las posiciones, empezando en 0.
+    fn recalcular_arco(&mut self) {
+        if self.puntos.is_empty() {
+            return;
+        }
+        self.puntos[0].ns = 0.0;
+        for indice in 1..self.puntos.len() {
+            let dx = self.puntos[indice].x - self.puntos[indice - 1].x;
+            let dz = self.puntos[indice].z - self.puntos[indice - 1].z;
+            let paso = (dx * dx + dz * dz).sqrt();
+            self.puntos[indice].ns = self.puntos[indice - 1].ns + paso;
+        }
+    }
+
     /// Pone el mismo par de semianchos en todos los puntos y activa el bloque.
-    pub fn con_semianchos(mut self, izq: f32, der: f32) -> Self {
-        for punto in &mut self.puntos {
+    pub fn con_semianchos(mut self, izq: f32, der: f32) -> Self {        for punto in &mut self.puntos {
             punto.semiancho_izq = Some(izq);
             punto.semiancho_der = Some(der);
         }

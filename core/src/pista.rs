@@ -4,6 +4,7 @@
 //! constante, igual que v1: se calcula un único semiancho (mediana de los puntos
 //! válidos) y se repite en `wl`/`wr` para toda la pista.
 
+use crate::curvas::{detectar_curvas, CurvaPista};
 use crate::error::{ErrorFormato, Motivo, Resultado};
 use crate::lector::Lector;
 
@@ -45,6 +46,14 @@ pub struct Pista {
     pub wr: Vec<f32>,
     /// Largo total de la pista (m): último valor de `ns`.
     pub longitud_m: f64,
+    /// Curvas canónicas detectadas sobre la línea central (RF-011, D-01).
+    ///
+    /// Se calculan una sola vez al cargar la pista y nunca dependen de la vuelta,
+    /// del auto ni de la visibilidad (D-02).
+    pub curvas: Vec<CurvaPista>,
+    /// Veces que se ejecutó la detección al cargar la pista. Es un diagnóstico
+    /// de la caché: siempre vale 1.
+    pub detecciones_curvas: usize,
 }
 
 impl Pista {
@@ -60,6 +69,11 @@ impl Pista {
             .copied()
             .unwrap_or(SEMIANCHO_POR_DEFECTO)
     }
+
+    /// Curvas cacheadas de la pista (RF-011). No se recalculan al consultarlas.
+    pub fn curvas(&self) -> &[CurvaPista] {
+        &self.curvas
+    }
 }
 
 /// Parsea `fast_lane.ai` desde bytes. `archivo` solo se usa en los mensajes.
@@ -74,6 +88,10 @@ pub fn parsear_pista(bytes: &[u8], archivo: &str) -> Resultado<Pista> {
     pista.wr = vec![ancho; n];
 
     completar_arco(&mut pista);
+    // D-02: una única detección, una única vez por pista.
+    let curvas = detectar_curvas(&pista);
+    pista.curvas = curvas;
+    pista.detecciones_curvas += 1;
     Ok(pista)
 }
 
@@ -114,6 +132,8 @@ fn leer_puntos(lector: &mut Lector<'_>, n: usize) -> Resultado<Pista> {
         wl: Vec::new(),
         wr: Vec::new(),
         longitud_m: 0.0,
+        curvas: Vec::new(),
+        detecciones_curvas: 0,
     };
 
     for indice in 0..n {
