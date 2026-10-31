@@ -6,6 +6,7 @@
 pub mod acreplay;
 pub mod clasificacion;
 pub mod error;
+pub mod grilla;
 pub mod lector;
 pub mod modelo;
 pub mod pista;

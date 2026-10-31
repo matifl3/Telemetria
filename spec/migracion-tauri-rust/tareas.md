@@ -154,15 +154,15 @@ Camino crítico: fases 1 → 5 (parser, pista, vueltas, proyección, grilla).
 
 ## Fase 5 — Grilla común (RF-013, 014, 015)
 
-- [ ] **T49 · Grilla sobre longitud de pista** — RF-015 — *Hecho cuando:* respeta
+- [x] **T49 · Grilla sobre longitud de pista** — RF-015 — *Hecho cuando:* respeta
   `GRID_PUNTOS_MAX`/`GRID_PASO_MIN`, empieza en 0 y termina en la longitud.
-- [ ] **T50 · Resampleo lineal por `s`** — RF-015 — *Hecho cuando:* una serie lineal se
+- [x] **T50 · Resampleo lineal por `s`** — RF-015 — *Hecho cuando:* una serie lineal se
   reproduce con error < 1e-6.
-- [ ] **T51 · Resampleo por vecino para marcha** — RF-015 — *Hecho cuando:* los escalones de
+- [x] **T51 · Resampleo por vecino para marcha** — RF-015 — *Hecho cuando:* los escalones de
   marcha se conservan.
-- [ ] **T52 · Huecos sin extrapolar** — RF-015 — *Hecho cuando:* fuera de rango el valor es
+- [x] **T52 · Huecos sin extrapolar** — RF-015 — *Hecho cuando:* fuera de rango el valor es
   `None`, nunca el primero/último repetido.
-- [ ] **T53 · Test: grilla estable ante selección** — RF-013/015 — *Hecho cuando:* mostrar u
+- [x] **T53 · Test: grilla estable ante selección** — RF-013/015 — *Hecho cuando:* mostrar u
   ocultar vueltas deja la grilla idéntica.
 
 ## Fase 6 — Curvas (RF-011, 015)
