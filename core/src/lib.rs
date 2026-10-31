@@ -4,7 +4,10 @@
 //! (principio 5 de `doc/constitucion.md`) y se testea con fixtures en memoria.
 
 pub mod acreplay;
+pub mod agregados;
+pub mod alineado;
 pub mod clasificacion;
+pub mod comparacion;
 pub mod curvas;
 pub mod error;
 pub mod grilla;
@@ -12,6 +15,7 @@ pub mod lector;
 pub mod modelo;
 pub mod pista;
 pub mod proyeccion;
+pub mod sectores;
 pub mod vuelta;
 
 pub use error::{ErrorFormato, Motivo, Resultado};

@@ -167,54 +167,54 @@ Camino crítico: fases 1 → 5 (parser, pista, vueltas, proyección, grilla).
 
 ## Fase 6 — Curvas (RF-011, 015)
 
-- [ ] **T54 · Curvatura O(n) sobre `.ai`** — RF-011 — *Hecho cuando:* en un círculo
+- [x] **T54 · Curvatura O(n) sobre `.ai`** — RF-011 — *Hecho cuando:* en un círculo
   sintético de radio R, κ ≈ 1/R dentro de tolerancia.
-- [ ] **T55 · Histéresis `R_CURVA`/`R_RECTA`** — RF-011 — *Hecho cuando:*
+- [x] **T55 · Histéresis `R_CURVA`/`R_RECTA`** — RF-011 — *Hecho cuando:*
   recta-curva-recta produce exactamente un arco.
-- [ ] **T56 · Unión de dobles ápices (`CURVA_GAP`)** — RF-011 — *Hecho cuando:* dos tramos
+- [x] **T56 · Unión de dobles ápices (`CURVA_GAP`)** — RF-011 — *Hecho cuando:* dos tramos
   del mismo sentido a 10 m producen una sola curva.
-- [ ] **T57 · Filtros de largo y giro, y sentido** — RF-011 — *Hecho cuando:* un arco corto
+- [x] **T57 · Filtros de largo y giro, y sentido** — RF-011 — *Hecho cuando:* un arco corto
   se descarta y el sentido (izq/der) es el correcto.
-- [ ] **T58 · Numeración `C1..Cn` y cache en `Pista`** — RF-011 — *Hecho cuando:* se calcula
+- [x] **T58 · Numeración `C1..Cn` y cache en `Pista`** — RF-011 — *Hecho cuando:* se calcula
   una sola vez (contador de llamadas = 1) y numera en orden de recorrido.
-- [ ] **T59 · Curva que cruza la meta** — RF-011 — *Hecho cuando:* un arco sobre `s=0` queda
+- [x] **T59 · Curva que cruza la meta** — RF-011 — *Hecho cuando:* un arco sobre `s=0` queda
   como una sola curva con `s_fin > longitud`.
-- [ ] **T60 · Tests de curvas sintéticas** — RF-011 — *Hecho cuando:* no hay curvas fantasma
+- [x] **T60 · Tests de curvas sintéticas** — RF-011 — *Hecho cuando:* no hay curvas fantasma
   ni faltantes en la pista de prueba.
-- [ ] **T61 · Test de estabilidad REF/visibilidad** — RF-011/015 — *Hecho cuando:* cambiar la
+- [x] **T61 · Test de estabilidad REF/visibilidad** — RF-011/015 — *Hecho cuando:* cambiar la
   REF no altera cantidad, orden ni límites de las curvas.
-- [ ] **T62 · Métricas por curva** — RF-011 — *Hecho cuando:* `vMin`, `vIni`, `vApex`,
+- [x] **T62 · Métricas por curva** — RF-011 — *Hecho cuando:* `vMin`, `vIni`, `vApex`,
   `vFin`, `tCurva`, `dFren` y `dAcel` coinciden con un caso calculado a mano.
-- [ ] **T63 · Delta por curva** — RF-015 — *Hecho cuando:* la diferencia de tiempos por arco
+- [x] **T63 · Delta por curva** — RF-015 — *Hecho cuando:* la diferencia de tiempos por arco
   coincide con el caso de prueba.
-- [ ] **T64 · Tests de métricas y delta** — RF-011/015 — *Hecho cuando:* los valores
+- [x] **T64 · Tests de métricas y delta** — RF-011/015 — *Hecho cuando:* los valores
   conocidos pasan con las tolerancias acordadas.
 
 ## Fase 7 — Sectores, agregados y comparación (RF-011, 014, 015)
 
-- [ ] **T65 · Sectores sobre `s`** — RF-011 — *Hecho cuando:* los 3 sectores suman el tiempo
+- [x] **T65 · Sectores sobre `s`** — RF-011 — *Hecho cuando:* los 3 sectores suman el tiempo
   de vuelta.
-- [ ] **T66 · Vuelta teórica** — RF-011 — *Hecho cuando:* suma el mejor tiempo de cada sector
+- [x] **T66 · Vuelta teórica** — RF-011 — *Hecho cuando:* suma el mejor tiempo de cada sector
   y calcula el potencial a ganar.
-- [ ] **T67 · Barras de tiempos y delta vs mejor** — RF-011 — *Hecho cuando:* el orden es
+- [x] **T67 · Barras de tiempos y delta vs mejor** — RF-011 — *Hecho cuando:* el orden es
   mejor→peor y el delta por vuelta es correcto.
-- [ ] **T68 · Velocidad media/máx y envolvente** — RF-011 — *Hecho cuando:* la envolvente
+- [x] **T68 · Velocidad media/máx y envolvente** — RF-011 — *Hecho cuando:* la envolvente
   devuelve min/media/máx por punto de la grilla.
-- [ ] **T69 · Histogramas de velocidad y marcha** — RF-011 — *Hecho cuando:* la suma de las
+- [x] **T69 · Histogramas de velocidad y marcha** — RF-011 — *Hecho cuando:* la suma de las
   barras equivale a las muestras válidas.
-- [ ] **T70 · Fuel y desvío lateral** — RF-011 — *Hecho cuando:* el consumo por vuelta y la
+- [x] **T70 · Fuel y desvío lateral** — RF-011 — *Hecho cuando:* el consumo por vuelta y la
   separación lateral vs REF son correctos.
-- [ ] **T71 · Tabla resumen** — RF-011 — *Hecho cuando:* tiene las 9 columnas de v1 y el
+- [x] **T71 · Tabla resumen** — RF-011 — *Hecho cuando:* tiene las 9 columnas de v1 y el
   delta al mejor.
-- [ ] **T72 · "Conjunto" limitado al auto de la REF** — RF-014 — *Hecho cuando:* al poner una
+- [x] **T72 · "Conjunto" limitado al auto de la REF** — RF-014 — *Hecho cuando:* al poner una
   REF de otro auto, los agregados pasan a ese auto y no mezclan.
-- [ ] **T73 · Delta acumulado A/B** — RF-015 — *Hecho cuando:* A vs A da 0 y el signo es
+- [x] **T73 · Delta acumulado A/B** — RF-015 — *Hecho cuando:* A vs A da 0 y el signo es
   correcto.
-- [ ] **T74 · Δvelocidad y Δpedales** — RF-015 — *Hecho cuando:* coinciden con el caso
+- [x] **T74 · Δvelocidad y Δpedales** — RF-015 — *Hecho cuando:* coinciden con el caso
   calculado a mano.
-- [ ] **T75 · Mini-delta por sector** — RF-015 — *Hecho cuando:* la suma de los 3 mini-deltas
+- [x] **T75 · Mini-delta por sector** — RF-015 — *Hecho cuando:* la suma de los 3 mini-deltas
   es coherente con el delta acumulado.
-- [ ] **T76 · Test A/B de autos distintos** — RF-015 — *Hecho cuando:* en la misma `s` el
+- [x] **T76 · Test A/B de autos distintos** — RF-015 — *Hecho cuando:* en la misma `s` el
   delta es el esperado entre dos autos.
 
 ## Fase 8 — Matemática de mapa (RF-011)

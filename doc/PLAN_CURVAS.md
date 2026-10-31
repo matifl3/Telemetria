@@ -1,7 +1,9 @@
 # Plan: detección y análisis de curvas desde el `.ai`
 
-Estado: **diseñado para v2** (Tauri + Rust). En v1 la pestaña existe pero queda vacía
-por el bug de `detectarCurvas` duplicada (ver aviso al final).
+Estado: **implementado en `core` (fase 6)**. Detección, métricas y delta tienen tests
+verdes; falta la calibración fina con 2–3 pistas (fase 13) y el DTO/front.
+En v1 la pestaña existe pero queda vacía por el bug de `detectarCurvas` duplicada
+(ver aviso al final).
 Ámbito v2: crate `core` (`curvas`), DTO de la pestaña Curvas y front `front/pestanas/curvas.js`.
 Base: pista de referencia `fast_lane.ai` (Monza noDRS, `lfmv2`)
 
@@ -21,7 +23,7 @@ del auto. Cada arco por separado (sin unir chicanes); segundo umbral para curvas
 
 ## 1. Detección (núcleo, geometría del `.ai`)
 
-`detectarCurvas(env)` en `core/src/curvas.rs` (v2). En v1 vivía en
+`detectar_curvas(pista)` en `core/src/curvas.rs` (v2). En v1 vivía en
 `visualizador/app.js`, junto a `parsearAi`; ver el aviso sobre la duplicación al final.
 
 - Entrada: línea central `nx,nz` y distancia acumulada `ns` (del propio `.ai`: 3750 pts, paso ≈1,54 m, largo ≈5757 m). Si `ns` no es monótona, se recalcula el arco desde `nx,nz`.
@@ -89,6 +91,10 @@ El `.ai` mide ~5757 m y **no comparte origen de distancia con las vueltas** en v
 > repo; no buscarlos. La verificación de la v2 es `cargo test` en `core` (ver
 > `spec/migracion-tauri-rust/tareas.md`).
 
+- v2: `cargo test -p core --test curvas` cubre T54–T64 (curvatura, histéresis,
+  unión de ápices, filtros, caché, cruce de meta, métricas y delta). Smoke contra el
+  `fast_lane.ai` real de Monza (3750 puntos, 5757,2 m): 11 arcos, ids, sentidos y radios
+  dentro de ±2 m de la tabla de §1.
 - `ai_smoke.js`: ancho constante, `env.ns`, nº de arcos = 11, orden creciente, Curva Grande y Parabólica derecha, Ascari L-R-L, mapeo identidad+monótono. `exit=0`.
 - `smoke_visualizador.js`: sin regresiones nuevas (queda un `[FAIL] no hay rects de barras` preexistente, ajeno a curvas).
 - `replay_e2e.js`: parsea el `.ai` real (11 arcos) + un `.acreplay` real → 17 vueltas, `grid.slipFL` poblado, marcadores presentes (spin/lock) y `renderTabActiva()` sin excepciones.

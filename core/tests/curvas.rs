@@ -165,6 +165,29 @@ fn t60_pista_sintetica_sin_fantasmas_ni_faltantes() {
 }
 
 #[test]
+fn t60_chicane_l_r_l_conserva_los_tres_arcos() {
+    let pista = pista_de(&ConstructorPista::desde_tramos(
+        &[
+            TramoFixture::recta(80.0),
+            TramoFixture::arco(40.0, SentidoFixture::Derecha, 90.0),
+            TramoFixture::recta(15.0),
+            TramoFixture::arco(40.0, SentidoFixture::Izquierda, 90.0),
+            TramoFixture::recta(15.0),
+            TramoFixture::arco(40.0, SentidoFixture::Derecha, 90.0),
+            TramoFixture::recta(80.0),
+        ],
+        1.5,
+    ));
+    assert_eq!(pista.curvas.len(), 3, "{:?}", pista.curvas);
+    assert_eq!(pista.curvas[0].sentido, Sentido::Derecha);
+    assert_eq!(pista.curvas[1].sentido, Sentido::Izquierda);
+    assert_eq!(pista.curvas[2].sentido, Sentido::Derecha);
+    for curva in &pista.curvas {
+        assert!(cerca(curva.radio_min, 40.0, 2.0), "Rmin {}", curva.radio_min);
+    }
+}
+
+#[test]
 fn t61_cambiar_la_referencia_no_altera_las_curvas() {
     let bytes = ovalo().bytes();
     let a = parsear_pista(&bytes, "fast_lane.ai").unwrap();
