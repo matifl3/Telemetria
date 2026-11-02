@@ -52,7 +52,9 @@ pub enum SentidoFixture {
 /// Tramo de una pista sintética: recta o arco.
 #[derive(Debug, Clone, Copy)]
 pub enum TramoFixture {
-    Recta { largo: f32 },
+    Recta {
+        largo: f32,
+    },
     Arco {
         radio: f32,
         sentido: SentidoFixture,
@@ -76,9 +78,7 @@ impl TramoFixture {
     fn largo(&self) -> f32 {
         match *self {
             TramoFixture::Recta { largo } => largo,
-            TramoFixture::Arco { radio, grados, .. } => {
-                radio * grados.to_radians()
-            }
+            TramoFixture::Arco { radio, grados, .. } => radio * grados.to_radians(),
         }
     }
 }
@@ -173,11 +173,7 @@ impl ConstructorPista {
                         x += ds * rumbo.cos();
                         z += ds * rumbo.sin();
                     }
-                    TramoFixture::Arco {
-                        radio,
-                        sentido,
-                        ..
-                    } => {
+                    TramoFixture::Arco { radio, sentido, .. } => {
                         let signo = match sentido {
                             SentidoFixture::Derecha => 1.0,
                             SentidoFixture::Izquierda => -1.0,
@@ -248,7 +244,8 @@ impl ConstructorPista {
     }
 
     /// Pone el mismo par de semianchos en todos los puntos y activa el bloque.
-    pub fn con_semianchos(mut self, izq: f32, der: f32) -> Self {        for punto in &mut self.puntos {
+    pub fn con_semianchos(mut self, izq: f32, der: f32) -> Self {
+        for punto in &mut self.puntos {
             punto.semiancho_izq = Some(izq);
             punto.semiancho_der = Some(der);
         }

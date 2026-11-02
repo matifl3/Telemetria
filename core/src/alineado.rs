@@ -3,7 +3,7 @@
 //! El remuestreo no extrapola: fuera de la cobertura de la vuelta, dentro de un
 //! hueco de proyección o con un valor no finito, el resultado es `None`.
 
-use crate::grilla::{Grilla, remuestrear_lineal};
+use crate::grilla::{remuestrear_lineal, remuestrear_vecino, Grilla};
 use crate::vuelta::Vuelta;
 
 /// Canales de una vuelta remuestreados a la grilla de la pista.
@@ -19,8 +19,26 @@ pub struct VueltaAlineada {
     /// Freno normalizado 0..1.
     pub freno: Vec<Option<f32>>,
     pub rpm: Vec<Option<f32>>,
+    /// Aceleración longitudinal (m/s²), recortada como en la vuelta.
+    pub acc_long: Vec<Option<f32>>,
+    /// Aceleración lateral (m/s²), recortada como en la vuelta.
     pub acc_lat: Vec<Option<f32>>,
+    /// Módulo de la aceleración total (m/s²), sin recortar.
+    pub acc_total: Vec<Option<f32>>,
+    /// Ángulo de volante (rad).
+    pub volante: Vec<Option<f32>>,
+    /// Yaw continuo (rad).
+    pub yaw: Vec<Option<f32>>,
+    /// Marcha por vecino más cercano; no se interpola.
+    pub marcha: Vec<Option<u8>>,
+    /// Combustible en las unidades del juego.
+    pub gasolina: Vec<Option<f32>>,
+    /// Carga por rueda (N), orden FL, FR, RL, RR.
+    pub carga: [Vec<Option<f32>>; 4],
+    pub slip_ratio: [Vec<Option<f32>>; 4],
+    pub slip_angle: [Vec<Option<f32>>; 4],
     pub x: Vec<Option<f32>>,
+    pub y: Vec<Option<f32>>,
     pub z: Vec<Option<f32>>,
 }
 
@@ -31,7 +49,7 @@ impl VueltaAlineada {
     }
 }
 
-/// Remuestrea todos los canales usados por los agregados y la comparación.
+/// Remuestrea todos los canales que consumen el análisis y los DTO.
 pub fn alinear_vuelta(vuelta: &Vuelta, grilla: &Grilla) -> VueltaAlineada {
     let muestras = &vuelta.muestras;
     VueltaAlineada {
@@ -41,8 +59,24 @@ pub fn alinear_vuelta(vuelta: &Vuelta, grilla: &Grilla) -> VueltaAlineada {
         gas: remuestrear_lineal(&muestras.s, &muestras.gas, grilla),
         freno: remuestrear_lineal(&muestras.s, &muestras.freno, grilla),
         rpm: remuestrear_lineal(&muestras.s, &muestras.rpm, grilla),
+        acc_long: remuestrear_lineal(&muestras.s, &muestras.acc_long, grilla),
         acc_lat: remuestrear_lineal(&muestras.s, &muestras.acc_lat, grilla),
+        acc_total: remuestrear_lineal(&muestras.s, &muestras.acc_total, grilla),
+        volante: remuestrear_lineal(&muestras.s, &muestras.volante, grilla),
+        yaw: remuestrear_lineal(&muestras.s, &muestras.yaw, grilla),
+        marcha: remuestrear_vecino(&muestras.s, &muestras.marcha, grilla),
+        gasolina: remuestrear_lineal(&muestras.s, &muestras.gasolina, grilla),
+        carga: std::array::from_fn(|rueda| {
+            remuestrear_lineal(&muestras.s, &muestras.carga[rueda], grilla)
+        }),
+        slip_ratio: std::array::from_fn(|rueda| {
+            remuestrear_lineal(&muestras.s, &muestras.slip_ratio[rueda], grilla)
+        }),
+        slip_angle: std::array::from_fn(|rueda| {
+            remuestrear_lineal(&muestras.s, &muestras.slip_angle[rueda], grilla)
+        }),
         x: remuestrear_lineal(&muestras.s, &muestras.x, grilla),
+        y: remuestrear_lineal(&muestras.s, &muestras.y, grilla),
         z: remuestrear_lineal(&muestras.s, &muestras.z, grilla),
     }
 }

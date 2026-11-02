@@ -249,19 +249,19 @@ Camino crítico: fases 1 → 5 (parser, pista, vueltas, proyección, grilla).
 
 ## Fase 10 — DTO (RF-012)
 
-- [ ] **T89 · DTO resumen** — RF-012 — *Hecho cuando:* serializa autos, vueltas y avisos con
+- [x] **T89 · DTO resumen** — RF-012 — *Hecho cuando:* serializa autos, vueltas y avisos con
   nombres en español.
-- [ ] **T90 · DTO Vuelta** — RF-011 — *Hecho cuando:* incluye canales alineados y readouts de
+- [x] **T90 · DTO Vuelta** — RF-011 — *Hecho cuando:* incluye canales alineados y readouts de
   la vuelta REF.
-- [ ] **T91 · DTO Mapa** — RF-011 — *Hecho cuando:* incluye pista y trazas por vuelta
+- [x] **T91 · DTO Mapa** — RF-011 — *Hecho cuando:* incluye pista y trazas por vuelta
   visible.
-- [ ] **T92 · DTO Conjunto** — RF-011/014 — *Hecho cuando:* contiene solo los agregados del
+- [x] **T92 · DTO Conjunto** — RF-011/014 — *Hecho cuando:* contiene solo los agregados del
   auto de la REF.
-- [ ] **T93 · DTO Comparación** — RF-015 — *Hecho cuando:* incluye A, B y las series de
+- [x] **T93 · DTO Comparación** — RF-015 — *Hecho cuando:* incluye A, B y las series de
   delta.
-- [ ] **T94 · DTO Curvas** — RF-011/015 — *Hecho cuando:* incluye curvas, métricas por vuelta
+- [x] **T94 · DTO Curvas** — RF-011/015 — *Hecho cuando:* incluye curvas, métricas por vuelta
   y delta por curva.
-- [ ] **T95 · Tests de serialización y tolerancias** — RF-012 — *Hecho cuando:* el JSON no
+- [x] **T95 · Tests de serialización y tolerancias** — RF-012 — *Hecho cuando:* el JSON no
   contiene `NaN` y los huecos viajan como `Option`.
 
 ## Fase 11 — Capa Tauri (RF-006, 008, 009, 010, 013, 014)

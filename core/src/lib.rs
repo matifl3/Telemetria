@@ -9,6 +9,7 @@ pub mod alineado;
 pub mod clasificacion;
 pub mod comparacion;
 pub mod curvas;
+pub mod dto;
 pub mod error;
 pub mod grilla;
 pub mod lector;

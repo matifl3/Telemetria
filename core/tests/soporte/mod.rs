@@ -140,11 +140,7 @@ impl ConstructorReplay {
         let mut constructor = Self::default();
         constructor.autos = (0..cantidad)
             .map(|i| {
-                AutoFixture::nuevo(
-                    format!("auto_{i}"),
-                    format!("Piloto {i}"),
-                    frames_por_auto,
-                )
+                AutoFixture::nuevo(format!("auto_{i}"), format!("Piloto {i}"), frames_por_auto)
             })
             .collect();
         constructor
@@ -152,7 +148,10 @@ impl ConstructorReplay {
 
     /// `frames_globales` se deriva del primer auto para simplificar.
     pub fn frames_globales(&self) -> u32 {
-        self.autos.first().map(|a| a.frames.len() as u32).unwrap_or(0)
+        self.autos
+            .first()
+            .map(|a| a.frames.len() as u32)
+            .unwrap_or(0)
     }
 
     /// Serializa el replay completo.
