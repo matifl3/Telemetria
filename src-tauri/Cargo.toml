@@ -1,0 +1,26 @@
+[package]
+name = "ac-telemetry-lab"
+version = "0.2.0"
+edition = "2021"
+description = "AC Telemetry Lab: visualizador de replays de Assetto Corsa"
+
+[lib]
+name = "ac_telemetry_lab_lib"
+crate-type = ["rlib"]
+test = false
+doctest = false
+
+[[bin]]
+name = "ac-telemetry-lab"
+path = "src/main.rs"
+test = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+acreplay_core = { package = "core", path = "../core" }
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

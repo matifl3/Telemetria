@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permisos mínimos de la ventana: sin acceso al sistema de archivos desde la UI. Los archivos solo los lee Rust a pedido del diálogo o de un arrastre.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

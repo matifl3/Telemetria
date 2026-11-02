@@ -266,13 +266,13 @@ Camino crítico: fases 1 → 5 (parser, pista, vueltas, proyección, grilla).
 
 ## Fase 11 — Capa Tauri (RF-006, 008, 009, 010, 013, 014)
 
-- [ ] **T96 · Scaffold de `src-tauri` y capabilities** — RF-008/010 — *Hecho cuando:*
+- [x] **T96 · Scaffold de `src-tauri` y capabilities** — RF-008/010 — *Hecho cuando:*
   `cargo build` compila y la capability solo permite lectura de archivos elegidos.
-- [ ] **T97 · `estado_app` con `Mutex<Sesion>`** — RF-009 — *Hecho cuando:* un test del
+- [x] **T97 · `estado_app` con `Mutex<Sesion>`** — RF-009 — *Hecho cuando:* un test del
   wrapper demuestra que dos accesos concurrentes no corrompen el estado.
-- [ ] **T98 · Comando `cargar_archivos` atómico** — RF-008/009 — *Hecho cuando:* se ejecuta
+- [x] **T98 · Comando `cargar_archivos` atómico** — RF-008/009 — *Hecho cuando:* se ejecuta
   en `spawn_blocking` y un lote inválido devuelve aviso sin mutar la sesión.
-- [ ] **T99 · Comando `cargar_pista`** — RF-006/008 — *Hecho cuando:* una pista inválida
+- [x] **T99 · Comando `cargar_pista`** — RF-006/008 — *Hecho cuando:* una pista inválida
   conserva la anterior.
 - [ ] **T100 · Comandos de pestaña y selección** — RF-013/014 — *Hecho cuando:*
   `datos_pestana`, `alternar_vuelta`, `fijar_referencia`, `fijar_b` y `limpiar_sesion`

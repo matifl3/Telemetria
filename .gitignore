@@ -9,6 +9,7 @@ salida/
 
 # --- Rust (workspace de la v2) ---
 target/
+src-tauri/gen/
 
 # --- Temporales ---
 *.bak

@@ -8,6 +8,8 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
   sectores, agregados, comparación A/B, mapa y DTOs por pestaña. Fases 0–10
   cerradas; `cargo test` verde (116 tests); clippy solo conserva warnings preexistentes.
   Monza real: 11 arcos, igual que `doc/PLAN_CURVAS.md`.
+- Fase 11 T96–T99 hechas: scaffold `src-tauri`, estado `Mutex<Sesion>`, comandos
+  atómicos y 5 tests de integración verdes. T100–T103 quedan para prueba manual.
 ## Decisiones (y por qué)
 - Sin persistencia (localStorage/IndexedDB): datos solo en memoria por sesión.
   En Tauri nada en disco (ni ajustes); la constitución debe ser verificable.
@@ -17,26 +19,19 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
   distancia recorrida), curvas una vez sobre el `.ai`, parser multi-auto, carga
   atómica replay+pista, "Conjunto" solo con el auto de la REF, uPlot vendorizado.
 - Eje X v2: "Distancia de pista (m)" (cambio visible vs v1, aprobado).
-- Pista: ancho constante (mediana de `(izq+der)/2` con ambos lados válidos),
-  `longitud_m` en `f64`; semianchos por punto quedan para post-migración.
 - Pista inválida: cortado → `ArchivoTruncado`; `n` malo o coordenadas no
   finitas → `PistaInvalida`; sobrantes <72 B se ignoran.
-- Fases 3–5: clasificación por auto (mediana superior); proyección con ventana
-  de 64 y respaldo global (>20 m ⇒ hueco, >10 % ⇒ `ProyeccionDeficiente`);
-  `ajustar_meta` deja `s` no decreciente; grilla solo por `longitud_m`.
-- Fase 6: detección única sobre el `.ai`; curvatura O(n) ±6 cíclica si cierra;
-  histéresis 300/1200 m, unión ≤10 m, filtros largo ≥20 m y giro ≥0,1 rad.
-- Fase 7: alineado a la grilla; sectores en `L/3`; teórica = mejor sector;
-  `conjunto` filtra válidas del auto REF; deltas A−B por `s` (positivo = A más
-  lento o valor mayor).
-- Fase 8: mapa mundo→2D (rotación x/z; elevación); bounds con banda+trazas;
-  cache de una vista por visibles+proyección.
 - Fase 9: sesión atómica; REF = jugador con vueltas o primer válido + aviso;
   visibles = válidas REF; REF/B visibles, válidas y distintas; `Auto::vueltas`
   lo llena la sesión (el parser lo deja vacío).
 - Fase 10: `dto` arma por pestaña; `VueltaAlineada` amplió canales (y, volante,
   marcha, acc_long/acc_total, yaw, carga, slip, gasolina); JSON en snake_case y
   todo número no finito viaja como `None`/`null`. `serde_json` solo para tests.
+- Fase 11: lib de `src-tauri` como `rlib` (sin `cdylib`): el `ld` de MinGW falla
+  con "export ordinal too large" al exportar todo. Tests en `tests/` (integración)
+  porque `tauri-build` solo embebe el manifest en bins; el manifest se enlaza a
+  los tests con `cargo:rustc-link-arg-tests`. `[lib] test=false` evita el harness
+  de la lib sin manifest.
 ## Aprendizajes y errores a evitar
 - No crear `docs/`: las docs viven en `doc/`.
 - `doc/PLAN_CURVAS.md` menciona scripts smoke inexistentes — no buscarlos.
@@ -45,8 +40,11 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - Los tests de `core/tests/` comparten `soporte/`; por eso lleva `#![allow(dead_code)]`.
 - En esta máquina el linker MSVC no está disponible y el `link.exe` de Git rompe
   el toolchain por defecto: usar `cargo +stable-x86_64-pc-windows-gnu`.
+- Para compilar Tauri usar el MinGW de CodeBlocks:
+  `D:\Program Files\CodeBlocks\MinGW\bin` en `PATH` (su `dlltool` sí funciona;
+  el WinLibs portable quedó incompleto). `C:` está lleno: usar
+  `CARGO_TARGET_DIR=D:\herramientas\telemetria-target`.
 ## Próximos pasos
-- Fase 11 (T96–T103): capa Tauri (scaffold, comandos, capabilities, errores).
-- Migración Tauri (front) + Rust: **no implementada** aún.
-- Post-migración: semianchos por punto y revisión del `fast_lane.ai` real del
-  servidor (`spec/migracion-tauri-rust/tareas-post-migracion.md`).
+- Fase 11 T100–T103: prueba manual de pestañas/selección, diálogo, drag & drop y
+  errores con archivos reales de `Paquetes de telemetria/`.
+- Fase 12: frontend (layout, uPlot vendorizado, avisos, selector de vueltas).

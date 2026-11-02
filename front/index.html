@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AC Telemetry Lab</title>
+  </head>
+  <body>
+    <main>
+      <h1>AC Telemetry Lab</h1>
+      <p id="estado">Carga un .acreplay y fast_lane.ai para empezar.</p>
+      <button id="abrir" type="button">Abrir archivos</button>
+    </main>
+    <script>
+      const { invoke } = window.__TAURI__.core;
+      const { listen } = window.__TAURI__.event;
+
+      function mostrarResumen(resumen) {
+        document.getElementById("estado").textContent =
+          `${resumen.autos.length} autos, ${resumen.vueltas.length} vueltas`;
+      }
+
+      async function cargar(rutas) {
+        try {
+          mostrarResumen(await invoke("cargar_archivos", { rutas }));
+        } catch (error) {
+          document.getElementById("estado").textContent =
+            error.mensaje ?? String(error);
+        }
+      }
+
+      document.getElementById("abrir").addEventListener("click", async () => {
+        try {
+          const rutas = await invoke("abrir_dialogo");
+          if (rutas.length > 0) await cargar(rutas);
+        } catch (error) {
+          document.getElementById("estado").textContent =
+            error.mensaje ?? String(error);
+        }
+      });
+
+      listen("tauri://drag-drop", (evento) => cargar(evento.payload.paths));
+    </script>
+  </body>
+</html>
