@@ -12,10 +12,12 @@ pub mod curvas;
 pub mod error;
 pub mod grilla;
 pub mod lector;
+pub mod mapa;
 pub mod modelo;
 pub mod pista;
 pub mod proyeccion;
 pub mod sectores;
+pub mod sesion;
 pub mod vuelta;
 
 pub use error::{ErrorFormato, Motivo, Resultado};

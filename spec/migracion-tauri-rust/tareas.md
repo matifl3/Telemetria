@@ -219,32 +219,32 @@ Camino crítico: fases 1 → 5 (parser, pista, vueltas, proyección, grilla).
 
 ## Fase 8 — Matemática de mapa (RF-011)
 
-- [ ] **T77 · Bounds y transform 2D** — RF-011 — *Hecho cuando:* los puntos extremos caen
+- [x] **T77 · Bounds y transform 2D** — RF-011 — *Hecho cuando:* los puntos extremos caen
   dentro del canvas con margen.
-- [ ] **T78 · Transform 3D con rotación/elevación** — RF-011 — *Hecho cuando:* la proyección
+- [x] **T78 · Transform 3D con rotación/elevación** — RF-011 — *Hecho cuando:* la proyección
   es determinista y cambia al rotar.
-- [ ] **T79 · Normal de la traza y banda** — RF-011 — *Hecho cuando:* la banda es simétrica
+- [x] **T79 · Normal de la traza y banda** — RF-011 — *Hecho cuando:* la banda es simétrica
   respecto de la línea central con el semiancho dado.
-- [ ] **T80 · Cache por vista** — RF-011 — *Hecho cuando:* misma clave devuelve el mismo
+- [x] **T80 · Cache por vista** — RF-011 — *Hecho cuando:* misma clave devuelve el mismo
   resultado y un cambio de vista la invalida.
 
 ## Fase 9 — Sesión (RF-002, 003, 009, 010, 013, 014, 016)
 
-- [ ] **T81 · `Sesion` y carga candidata atómica** — RF-009 — *Hecho cuando:* un fallo en la
+- [x] **T81 · `Sesion` y carga candidata atómica** — RF-009 — *Hecho cuando:* un fallo en la
   candidata deja la sesión anterior idéntica.
-- [ ] **T82 · `auto_referencia` con fallback y aviso** — RF-002/003 — *Hecho cuando:* índice
+- [x] **T82 · `auto_referencia` con fallback y aviso** — RF-002/003 — *Hecho cuando:* índice
   inválido y jugador sin vueltas producen el auto correcto y `ReferenciaFallback`.
-- [ ] **T83 · Rechazo sin vueltas analizables** — RF-003 — *Hecho cuando:* el mensaje es
+- [x] **T83 · Rechazo sin vueltas analizables** — RF-003 — *Hecho cuando:* el mensaje es
   exactamente "El replay no contiene vueltas analizables" y no se entra.
-- [ ] **T84 · Selección por defecto** — RF-013 — *Hecho cuando:* solo las vueltas válidas del
+- [x] **T84 · Selección por defecto** — RF-013 — *Hecho cuando:* solo las vueltas válidas del
   auto de referencia quedan visibles.
-- [ ] **T85 · Alternar visibilidad e invariantes REF/B** — RF-014/016 — *Hecho cuando:*
+- [x] **T85 · Alternar visibilidad e invariantes REF/B** — RF-014/016 — *Hecho cuando:*
   ocultar la REF reasigna una válida y una vuelta inválida no se puede seleccionar.
-- [ ] **T86 · Limpiar sesión** — RF-010 — *Hecho cuando:* todo vuelve a vacío sin tocar
+- [x] **T86 · Limpiar sesión** — RF-010 — *Hecho cuando:* todo vuelve a vacío sin tocar
   disco.
-- [ ] **T87 · Tests de integración de sesión** — RF-002/003/013/014 — *Hecho cuando:*
+- [x] **T87 · Tests de integración de sesión** — RF-002/003/013/014 — *Hecho cuando:*
   cargar, fallback, alternar y consultar DTO pasan en un solo test.
-- [ ] **T88 · Guarda estática de persistencia** — RF-010 — *Hecho cuando:* el test falla si
+- [x] **T88 · Guarda estática de persistencia** — RF-010 — *Hecho cuando:* el test falla si
   aparece `fs::write`, `File::create`, `OpenOptions` o `localStorage`.
 
 ## Fase 10 — DTO (RF-012)

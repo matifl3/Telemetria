@@ -143,6 +143,7 @@ fn leer_auto(lector: &mut Lector<'_>, indice: usize) -> Resultado<Auto> {
         frames,
         wings,
         muestras,
+        vueltas: Vec::new(),
     })
 }
 

@@ -5,6 +5,8 @@
 //! El parseo guarda canales ya decodificados, no el frame crudo de 256 bytes
 //! (D-03 del plan).
 
+use crate::vuelta::Vuelta;
+
 /// Metadatos del encabezado del `.acreplay`.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct MetaReplay {
@@ -47,6 +49,9 @@ pub struct Auto {
     /// `num_wings`: bloques de 4 bytes entre frames.
     pub wings: u32,
     pub muestras: MuestrasAuto,
+    /// Vueltas construidas por la sesión, en orden de recorrido. El parser las
+    /// deja vacías: recién se completan al proyectar y clasificar (fase 9).
+    pub vueltas: Vec<Vuelta>,
 }
 
 /// Canales por frame de un auto. Todos los `Vec` tienen el mismo largo
@@ -161,6 +166,7 @@ mod pruebas {
             frames: 2,
             wings: 0,
             muestras: MuestrasAuto::con_capacidad(2),
+            vueltas: Vec::new(),
         };
         let replay = Replay {
             meta,
