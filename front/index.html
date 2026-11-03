@@ -13,7 +13,7 @@
     </main>
     <script>
       const { invoke } = window.__TAURI__.core;
-      const { listen } = window.__TAURI__.event;
+      const { getCurrentWebviewWindow } = window.__TAURI__.webviewWindow;
 
       function mostrarResumen(resumen) {
         document.getElementById("estado").textContent =
@@ -39,7 +39,9 @@
         }
       });
 
-      listen("tauri://drag-drop", (evento) => cargar(evento.payload.paths));
+      getCurrentWebviewWindow().onDragDropEvent((evento) => {
+        if (evento.payload.type === "drop") cargar(evento.payload.paths);
+      });
     </script>
   </body>
 </html>

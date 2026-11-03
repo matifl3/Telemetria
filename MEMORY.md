@@ -41,9 +41,9 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - En esta máquina el linker MSVC no está disponible y el `link.exe` de Git rompe
   el toolchain por defecto: usar `cargo +stable-x86_64-pc-windows-gnu`.
 - Para compilar Tauri usar el MinGW de CodeBlocks:
-  `D:\Program Files\CodeBlocks\MinGW\bin` en `PATH` (su `dlltool` sí funciona;
-  el WinLibs portable quedó incompleto). `C:` está lleno: usar
-  `CARGO_TARGET_DIR=D:\herramientas\telemetria-target`.
+  `C:\Program Files\CodeBlocks\MinGW\bin` en `PATH` (su `dlltool` sí funciona;
+  el WinLibs portable quedó incompleto). `D:` ya no existe: usar
+  `CARGO_TARGET_DIR=C:\Users\mati2205\AppData\Local\Temp\opencode\telemetria-target`.
 ## Próximos pasos
 - Fase 11 T100–T103: prueba manual de pestañas/selección, diálogo, drag & drop y
   errores con archivos reales de `Paquetes de telemetria/`.

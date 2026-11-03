@@ -22,6 +22,13 @@ pub fn pista_bytes() -> Vec<u8> {
         .bytes()
 }
 
+/// Pista con una cantidad de puntos declarada fuera de rango (T103).
+pub fn pista_invalida_bytes() -> Vec<u8> {
+    let mut pista = ConstructorPista::circular(RADIO, PUNTOS).con_semianchos(6.0, 6.0);
+    pista.n_declarado = Some(2);
+    pista.bytes()
+}
+
 pub fn frames(numero: u8, cantidad: usize, paso_ms: u32) -> Vec<FrameFixture> {
     (0..cantidad)
         .map(|indice| {

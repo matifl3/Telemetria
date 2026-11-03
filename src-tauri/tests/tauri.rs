@@ -1,4 +1,4 @@
-//! Tests de integración de la capa Tauri (T97–T99).
+//! Tests de integración de la capa Tauri (T97–T103).
 
 mod comun;
 
@@ -13,7 +13,9 @@ use ac_telemetry_lab_lib::comandos::{aplicar_lote, ArchivoCargado, Pestana};
 use ac_telemetry_lab_lib::error_comando::ErrorComando;
 use ac_telemetry_lab_lib::estado_app::EstadoApp;
 
-use comun::{auto_valido, pista_bytes, replay_bytes, sesion_valida};
+use comun::{
+    auto_valido, pista_bytes, pista_invalida_bytes, replay_bytes, sesion_valida, ConstructorReplay,
+};
 
 fn assert_invariantes(sesion: &Sesion) {
     if let Some(ref_id) = sesion.seleccion().ref_id {
@@ -107,6 +109,58 @@ fn t99_pista_invalida_conserva_la_anterior() {
     .expect_err("una pista truncada se rechaza");
 
     assert_eq!(sesion, antes, "la pista anterior queda intacta: {error:?}");
+}
+
+#[test]
+fn t103_rechazos_de_carga_conservan_la_sesion() {
+    let mut sesion = sesion_cargada();
+    let antes = sesion.clone();
+
+    // Versión distinta de 16.
+    let viejo = ConstructorReplay {
+        version: 15,
+        ..ConstructorReplay::default()
+    }
+    .bytes();
+    let error = aplicar_lote(
+        &mut sesion,
+        Some(ArchivoCargado {
+            archivo: "viejo.acreplay".to_string(),
+            bytes: viejo,
+        }),
+        None,
+    )
+    .expect_err("la versión 15 se rechaza");
+    assert_eq!(error.codigo, "version_no_soportada");
+    assert_eq!(sesion, antes, "la sesión queda intacta");
+
+    // Replay truncado a mitad de un frame.
+    let mut truncado = replay_bytes(vec![auto_valido("auto_0", "Jugador")], 0);
+    truncado.truncate(truncado.len() - 4);
+    let error = aplicar_lote(
+        &mut sesion,
+        Some(ArchivoCargado {
+            archivo: "cortado.acreplay".to_string(),
+            bytes: truncado,
+        }),
+        None,
+    )
+    .expect_err("un replay cortado se rechaza");
+    assert_eq!(error.codigo, "archivo_corrupto");
+    assert_eq!(sesion, antes, "la sesión queda intacta");
+
+    // Pista con cantidad de puntos fuera de rango.
+    let error = aplicar_lote(
+        &mut sesion,
+        None,
+        Some(ArchivoCargado {
+            archivo: "fast_lane.ai".to_string(),
+            bytes: pista_invalida_bytes(),
+        }),
+    )
+    .expect_err("una pista inválida se rechaza");
+    assert_eq!(error.codigo, "pista_invalida");
+    assert_eq!(sesion, antes, "la sesión queda intacta");
 }
 
 #[test]
