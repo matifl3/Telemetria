@@ -274,14 +274,14 @@ Camino crítico: fases 1 → 5 (parser, pista, vueltas, proyección, grilla).
   en `spawn_blocking` y un lote inválido devuelve aviso sin mutar la sesión.
 - [x] **T99 · Comando `cargar_pista`** — RF-006/008 — *Hecho cuando:* una pista inválida
   conserva la anterior.
-- [ ] **T100 · Comandos de pestaña y selección** — RF-013/014 — *Hecho cuando:*
+- [x] **T100 · Comandos de pestaña y selección** — RF-013/014 — *Hecho cuando:*
   `datos_pestana`, `alternar_vuelta`, `fijar_referencia`, `fijar_b` y `limpiar_sesion`
   devuelven lo esperado en una prueba manual.
-- [ ] **T101 · Diálogo nativo** — RF-008 — *Hecho cuando:* abre y devuelve rutas de
+- [x] **T101 · Diálogo nativo** — RF-008 — *Hecho cuando:* abre y devuelve rutas de
   `.acreplay` y `.ai`.
-- [ ] **T102 · Drag & drop** — RF-008 — *Hecho cuando:* soltar archivos produce el mismo
+- [x] **T102 · Drag & drop** — RF-008 — *Hecho cuando:* soltar archivos produce el mismo
   resultado que el diálogo.
-- [ ] **T103 · Prueba manual de errores de carga (manual)** — RF-008/009 — *Hecho cuando:* un
+- [x] **T103 · Prueba manual de errores de carga (manual)** — RF-008/009 — *Hecho cuando:* un
   checklist confirma rechazo por versión, truncado y pista inválida sin perder la sesión.
 
 ## Fase 12 — Frontend (RF-003, 005, 006, 011, 013, 014, 015, 016)

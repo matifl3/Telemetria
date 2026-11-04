@@ -5,11 +5,12 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - Constitución en `doc/constitucion.md` (6 principios) para la v2 Rust + Tauri.
 - v2 en desarrollo: `core` parsea `.acreplay` v16 multi-auto y `fast_lane.ai`,
   segmenta/clasifica vueltas, proyecta a `s`, arma la grilla y calcula curvas,
-  sectores, agregados, comparación A/B, mapa y DTOs por pestaña. Fases 0–10
-  cerradas; `cargo test` verde (116 tests); clippy solo conserva warnings preexistentes.
-  Monza real: 11 arcos, igual que `doc/PLAN_CURVAS.md`.
-- Fase 11 T96–T99 hechas: scaffold `src-tauri`, estado `Mutex<Sesion>`, comandos
-  atómicos y 5 tests de integración verdes. T100–T103 quedan para prueba manual.
+  sectores, agregados, comparación A/B, mapa y DTOs por pestaña. Fases 0–11
+  cerradas; `cargo test` verde (122 tests, 6 de integración Tauri). La fase 11
+  se verificó manualmente con un driver CDP (WebView2 con
+  `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=<puerto>`)
+  contra los replays reales de `Paquetes de telemetria/temp`: 29/29 chequeos +
+  diálogo nativo y drag&drop confirmados con interacción del usuario.
 ## Decisiones (y por qué)
 - Sin persistencia (localStorage/IndexedDB): datos solo en memoria por sesión.
   En Tauri nada en disco (ni ajustes); la constitución debe ser verificable.
@@ -40,11 +41,12 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - Los tests de `core/tests/` comparten `soporte/`; por eso lleva `#![allow(dead_code)]`.
 - En esta máquina el linker MSVC no está disponible y el `link.exe` de Git rompe
   el toolchain por defecto: usar `cargo +stable-x86_64-pc-windows-gnu`.
-- Para compilar Tauri usar el MinGW de CodeBlocks:
-  `C:\Program Files\CodeBlocks\MinGW\bin` en `PATH` (su `dlltool` sí funciona;
-  el WinLibs portable quedó incompleto). `D:` ya no existe: usar
-  `CARGO_TARGET_DIR=C:\Users\mati2205\AppData\Local\Temp\opencode\telemetria-target`.
+- Para compilar Tauri usar el MinGW de CodeBlocks (ahora en
+  `D:\Program Files\CodeBlocks\MinGW\bin` en `PATH`; el de `C:\` ya no existe y
+  la WinLibs de `D:\herramientas` sigue incompleta: falla el dlltool de
+  parking_lot). `CARGO_TARGET_DIR=C:\Users\matif\AppData\Local\Temp\opencode\telemetria-target`.
+- Tauri convierte los arg de comandos snake_case a camelCase del lado JS
+  (`numero_local` -> `numeroLocal`): pasar args mal nombrados da
+  "invalid args", no un error del comando.
 ## Próximos pasos
-- Fase 11 T100–T103: prueba manual de pestañas/selección, diálogo, drag & drop y
-  errores con archivos reales de `Paquetes de telemetria/`.
 - Fase 12: frontend (layout, uPlot vendorizado, avisos, selector de vueltas).

@@ -1,47 +1,311 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AC Telemetry Lab</title>
-  </head>
-  <body>
-    <main>
-      <h1>AC Telemetry Lab</h1>
-      <p id="estado">Carga un .acreplay y fast_lane.ai para empezar.</p>
-      <button id="abrir" type="button">Abrir archivos</button>
-    </main>
-    <script>
-      const { invoke } = window.__TAURI__.core;
-      const { getCurrentWebviewWindow } = window.__TAURI__.webviewWindow;
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AC Telemetry Lab</title>
+  <link rel="stylesheet" href="vendor/uPlot.min.css" />
+  <link rel="stylesheet" href="estilos.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="marca">
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 14l5-9 4 7 4-11 5 15"/></svg></span>
+      <div>
+        <h1>AC Telemetry Lab</h1>
+        <p>Análisis y comparación de telemetría de Assetto Corsa</p>
+      </div>
+    </div>
+    <div class="estado-carga">
+      <button id="btn-abrir" class="btn primario">Cargar archivos (.acreplay / .ai)</button>
+      <button id="btn-limpiar" class="btn fantasma" disabled>Limpiar</button>
+    </div>
+  </header>
 
-      function mostrarResumen(resumen) {
-        document.getElementById("estado").textContent =
-          `${resumen.autos.length} autos, ${resumen.vueltas.length} vueltas`;
-      }
+  <main>
+    <section id="zona-carga" class="zona-carga">
+      <div class="drop-inner">
+        <div class="drop-icono" aria-hidden="true"><svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17V4"/><path d="M6 10l6-6 6 6"/><path d="M4 21h16"/></svg></div>
+        <h2>Arrastrá tus telemetrías acá</h2>
+        <p>Replays <code>.acreplay</code> y la pista <code>fast_lane.ai</code>: se cargan juntos o no entra ninguno. Después podés cambiar la pista sola con el botón de arriba.</p>
+        <p>También podés usar el botón <em>Cargar archivos</em> del encabezado.</p>
+      </div>
+    </section>
 
-      async function cargar(rutas) {
-        try {
-          mostrarResumen(await invoke("cargar_archivos", { rutas }));
-        } catch (error) {
-          document.getElementById("estado").textContent =
-            error.mensaje ?? String(error);
-        }
-      }
+    <section id="error-aviso" class="aviso oculto"></section>
 
-      document.getElementById("abrir").addEventListener("click", async () => {
-        try {
-          const rutas = await invoke("abrir_dialogo");
-          if (rutas.length > 0) await cargar(rutas);
-        } catch (error) {
-          document.getElementById("estado").textContent =
-            error.mensaje ?? String(error);
-        }
-      });
+    <section id="dashboard" class="dashboard oculto">
+      <aside class="panel lateral">
+        <div class="panel-titulo fila-colapsable">
+          <span>Vueltas cargadas</span>
+          <button id="btn-colapsar-vueltas" class="colapsar" type="button" title="Ocultar la lista de vueltas" aria-label="Mostrar u ocultar la lista de vueltas" aria-expanded="true" aria-controls="lista-vueltas">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+        </div>
+        <ul id="lista-vueltas" class="lista-vueltas"></ul>
 
-      getCurrentWebviewWindow().onDragDropEvent((evento) => {
-        if (evento.payload.type === "drop") cargar(evento.payload.paths);
-      });
-    </script>
-  </body>
+        <div class="panel-titulo">Reproductor</div>
+        <div class="reproductor">
+          <button id="btn-play" class="btn icono" type="button" title="Play/Pausa (espacio)" aria-label="Reproducir vuelta" aria-pressed="false">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <input id="scrub" type="range" min="0" max="1000" value="0" step="1" aria-label="Posición en la vuelta" />
+          <span id="scrub-dist" class="mono">0 m</span>
+        </div>
+        <div class="velocidad-repro">
+          <label>Velocidad
+            <select id="sel-velocidad">
+              <option value="0.25">0.25×</option>
+              <option value="0.5">0.5×</option>
+              <option value="1" selected>1×</option>
+              <option value="2">2×</option>
+              <option value="4">4×</option>
+            </select>
+          </label>
+          <label class="check">
+            <input id="chk-loop" type="checkbox" checked /> Loop
+          </label>
+        </div>
+
+        <div class="panel-titulo">Lectura actual</div>
+        <div id="readouts" class="readouts"></div>
+      </aside>
+
+      <section class="contenido">
+        <nav class="tabs" role="tablist" aria-label="Vistas de análisis">
+          <button class="tab activo" type="button" role="tab" id="tab-vuelta" aria-selected="true" aria-controls="panel-vuelta" data-tab="vuelta">Vuelta</button>
+          <button class="tab" type="button" role="tab" id="tab-mapa" aria-selected="false" aria-controls="panel-mapa" data-tab="mapa">Mapa</button>
+          <button class="tab" type="button" role="tab" id="tab-conjunto" aria-selected="false" aria-controls="panel-conjunto" data-tab="conjunto">Conjunto</button>
+          <button class="tab" type="button" role="tab" id="tab-comparacion" aria-selected="false" aria-controls="panel-comparacion" data-tab="comparacion">Comparación</button>
+          <button class="tab" type="button" role="tab" id="tab-curvas" aria-selected="false" aria-controls="panel-curvas" data-tab="curvas">Curvas</button>
+        </nav>
+
+        <div id="panel-vuelta" class="tab-panel activo" role="tabpanel" aria-labelledby="tab-vuelta">
+          <div class="grafico-card">
+            <div class="grafico-titulo">Velocidad <span class="unidad">km/h · distancia de pista</span></div>
+            <div id="chart-speed" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">RPM <span class="unidad">revoluciones</span></div>
+            <div id="chart-rpm" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Marcha <span class="unidad">por distancia de pista</span></div>
+            <div id="chart-gear" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Volante <span class="unidad">rad</span></div>
+            <div id="chart-steer" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Aceleración total <span class="unidad">g</span></div>
+            <div id="chart-acc" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Rumbo <span class="unidad">grados</span></div>
+            <div id="chart-yaw" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Carga por rueda <span class="unidad">N · vuelta REF</span></div>
+            <div id="chart-load" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Acelerador / Freno por vuelta <span class="unidad">0–1</span></div>
+            <div id="chart-inputs" class="plot"></div>
+          </div>
+        </div>
+
+        <div id="panel-mapa" class="tab-panel" role="tabpanel" aria-labelledby="tab-mapa">
+          <div class="mapa-card">
+            <div class="grafico-titulo">Mapa de pista</div>
+            <div class="mapa-controles">
+              <label>Visual
+                <select id="mapa-visual">
+                  <option value="canal">Canal (heatmap)</option>
+                  <option value="trazada">Trazada por vuelta</option>
+                </select>
+              </label>
+              <label>Canal
+                <select id="mapa-canal">
+                  <option value="velocidad_kmh">Velocidad</option>
+                  <option value="acelerador">Acelerador</option>
+                  <option value="freno">Freno</option>
+                  <option value="marcha">Marcha</option>
+                  <option value="acc_lat_g">G lateral</option>
+                  <option value="altura">Elevación</option>
+                </select>
+              </label>
+              <label class="check"><input id="mapa-bordes" type="checkbox" checked /> Pista de referencia</label>
+              <label class="check"><input id="mapa-frenada" type="checkbox" checked /> Marcas de frenada</label>
+              <label class="check"><input id="mapa-cambios" type="checkbox" /> Marcas de cambio</label>
+              <label class="check"><input id="mapa-3d" type="checkbox" /> 3D</label>
+              <button id="mapa-reset" class="btn fantasma" type="button">Reencuadrar</button>
+            </div>
+            <p class="mapa-hint"><strong>Trazada por vuelta</strong>: cada vuelta en su propio mapa, con la <strong>pista</strong> como banda gris (del <code>fast_lane.ai</code>) y su <strong>trazada</strong> de color como línea fina en su posición real. Rueda = zoom · arrastrar = panorámica · doble clic = encuadrar.</p>
+            <div id="mapa-3d-controles" class="mapa-3d-controles" style="display:none">
+              <label>Rotación <input id="mapa-rot" type="range" min="-180" max="180" value="0" step="1" /></label>
+              <label>Elevación <input id="mapa-alt" type="range" min="0" max="15" value="3" step="0.5" /></label>
+            </div>
+            <div id="mapa-canvas"><canvas id="mapa"></canvas></div>
+            <div id="mapa-trazadas"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Carga por rueda en vivo <span class="unidad">vuelta REF · seguí el scrub/play</span></div>
+            <canvas id="chart-carga-vivo"></canvas>
+          </div>
+        </div>
+
+        <div id="panel-conjunto" class="tab-panel" role="tabpanel" aria-labelledby="tab-conjunto">
+          <p class="hint" style="text-align:left; margin:0 0 10px; max-width:none">Conjunto usa <strong>todas las vueltas válidas del auto de la REF</strong>, sin importar la selección del panel lateral.</p>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Tiempos por vuelta <span class="unidad">mejor al tope · σ = consistencia</span></div>
+            <canvas id="ch-barras-tiempos"></canvas>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Velocidad media / máx por vuelta <span class="unidad">km/h</span></div>
+            <canvas id="ch-velmedia"></canvas>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Envolvente de velocidad <span class="unidad">mín / prom / máx</span></div>
+            <div id="chart-env" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Histograma de velocidad <span class="unidad">km/h</span></div>
+            <canvas id="ch-histvel"></canvas>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Uso de marchas <span class="unidad">frecuencia</span></div>
+            <canvas id="ch-histgear"></canvas>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Combustible usado por vuelta <span class="unidad">unidades crudas</span></div>
+            <canvas id="ch-fuel"></canvas>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Desvío lateral vs vuelta REF <span class="unidad">m</span></div>
+            <div id="chart-lat" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Tiempo por sector <span class="unidad">3 sectores de igual distancia</span></div>
+            <canvas id="ch-sectores"></canvas>
+            <div id="tt-sectores" class="grafico-tooltip" hidden></div>
+          </div>
+          <div class="fila-doble">
+            <div class="grafico-card">
+              <div class="grafico-titulo">Mapa por sectores <span class="unidad">vuelta REF · 3 sectores</span></div>
+              <canvas id="ch-mapa-sectores"></canvas>
+            </div>
+            <div class="grafico-card">
+              <div class="grafico-titulo">
+                <span>Trazada de mejores sectores <span class="unidad">mejor sector de cada vuelta</span></span>
+                <button id="btn-zoom-teorico" class="btn fantasma btn-ampliar" type="button">⤢ Ver en grande</button>
+              </div>
+              <canvas id="ch-mapa-teorico"></canvas>
+            </div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Resumen por vuelta</div>
+            <div id="tabla-resumen"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Vuelta teórica <span class="unidad">mejor sector de cada vuelta</span></div>
+            <div id="teorica"></div>
+          </div>
+        </div>
+
+        <div id="panel-comparacion" class="tab-panel" role="tabpanel" aria-labelledby="tab-comparacion">
+          <div class="panel-vs">
+            <div>A: <span id="vs-a" class="mono">–</span></div>
+            <label>vs B
+              <select id="sel-lap-b"></select>
+            </label>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Delta A − B <span class="unidad">s (positivo = A más lento)</span></div>
+            <div id="chart-delta" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Diferencia de velocidad <span class="unidad">km/h</span></div>
+            <div id="chart-dvel" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Diferencia pedales <span class="unidad">Δ 0–1</span></div>
+            <div id="chart-dped" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Delta por sector <span class="unidad">rojo = A pierde · verde = A gana</span></div>
+            <canvas id="ch-mini-delta"></canvas>
+          </div>
+        </div>
+
+        <div id="panel-curvas" class="tab-panel" role="tabpanel" aria-labelledby="tab-curvas">
+          <p class="hint" style="text-align:left; margin:0 0 10px; max-width:none">Las curvas se detectan sobre la curvatura de la línea central del <strong>fast_lane.ai</strong>. Cada arco se numera <strong>C1..Cn</strong> en orden de recorrido.</p>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Mapa por curvas <span class="unidad">vuelta REF · arcos coloreados</span></div>
+            <canvas id="ch-mapa-curvas"></canvas>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Tiempo por curva <span class="unidad">por vuelta</span></div>
+            <canvas id="ch-tiempos-curvas"></canvas>
+            <div id="tt-curvas" class="grafico-tooltip" hidden></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Círculo de tracción por curva <span class="unidad">acel/freno × lateral (g)</span></div>
+            <div id="traction-curvas" class="traction-grid"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Métricas por curva <span class="unidad">una fila por vuelta</span></div>
+            <div id="tabla-curvas" class="curvas-grid"></div>
+          </div>
+          <div class="panel-vs">
+            <div>A: <span id="vs-a-curvas" class="mono">–</span></div>
+            <label>vs B
+              <select id="sel-lap-b-curvas"></select>
+            </label>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Delta por curva <span class="unidad">A − B · ventana = arco</span></div>
+            <canvas id="ch-delta-curvas"></canvas>
+            <div id="tabla-curva-delta" class="tabla-delta-wrap"></div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <section id="zoom-teorico" class="zoom-overlay oculto" role="dialog" aria-modal="true" aria-labelledby="zoom-titulo" aria-hidden="true">
+    <div class="zoom-panel">
+      <div class="zoom-cab">
+        <h2 id="zoom-titulo">Trazada de mejores sectores</h2>
+        <div class="zoom-acciones">
+          <button id="zoom-out" class="btn fantasma" type="button" aria-label="Alejar">−</button>
+          <span id="zoom-nivel" class="mono">100%</span>
+          <button id="zoom-in" class="btn fantasma" type="button" aria-label="Acercar">+</button>
+          <button id="zoom-reset" class="btn fantasma" type="button">Reiniciar</button>
+          <button id="zoom-cerrar" class="btn fantasma" type="button" aria-label="Cerrar">✕</button>
+        </div>
+      </div>
+      <canvas id="ch-mapa-zoom"></canvas>
+      <p class="hint" style="text-align:center; margin:6px 0 0">Rueda del mouse para zoom · arrastrá para mover.</p>
+    </div>
+  </section>
+
+  <script src="vendor/uPlot.iife.min.js"></script>
+  <script src="app/estado.js"></script>
+  <script src="app/utils.js"></script>
+  <script src="app/avisos.js"></script>
+  <script src="app/puente.js"></script>
+  <script src="app/graficos/canvas.js"></script>
+  <script src="app/graficos/uplot.js"></script>
+  <script src="app/reproductor.js"></script>
+  <script src="app/selector_vueltas.js"></script>
+  <script src="app/pestanas/mapa_comun.js"></script>
+  <script src="app/pestanas/vuelta.js"></script>
+  <script src="app/pestanas/mapa.js"></script>
+  <script src="app/pestanas/conjunto.js"></script>
+  <script src="app/pestanas/comparacion.js"></script>
+  <script src="app/pestanas/curvas.js"></script>
+  <script src="app/carga.js"></script>
+  <script src="app/main.js"></script>
+</body>
 </html>
