@@ -11,6 +11,7 @@ async function renderPestanaConjunto() {
     return;
   }
   state.pistasCurvas = datos.mapa.curvas || [];
+  state.ultimoConjunto = datos;
   dibujarBarrasTiempos(datos);
   dibujarVelMedia(datos);
   dibujarEnvolvente(datos);
@@ -219,7 +220,7 @@ function dibujarMapaSectores(datos) {
   dibujarBandaPista(ctx, vista.tf, mapaData.pista);
   const longitud = longitudPistaDe(datos);
   const corte = longitud > 0 ? longitud / N_SECTORES : 0;
-  const segmentos = SegmentosDeTraza(ref, vista, corte);
+  const segmentos = SegmentosDeTraza(ref, vista.tf, corte);
   for (let s = 0; s < N_SECTORES; s++) {
     const pts = segmentos[s];
     if (!pts.length) continue;
@@ -313,12 +314,13 @@ function dibujarMapaTeorico(datos) {
   const { ctx, w, h, cv } = c;
   const vista = construirVistaFija(cv, mapaData.bounds);
   dibujarGrillaFondo(ctx, w, h);
-  pintarTrazadaTeorica(ctx, vista, mapaData, datos);
+  pintarTrazadaTeorica(ctx, vista, mapaData, datos, w, h);
   cv.onclick = () => abrirZoomTeorico(datos);
 }
 
-function pintarTrazadaTeorica(ctx, vista, mapaData, datos) {
-  const { tramos, corte } = construirTrazadaTeorica(datos);
+function pintarTrazadaTeorica(ctx, vista, mapaData, datos, w, h) {
+  const corte = longitudPistaDe(datos) / N_SECTORES;
+  const tramos = construirTrazadaTeorica(datos).tramos;
   if (!tramos.length) { ctx.fillStyle = '#8b97a8'; ctx.fillText('sin sectores medibles', 8, 20); return; }
   for (const traza of mapaData.trazas) dibujarTrazada(ctx, vista.tf, traza, 'rgba(148,163,184,0.12)', 2);
   dibujarBandaPista(ctx, vista.tf, mapaData.pista);
@@ -339,9 +341,11 @@ function pintarTrazadaTeorica(ctx, vista, mapaData, datos) {
   marcarLineaMeta(ctx, vista, tramos[0].traza);
   const usadas = [...new Set(tramos.map((t) => t.vuelta))];
   const resumen = usadas.length === 1 ? `mejor vuelta: ${usadas[0]}` : `mejores sectores de: ${usadas.join(', ')}`;
-  ctx.font = '10px "Segoe UI"'; ctx.fillStyle = '#8b97a8';
-  ctx.fillText(resumen.slice(0, 90), 8, 14);
-  leyendaSectorial(ctx, w, h);
+  if (w != null) {
+    ctx.font = '10px "Segoe UI"'; ctx.fillStyle = '#8b97a8';
+    ctx.fillText(resumen.slice(0, 90), 8, 14);
+    leyendaSectorial(ctx, w, h);
+  }
 }
 
 /* Tabla resumen por vuelta (DTO.tabla). */
@@ -425,7 +429,7 @@ function dibujarZoomTeorico() {
     const [X, Y] = base.tf(x, y);
     return [(X - w / 2) * z + w / 2 - px, (Y - h / 2) * z + h / 2 - py];
   };
-  pintarTrazadaTeorica(ctx, { tf }, zoomTeorico.datos.mapa, zoomTeorico.datos);
+  pintarTrazadaTeorica(ctx, { tf }, zoomTeorico.datos.mapa, zoomTeorico.datos, w, h);
 }
 
 function configurarZoomTeorico() {

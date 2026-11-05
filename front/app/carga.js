@@ -15,7 +15,7 @@ const cargaArchivos = (() => {
     ponerCargando(btn);
     try {
       const resumen = await puente.cargarArchivos(rutas);
-      aplicarResumen(resumen);
+      await aplicarResumen(resumen);
     } catch (error) {
       // El backend descarta el lote inválido y conserva la sesión anterior (D-08).
       mostrarError(mensajeComando(error));
@@ -74,8 +74,10 @@ const cargaArchivos = (() => {
       state.dis = 0;
       detenerReproduccion();
       destroyCharts();
-      $('#dashboard').classList.add('oculto');
-      $('zona-carga').classList.remove('oculto');
+      const dash2 = $('dashboard');
+      if (dash2) dash2.classList.add('oculto');
+      const z2 = $('zona-carga');
+      if (z2) z2.classList.remove('oculto');
       if (resumen.falta_pista) mostrarError('Falta cargar la pista (fast_lane.ai) para entrar al análisis.');
       else if (!resumen.autos.length && !resumen.avisos.length) ocultarError();
     }
@@ -106,8 +108,10 @@ const cargaArchivos = (() => {
 
   function entrarDashboard() {
     ocultarError();
-    $('#dashboard').classList.remove('oculto');
-    $('zona-carga').classList.add('oculto');
+    const dash = $('dashboard');
+    if (dash) dash.classList.remove('oculto');
+    const zona = $('zona-carga');
+    if (zona) zona.classList.add('oculto');
   }
 
   function iniciar() {

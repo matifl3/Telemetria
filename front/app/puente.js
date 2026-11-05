@@ -37,7 +37,8 @@ const puente = (() => {
       return cache.datos;
     }
     const respuesta = await invocar('datos_pestana', { pestana, rotacion, elevacion });
-    state.cacheDatos.set(pestana, { version: state.version, rot: rotacion, alt: elevacion, datos: respuesta });
+    // La respuesta es el enum etiquetado {pestana, datos}; cacheamos los datos crudos.
+    state.cacheDatos.set(pestana, { version: state.version, rot: rotacion, alt: elevacion, datos: respuesta.datos });
     return respuesta.datos;
   }
 

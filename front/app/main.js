@@ -1,40 +1,45 @@
 'use strict';
 
-/* Arranque y coordinación: pestañas, controles del mapa, readouts y dispatch. */
+/* Arranque y coordinación: readouts, pestañas, controles del mapa y dispatch. */
 
 /* Envoltorio global: selector_vueltas llama `aplicarResumen` sin prefijo. */
 function aplicarResumen(resumen) {
   return cargaArchivos.aplicarResumen(resumen);
 }
 
-/* Despachador de render: pedido por pestaña + render correspondiente (T100). */
+/* Despachador de render (T100): pide el DTO de la pestaña activa y renderiza. */
 async function renderPestanaActiva() {
   if (!state.resumen || !state.resumen.puede_analizar) return;
-  ocultarError();
   try {
     switch (state.tab) {
       case 'vuelta': {
         const datos = await puente.pedirPestana('vuelta');
         state.datosVuelta = datos;
-        state.grilla = datos.grilla;
-        state.paso = datos.grilla.length > 1 ? (datos.grilla[1] - datos.grilla[0] || 1) : 1;
-        state.longitudPista = datos.grilla.length ? datos.grilla[datos.grilla.length - 1] : 0;
         actualizarScrub();
         renderPestanaVuelta(datos);
         break;
       }
-      case 'mapa': await renderPestanaMapa(); break;
-      case 'conjunto': await renderPestanaConjunto(); break;
-      case 'comparacion': await renderPestanaComparacion(); break;
-      case 'curvas': await renderPestanaCurvas(); break;
-      default: break;
+      case 'mapa':
+        await renderPestanaMapa();
+        break;
+      case 'conjunto':
+        await renderPestanaConjunto();
+        break;
+      case 'comparacion':
+        await renderPestanaComparacion();
+        break;
+      case 'curvas':
+        await renderPestanaCurvas();
+        break;
+      default:
+        break;
     }
   } catch (error) {
     mostrarError(mensajeComando(error));
   }
 }
 
-/* Pestañas: tab activa + panel visible. */
+/* Cambio de pestaña: tabs + panels + render. */
 function cambiarTab(nombre) {
   state.tab = nombre;
   document.querySelectorAll('.tab').forEach((t) => {
@@ -55,17 +60,17 @@ function iniciarTabs() {
   });
 }
 
-/* Readouts de la vuelta REF (se llenan desde reproductor.actualizarPorIdx). */
+/* Readouts de la vuelta REF (los llena reproductor.actualizarPorIdx). */
 function crearReadouts() {
   const cont = $('readouts');
   if (!cont || cont.children.length) return;
   const defs = [
-    ['ro-vel', 'Velocidad'],
-    ['ro-dist', 'Dist'],
-    ['ro-gas', 'Gas'],
-    ['ro-freno', 'Freno'],
-    ['ro-marcha', 'Marcha'],
-    ['ro-tiempo', 'T vuelta'],
+    ['ro-vel', 'velocidad'],
+    ['ro-dist', 'distancia'],
+    ['ro-gas', 'gas'],
+    ['ro-freno', 'freno'],
+    ['ro-marcha', 'marcha'],
+    ['ro-tiempo', 'tiempo'],
   ];
   for (const [id, etiqueta] of defs) {
     const caja = document.createElement('div');
@@ -75,21 +80,24 @@ function crearReadouts() {
   }
 }
 
-/* Controles de la pestaña Mapa (visual, canal, marcas, 3D, encuadre). */
+/* Controles de la pestaña Mapa: visual, canal, marcas y 3D. */
 function iniciarControlesMapa() {
   const selVisual = $('mapa-visual');
   const selCanal = $('mapa-canal');
-  const chkBordes = $('mapa-bordes'), chkFren = $('mapa-frenada');
-  const chkCamb = $('mapa-cambios'), chk3D = $('mapa-3d');
+  const chkBordes = $('mapa-bordes');
+  const chkFrenada = $('mapa-frenada');
+  const chkCambios = $('mapa-cambios');
+  const chk3D = $('mapa-3d');
+  const rot = $('mapa-rot');
+  const alt = $('mapa-alt');
   const controles3D = $('mapa-3d-controles');
-  const rot = $('mapa-rot'), alt = $('mapa-alt');
 
   if (selVisual) selVisual.addEventListener('change', () => {
     state.mapa.visual = selVisual.value;
     state.mapa.resetView = true;
-    const esCanal = state.mapa.visual !== 'trazada';
-    $('mapa-canvas').style.display = esCanal ? '' : 'none';
-    $('mapa-trazadas').style.display = esCanal ? 'none' : '';
+    const trazada = state.mapa.visual === 'trazada';
+    $('mapa-canvas').classList.toggle('oculto', trazada);
+    $('mapa-trazadas').classList.toggle('oculto', !trazada);
     dibujarMapaPestana();
   });
   if (selCanal) selCanal.addEventListener('change', () => {
@@ -97,11 +105,11 @@ function iniciarControlesMapa() {
     dibujarMapaPestana();
   });
   if (chkBordes) chkBordes.addEventListener('change', () => { state.mapa.bordes = chkBordes.checked; dibujarMapaPestana(); });
-  if (chkFren) chkFren.addEventListener('change', () => { state.mapa.frenada = chkFren.checked; dibujarMapaPestana(); });
-  if (chkCamb) chkCamb.addEventListener('change', () => { state.mapa.cambios = chkCamb.checked; dibujarMapaPestana(); });
+  if (chkFrenada) chkFrenada.addEventListener('change', () => { state.mapa.frenada = chkFrenada.checked; dibujarMapaPestana(); });
+  if (chkCambios) chkCambios.addEventListener('change', () => { state.mapa.cambios = chkCambios.checked; dibujarMapaPestana(); });
   if (chk3D) chk3D.addEventListener('change', () => {
     state.mapa.tresD = chk3D.checked;
-    if (controles3D) controles3D.style.display = state.mapa.tresD ? '' : 'none';
+    if (controles3D) controles3D.classList.toggle('oculto', !state.mapa.tresD);
     if (rot) rot.disabled = !state.mapa.tresD;
     if (alt) alt.disabled = !state.mapa.tresD;
     resetearVistas();
@@ -117,49 +125,28 @@ function iniciarControlesMapa() {
   });
   const reset = $('mapa-reset');
   if (reset) reset.addEventListener('click', () => {
-    state.mapa.rot = 0; state.mapa.alt = 3;
-    if (rot) rot.value = '0';
-    if (alt) alt.value = '3';
-    if (chk3D) chk3D.checked = false;
-    state.mapa.tresD = false;
-    if (controles3D) controles3D.style.display = 'none';
-    if (rot) rot.disabled = true;
-    if (alt) alt.disabled = true;
+    state.mapa.zoom = 1; state.mapa.panX = 0; state.mapa.panY = 0; state.mapa.resetView = true;
     resetearVistas();
-    renderPestanaMapa();
+    dibujarMapaPestana();
   });
-  if (rot) rot.disabled = true;
-  if (alt) alt.disabled = true;
 }
 
-/* Deshabilitar el botón Limpiar cuando no hay sesión, y reflejar avisos iniciales. */
-function refrescarBotones() {
-  $('btn-limpiar').disabled = !state.resumen || (!state.resumen.autos.length && !state.resumen.pista);
-}
-
-function refrescarVsB() {
-  selectorVueltas.poblarSelB();
-  document.querySelectorAll('#sel-lap-b').forEach((sel) => {
-    sel.disabled = !(state.resumen && state.resumen.vueltas && state.resumen.vueltas.some((v) => v.visible));
+/* Botón "Ver en grande" de la trazada teórica (solo tiene efecto en Conjunto). */
+function iniciarZoomTeorico() {
+  const btn = $('btn-zoom-teorico');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    if (state.ultimoConjunto) abrirZoomTeorico(state.ultimoConjunto);
   });
 }
 
 function init() {
   crearReadouts();
   cargaArchivos.iniciar();
-  iniciarReproductor();
   iniciarTabs();
   iniciarControlesMapa();
-  iniciarControlesVsB();
-  refrescarVsB();
-  refrescarBotones();
-}
-
-function iniciarControlesVsB() {
-  const selB = $('sel-lap-b');
-  if (selB) selB.addEventListener('change', (e) => selectorVueltas.fijarBDesdeSelect(e.target));
-  const selBCurvas = $('sel-lap-b-curvas');
-  if (selBCurvas) selBCurvas.addEventListener('change', (e) => selectorVueltas.fijarBDesdeSelect(e.target, () => renderPestanaCurvas()));
+  iniciarZoomTeorico();
+  iniciarReproductor();
 }
 
 document.addEventListener('DOMContentLoaded', init);
