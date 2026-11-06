@@ -8,9 +8,9 @@ const cargaArchivos = (() => {
   function ponerCargando(btn) { btn.classList.add('cargando'); btn.disabled = true; }
   function quitarCargando(btn, deshabilitado) { btn.classList.remove('cargando'); btn.disabled = !!deshabilitado; }
 
-  async function cargarDesdeRutas(rutas) {
+  async function cargarDesdeRutas(rutas, desdeDialogo = false) {
     const btn = $('btn-abrir');
-    if (!rutas || !rutas.length || cargando) return;
+    if (!rutas || !rutas.length || (cargando && !desdeDialogo)) return;
     cargando = true;
     ponerCargando(btn);
     try {
@@ -32,7 +32,7 @@ const cargaArchivos = (() => {
     ponerCargando(btn);
     try {
       const rutas = await puente.abrirDialogo();
-      if (rutas.length) await cargarDesdeRutas(rutas);
+      if (rutas.length) await cargarDesdeRutas(rutas, true);
     } catch (error) {
       mostrarError(mensajeComando(error));
     } finally {

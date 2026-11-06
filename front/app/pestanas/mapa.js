@@ -27,7 +27,12 @@ function dibujarMapaPestana(opts = {}) {
   const cv = $('mapa');
   if (!cv) return;
   if (opts.soloVivo) { dibujarAutoCarga(state.idx); return; }
-  if (state.mapa.visual === 'trazada') { $('mapa-canvas').style.display = 'none'; dibujarMapaTrazadas(datos); return; }
+  const trazada = state.mapa.visual === 'trazada';
+  const cajaMapa = $('mapa-canvas');
+  const cajaTrazadas = $('mapa-trazadas');
+  if (cajaMapa) { cajaMapa.classList.toggle('oculto', trazada); cajaMapa.style.display = ''; }
+  if (cajaTrazadas) cajaTrazadas.classList.toggle('oculto', !trazada);
+  if (trazada) { dibujarMapaTrazadas(datos); return; }
   dibujarMapaCanal(datos);
   dibujarAutoCarga(state.idx);
 }

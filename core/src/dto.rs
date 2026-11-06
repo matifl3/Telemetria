@@ -178,6 +178,7 @@ pub struct DtoVuelta {
     pub grilla: Vec<f64>,
     pub referencia: Option<DtoLecturasReferencia>,
     pub vueltas: Vec<DtoVueltaCanales>,
+    pub curvas: Vec<DtoCurvaPista>,
 }
 
 /// Parámetros de proyección del mapa.
@@ -577,6 +578,7 @@ pub fn vuelta(sesion: &Sesion) -> DtoVuelta {
         grilla: grilla.s,
         referencia,
         vueltas,
+        curvas: pista.curvas().iter().map(Into::into).collect(),
     }
 }
 

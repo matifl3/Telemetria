@@ -92,7 +92,7 @@ const selectorVueltas = (() => {
     const refId = resumen && resumen.seleccion && resumen.seleccion.referencia;
     const bId = resumen && resumen.seleccion && resumen.seleccion.b;
     const opciones = state.resumen.vueltas
-      .filter((v) => v.visible && !mismaId(v.id, refId) && (!refId || v.id.auto === refId.auto))
+      .filter((v) => v.visible && !mismaId(v.id, refId))
       .map((v) => `<option value="${idVuelta(v.id)}"${bId && mismaId(v.id, bId) ? ' selected' : ''}>${v.etiqueta}</option>`)
       .join('');
     for (const idSel of ['sel-lap-b', 'sel-lap-b-curvas']) {

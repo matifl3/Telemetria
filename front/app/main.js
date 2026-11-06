@@ -140,6 +140,36 @@ function iniciarZoomTeorico() {
   });
 }
 
+function iniciarColapsarVueltas() {
+  const btn = $('btn-colapsar-vueltas');
+  const lista = $('lista-vueltas');
+  if (!btn || !lista) return;
+  btn.addEventListener('click', () => {
+    const colapsada = lista.classList.toggle('colapsada');
+    btn.classList.toggle('colapsado', colapsada);
+    btn.setAttribute('aria-expanded', String(!colapsada));
+    btn.title = colapsada ? 'Mostrar la lista de vueltas' : 'Ocultar la lista de vueltas';
+  });
+}
+
+function iniciarSelectoresB() {
+  for (const idSel of ['sel-lap-b', 'sel-lap-b-curvas']) {
+    const sel = $(idSel);
+    if (!sel) continue;
+    sel.addEventListener('change', () => selectorVueltas.fijarBDesdeSelect(sel));
+  }
+}
+
+function iniciarResize() {
+  let pendiente = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(pendiente);
+    pendiente = setTimeout(() => {
+      if (state.resumen && state.resumen.puede_analizar) renderPestanaActiva();
+    }, 150);
+  });
+}
+
 function init() {
   crearReadouts();
   cargaArchivos.iniciar();
@@ -147,6 +177,9 @@ function init() {
   iniciarControlesMapa();
   iniciarZoomTeorico();
   iniciarReproductor();
+  iniciarColapsarVueltas();
+  iniciarSelectoresB();
+  iniciarResize();
 }
 
 document.addEventListener('DOMContentLoaded', init);

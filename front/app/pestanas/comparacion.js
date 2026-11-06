@@ -5,6 +5,7 @@
 async function renderPestanaComparacion() {
   destroyCharts();
   state.pistasCurvas = [];
+  selectorVueltas.poblarSelB();
   const d = await puente.pedirPestana('comparacion');
   if (!d || !d.a || !d.b || !d.grilla.length) {
     vaciarComparacion('Sin vuelta B seleccionada: elegila en el menú "vs B".');
