@@ -37,6 +37,8 @@ function opcionesGrafico(cont, height, yRango, yLabel) {
 /* Gráfico de líneas sobre la grilla común: la primera serie es el eje X. */
 function lineChart(cont, height, yRango, yLabel, data, series) {
   if (!cont) return null;
+  // El contenedor es del gráfico: descarta mensajes de "vacío" de un render anterior.
+  cont.innerHTML = '';
   const o = opcionesGrafico(cont, height, yRango, yLabel);
   o.series = series;
   const u = new uPlot(o, data, cont);

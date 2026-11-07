@@ -286,43 +286,43 @@ Camino crítico: fases 1 → 5 (parser, pista, vueltas, proyección, grilla).
 
 ## Fase 12 — Frontend (RF-003, 005, 006, 011, 013, 014, 015, 016)
 
-- [ ] **T104 · `index.html` con layout y 5 pestañas** — RF-011 — *Hecho cuando:* las pestañas
+- [x] **T104 · `index.html` con layout y 5 pestañas** — RF-011 — *Hecho cuando:* las pestañas
   conmutan sus paneles y no hay errores en consola.
-- [ ] **T105 · Vendorizar uPlot + licencia** — RF-011 — *Hecho cuando:* la app grafica con la
+- [x] **T105 · Vendorizar uPlot + licencia** — RF-011 — *Hecho cuando:* la app grafica con la
   pestaña Network en modo offline.
-- [ ] **T106 · Wrapper de uPlot** — RF-011 — *Hecho cuando:* el cursor queda sincronizado
+- [x] **T106 · Wrapper de uPlot** — RF-011 — *Hecho cuando:* el cursor queda sincronizado
   entre dos gráficos y las curvas se dibujan como marcas verticales.
-- [ ] **T107 · Helper de canvas (DPR)** — RF-011 — *Hecho cuando:* los canvas se ven nítidos
+- [x] **T107 · Helper de canvas (DPR)** — RF-011 — *Hecho cuando:* los canvas se ven nítidos
   con DPR 1 y 2.
-- [ ] **T108 · `avisos.js`** — RF-003/006 — *Hecho cuando:* muestra `FALTA_PISTA` y los
+- [x] **T108 · `avisos.js`** — RF-003/006 — *Hecho cuando:* muestra `FALTA_PISTA` y los
   rechazos con archivo y motivo.
-- [ ] **T109 · Selector de vueltas** — RF-005/013/016 — *Hecho cuando:* muestra etiqueta,
+- [x] **T109 · Selector de vueltas** — RF-005/013/016 — *Hecho cuando:* muestra etiqueta,
   motivo, REF/B y no permite seleccionar inválidas.
-- [ ] **T110 · Reproductor** — RF-011 — *Hecho cuando:* play/pausa/scrub mueven cursor y mapa
+- [x] **T110 · Reproductor** — RF-011 — *Hecho cuando:* play/pausa/scrub mueven cursor y mapa
   de forma consistente.
-- [ ] **T111 · Vuelta: velocidad, RPM y marcha** — RF-011 — *Hecho cuando:* los 3 gráficos
+- [x] **T111 · Vuelta: velocidad, RPM y marcha** — RF-011 — *Hecho cuando:* los 3 gráficos
   muestran datos de todas las vueltas visibles.
-- [ ] **T112 · Vuelta: volante, aceleración y rumbo** — RF-011 — *Hecho cuando:* los 3
+- [x] **T112 · Vuelta: volante, aceleración y rumbo** — RF-011 — *Hecho cuando:* los 3
   gráficos responden a la selección.
-- [ ] **T113 · Vuelta: carga por rueda y pedales** — RF-011 — *Hecho cuando:* hay 4 series de
+- [x] **T113 · Vuelta: carga por rueda y pedales** — RF-011 — *Hecho cuando:* hay 4 series de
   carga y un mini-gráfico de pedales por vuelta.
-- [ ] **T114 · Mapa: base, banda y trazadas** — RF-011 — *Hecho cuando:* se ve la pista y la
+- [x] **T114 · Mapa: base, banda y trazadas** — RF-011 — *Hecho cuando:* se ve la pista y la
   trazada de cada vuelta visible.
-- [ ] **T115 · Mapa: canales y marcadores** — RF-011 — *Hecho cuando:* cambiar de canal
+- [x] **T115 · Mapa: canales y marcadores** — RF-011 — *Hecho cuando:* cambiar de canal
   recolorea y se ven frenadas y cambios.
-- [ ] **T116 · Mapa: 3D, auto en vivo y zoom** — RF-011 — *Hecho cuando:* rotar/elevar y
+- [x] **T116 · Mapa: 3D, auto en vivo y zoom** — RF-011 — *Hecho cuando:* rotar/elevar y
   reproducir funcionan sin recargar.
-- [ ] **T117 · Conjunto: tiempos, velocidad, envolvente, histogramas y fuel** — RF-011 —
+- [x] **T117 · Conjunto: tiempos, velocidad, envolvente, histogramas y fuel** — RF-011 —
   *Hecho cuando:* los 6 paneles muestran datos del auto de la REF.
-- [ ] **T118 · Conjunto: desvío, sectores, mapas, tabla y teórica** — RF-011 — *Hecho
+- [x] **T118 · Conjunto: desvío, sectores, mapas, tabla y teórica** — RF-011 — *Hecho
   cuando:* los 6 paneles restantes están presentes y coinciden con el DTO.
-- [ ] **T119 · Comparación: 4 paneles** — RF-015 — *Hecho cuando:* se puede comparar A/B de
+- [x] **T119 · Comparación: 4 paneles** — RF-015 — *Hecho cuando:* se puede comparar A/B de
   autos distintos.
-- [ ] **T120 · Curvas: mapa, tiempos y tracción** — RF-011 — *Hecho cuando:* hay una tarjeta
+- [x] **T120 · Curvas: mapa, tiempos y tracción** — RF-011 — *Hecho cuando:* hay una tarjeta
   de tracción por curva y el mapa colorea cada arco.
-- [ ] **T121 · Curvas: tabla y delta** — RF-011/015 — *Hecho cuando:* la tabla muestra
+- [x] **T121 · Curvas: tabla y delta** — RF-011/015 — *Hecho cuando:* la tabla muestra
   métricas por vuelta y el delta por curva.
-- [ ] **T122 · Estilos responsive** — RF-011 — *Hecho cuando:* a 360 px no hay scroll
+- [x] **T122 · Estilos responsive** — RF-011 — *Hecho cuando:* a 360 px no hay scroll
   horizontal en ninguna pestaña.
 - [ ] **T123 · Checklist de paridad de los 32 paneles (manual)** — RF-011 — *Hecho cuando:*
   los 32 paneles quedan marcados con un replay real.

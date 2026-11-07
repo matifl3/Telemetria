@@ -292,12 +292,6 @@ function dibujarBarrasDeltaCurvas(A, B, datos, hay) {
   ctx.fillText(`Δ tiempo por curva (s)  ·  ${datos.delta.a.etiqueta} − ${datos.delta.b.etiqueta}  (rojo = A pierde)`, 4, 14);
 }
 
-function claseDelta(v, mejor) {
-  if (v == null || Math.abs(v) < 0.001 || !mejor) return '';
-  const gana = mejor === 'menor' ? v < 0 : v > 0;
-  return gana ? 'delta-gana' : 'delta-pierde';
-}
-
 function tablaDeltaCurvasHTML(delta) {
   const fmtD = (v, dec) => fmtDelta(v, '', dec);
   const filas = delta.curvas.map((d) => {
