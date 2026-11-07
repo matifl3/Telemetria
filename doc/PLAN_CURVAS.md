@@ -1,10 +1,11 @@
 # Plan: detección y análisis de curvas desde el `.ai`
 
-Estado: **implementado en `core` (fase 6)**. Detección, métricas y delta tienen tests
-verdes; falta la calibración fina con 2–3 pistas (fase 13) y el DTO/front.
+Estado: **implementado en v2** (`core`, DTO y front). Detección, métricas y delta
+tienen tests verdes; la calibración multicircuito se cerró en la fase 13 (§1.1).
 En v1 la pestaña existe pero queda vacía por el bug de `detectarCurvas` duplicada
 (ver aviso al final).
-Ámbito v2: crate `core` (`curvas`), DTO de la pestaña Curvas y front `front/pestanas/curvas.js`.
+Ámbito v2: crate `core` (`curvas`), DTO de la pestaña Curvas y front
+`front/app/pestanas/curvas.js`.
 Base: pista de referencia `fast_lane.ai` (Monza noDRS, `lfmv2`)
 
 ## Objetivo
@@ -31,6 +32,7 @@ del auto. Cada arco por separado (sin unir chicanes); segundo umbral para curvas
 - Curvatura **con signo** `κ(s)=(θ[b]−θ[a])/(s[b]−s[a])` con ventana `±6` pts; radio `R = 1/|κ|`.
 - Umbrales con histéresis: entra en curva cuando `R < R_CURVA=300`, sale cuando `R > R_RECTA=1200`; descarta arcos de largo `< CURVA_LARGO_MIN=20 m`.
 - **Corte por cambio de sentido** dentro de la curva (chicane): si el signo de `κ` se invierte mientras `R < R_CURVA`, se cierra el arco y se abre el siguiente.
+- **Dobles ápices:** los arcos del mismo sentido separados por `≤ CURVA_GAP=10 m` se fusionan en uno solo (también el par que cruza la meta).
 - Sentido: `dir = signo(Δθ)`; `dir>0` → **derecha**, `dir<0` → **izquierda**.
 - Salida por arco: `{ i0, i1, apex, sIni, sApex, sFin, largo, rmin, dir, gir, nombre }`.
 
@@ -53,8 +55,28 @@ Anclas verificadas: Curva Grande y Parabólica **derecha**; Ascari **L-R-L** (`i
 
 Nota: el campo `[4]` del `AiPointExtra` correlaciona con la curvatura (r ≈ −0,857) pero su escala no es `1/R`; no se usa.
 
+### Calibración multicircuito (fase 13)
+Se corrieron los umbrales actuales sobre cuatro `fast_lane.ai` del AC oficial
+(Monza también contra la variante `lfmv2`, con resultado idéntico). **No hizo falta
+cambiar ninguna constante.**
+
+| Pista | Puntos | Largo (m) | Curvas | Comprobación |
+|-------|--------|-----------|--------|--------------|
+| Monza | 3750 | 5757,2 | 11 | tabla de arriba, ids/sentidos/radios ±2 m |
+| Imola | 3166 | 4862,6 | 12 | arcos 56–346 m, Rmin 37–191 m |
+| Spa | 4470 | 6944,5 | 16 | arcos 63–444 m, Rmin 22–190 m |
+| Mugello | 3374 | 5195,9 | 14 | arcos 101–522 m, Rmin 50–145 m |
+
+En las cuatro: `s_ini` creciente, `s_fin ≤ longitud` (salvo el cruce de meta),
+`radio_min` finito y `> 0`, `largo ≥ CURVA_LARGO_MIN`, `giro ≥ CURVA_GIRO_MIN`
+y una sola detección por pista (`detecciones_curvas = 1`). Los conteos son
+coherentes con la convención: las chicanes se parten al cambiar de sentido y los
+dobles ápices del mismo sentido muy próximos (`≤ CURVA_GAP`) se unen.
+
 ### Constantes (calibración sin tocar lógica)
-`R_CURVA`, `R_RECTA`, `CURVA_LARGO_MIN` (arriba de `app.js`); ventana de curvatura `kw=6` dentro de `detectarCurvas`.
+`R_CURVA`, `R_RECTA`, `CURVA_LARGO_MIN`, `CURVA_GAP` y `CURVA_GIRO_MIN` en
+`core/src/curvas.rs`; ventana de curvatura `VENTANA_CURVATURA = 6` dentro de
+`detectar_curvas`.
 
 ## 2. Mapeo de curvas al eje de distancia común (solo v1)
 
@@ -95,6 +117,9 @@ El `.ai` mide ~5757 m y **no comparte origen de distancia con las vueltas** en v
   unión de ápices, filtros, caché, cruce de meta, métricas y delta). Smoke contra el
   `fast_lane.ai` real de Monza (3750 puntos, 5757,2 m): 11 arcos, ids, sentidos y radios
   dentro de ±2 m de la tabla de §1.
+- v2 (fase 13): calibración sobre Monza, Imola, Spa y Mugello (§1.1) sin cambios de
+  umbrales; `cargo test --workspace` verde y la guarda `t88` revisa `core/src`,
+  `src-tauri/src` y `front/` (sin escrituras ni `localStorage`).
 - `ai_smoke.js`: ancho constante, `env.ns`, nº de arcos = 11, orden creciente, Curva Grande y Parabólica derecha, Ascari L-R-L, mapeo identidad+monótono. `exit=0`.
 - `smoke_visualizador.js`: sin regresiones nuevas (queda un `[FAIL] no hay rects de barras` preexistente, ajeno a curvas).
 - `replay_e2e.js`: parsea el `.ai` real (11 arcos) + un `.acreplay` real → 17 vueltas, `grid.slipFL` poblado, marcadores presentes (spin/lock) y `renderTabActiva()` sin excepciones.

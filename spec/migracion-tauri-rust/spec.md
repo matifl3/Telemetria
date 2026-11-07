@@ -81,13 +81,13 @@ Además, la v2 permite comparar vueltas de cualquier auto presente en el replay 
 - **FO-009** Internacionalización. Toda la UI, mensajes, logs y nombres de archivo deben permanecer en **español** (salvo strings originales del formato `.acreplay` o `CSP`).
 
 ## 5. Criterios de finalización
-- [ ] **Arquitectura:** `core` compila y es testeable sin Tauri. Frontend HTML/JS plano con Tauri bindings mínimos.
-- [ ] **Parser v16:** Cumple RF-001/RF-002/RF-004/RF-005 usando `doc/FormatoTelemetria.md` como fuente, incluyendo todos los autos y la selección de referencia con `current_recording_index` y *fallback*.
-- [ ] **Vueltas inválidas:** RF-003 implementado (rechazo solo si ningún auto tiene vueltas; si el jugador no tiene, se usa el primer auto con vueltas y se avisa).
-- [ ] **Pista:** RF-006/RF-007 obligatorios (rechazo con mensaje, bloqueo sin pista válida).
-- [ ] **Carga:** RF-008/RF-009 con diálogo nativo + *drag & drop* y política "rechazar y conservar lo anterior".
-- [ ] **Multi-auto:** RF-013/RF-014/RF-015/RF-016 implementados: vueltas de otros autos listadas, activables y comparables en `Vuelta`, `Mapa`, `Comparación` y `Curvas` (`Conjunto` solo con el auto de la REF), con A/B de autos distintos.
-- [ ] **Sin persistencia:** Verificado RF-010 (sin escrituras a disco).
-- [ ] **Paridad:** Las 5 pestañas (`Vuelta`, `Mapa`, `Conjunto`, `Comparación`, `Curvas`) y funcionalidades críticas (detección de curvas, *slip*, delta A/B) presentes.
-- [ ] **Tests:** `cargo test` en verde con tests de regresión para fixes de lógica (principio 4). Al menos cubiertos: rechazo v!=16, selección por `current_recording_index` con *fallback*, jugador sin vueltas pero otro auto con vueltas, clasificación independiente por auto, A/B de autos distintos, auto sin vueltas válidas no seleccionable, pista inválida/faltante.
-- [ ] **Calidad:** Sin escrituras a disco, sin dependencias injustificadas, todo en español, sin persistencia entre ejecuciones.
+- [x] **Arquitectura:** `core` compila y es testeable sin Tauri. Frontend HTML/JS plano con Tauri bindings mínimos.
+- [x] **Parser v16:** Cumple RF-001/RF-002/RF-004/RF-005 usando `doc/FormatoTelemetria.md` como fuente, incluyendo todos los autos y la selección de referencia con `current_recording_index` y *fallback*.
+- [x] **Vueltas inválidas:** RF-003 implementado (rechazo solo si ningún auto tiene vueltas; si el jugador no tiene, se usa el primer auto con vueltas y se avisa).
+- [x] **Pista:** RF-006/RF-007 obligatorios (rechazo con mensaje, bloqueo sin pista válida).
+- [x] **Carga:** RF-008/RF-009 con diálogo nativo + *drag & drop* y política "rechazar y conservar lo anterior".
+- [x] **Multi-auto:** RF-013/RF-014/RF-015/RF-016 implementados: vueltas de otros autos listadas, activables y comparables en `Vuelta`, `Mapa`, `Comparación` y `Curvas` (`Conjunto` solo con el auto de la REF), con A/B de autos distintos.
+- [x] **Sin persistencia:** Verificado RF-010 (sin escrituras a disco) con comparación antes/después en runtime (T126).
+- [ ] **Paridad:** Las 5 pestañas (`Vuelta`, `Mapa`, `Conjunto`, `Comparación`, `Curvas`) y funcionalidades críticas (detección de curvas, *slip*, delta A/B) presentes. Queda el checklist visual manual T123.
+- [x] **Tests:** `cargo test` en verde con tests de regresión para fixes de lógica (principio 4). Al menos cubiertos: rechazo v!=16, selección por `current_recording_index` con *fallback*, jugador sin vueltas pero otro auto con vueltas, clasificación independiente por auto, A/B de autos distintos, auto sin vueltas válidas no seleccionable, pista inválida/faltante.
+- [x] **Calidad:** Sin escrituras a disco, sin dependencias injustificadas, todo en español, sin persistencia entre ejecuciones.

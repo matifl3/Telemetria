@@ -1,7 +1,7 @@
 mod soporte;
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use acreplay_core::error::Motivo;
 use acreplay_core::sesion::{CodigoAviso, Sesion};
@@ -358,17 +358,29 @@ fn t87_flujo_integrado_carga_fallback_alterna_y_resume() {
 
 #[test]
 fn t88_el_codigo_de_produccion_no_persiste() {
-    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let mut archivos = Vec::new();
-    for entrada in fs::read_dir(&src).expect("existe core/src") {
-        let ruta = entrada.expect("entrada legible").path();
-        if ruta.extension().and_then(|extension| extension.to_str()) == Some("rs") {
-            archivos.push(ruta);
-        }
-    }
-    assert!(!archivos.is_empty(), "debe haber fuentes para revisar");
+    let raiz = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("core está dentro del repo");
 
-    let prohibidos = ["fs::write", "File::create", "OpenOptions", "localStorage"];
+    let mut archivos = Vec::new();
+    recolectar(&raiz.join("core").join("src"), "rs", &mut archivos);
+    recolectar(&raiz.join("src-tauri").join("src"), "rs", &mut archivos);
+    recolectar(&raiz.join("front"), "js", &mut archivos);
+    archivos.push(raiz.join("front").join("index.html"));
+    assert!(
+        archivos.iter().any(|ruta| ruta.ends_with("curvas.rs")),
+        "debe haber fuentes para revisar"
+    );
+
+    let prohibidos = [
+        "fs::write",
+        "File::create",
+        "OpenOptions",
+        "localStorage",
+        "sessionStorage",
+        "indexedDB",
+        "document.cookie",
+    ];
     for ruta in archivos {
         let texto = fs::read_to_string(&ruta).expect("fuente legible");
         for patron in prohibidos {
@@ -377,6 +389,18 @@ fn t88_el_codigo_de_produccion_no_persiste() {
                 "{} contiene una operación de persistencia: {patron}",
                 ruta.display()
             );
+        }
+    }
+}
+
+/// Acumula los archivos con `extension` que hay bajo `directorio`.
+fn recolectar(directorio: &Path, extension: &str, salida: &mut Vec<PathBuf>) {
+    for entrada in fs::read_dir(directorio).expect("directorio legible") {
+        let ruta = entrada.expect("entrada legible").path();
+        if ruta.is_dir() {
+            recolectar(&ruta, extension, salida);
+        } else if ruta.extension().and_then(|valor| valor.to_str()) == Some(extension) {
+            salida.push(ruta);
         }
     }
 }

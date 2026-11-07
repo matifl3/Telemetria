@@ -329,12 +329,12 @@ Camino crítico: fases 1 → 5 (parser, pista, vueltas, proyección, grilla).
 
 ## Fase 13 — Cierre (RF-010, 011, 012)
 
-- [ ] **T124 · Calibrar curvas con 2–3 pistas** — RF-011 — *Hecho cuando:* no hay curvas
+- [x] **T124 · Calibrar curvas con 2–3 pistas** — RF-011 — *Hecho cuando:* no hay curvas
   fantasma ni faltantes y los umbrales quedan en `PLAN_CURVAS.md`.
-- [ ] **T125 · `cargo test` completo + guardas** — RF-012 — *Hecho cuando:* todo verde y la
+- [x] **T125 · `cargo test` completo + guardas** — RF-012 — *Hecho cuando:* todo verde y la
   guarda estática no reporta hallazgos.
-- [ ] **T126 · Verificación de cero escrituras en runtime (manual)** — RF-010 — *Hecho
+- [x] **T126 · Verificación de cero escrituras en runtime (manual)** — RF-010 — *Hecho
   cuando:* cargar, analizar y cerrar no crea ni modifica archivos (comparación
   antes/después).
-- [ ] **T127 · Actualizar `MEMORY.md` y estado del plan** — — *Hecho cuando:* la memoria
+- [x] **T127 · Actualizar `MEMORY.md` y estado del plan** — — *Hecho cuando:* la memoria
   refleja la fase completada y las decisiones nuevas.
