@@ -2,10 +2,13 @@
 
 /* Pestaña Mapa (RF-011): banda + trazadas, canales, marcadores, 3D, auto en vivo. */
 
-async function renderPestanaMapa() {
+async function renderPestanaMapa(version = state.version) {
   const rot = state.mapa.tresD ? state.mapa.rot : 0;
   const alt = state.mapa.tresD ? state.mapa.alt : 3;
   const datos = await puente.pedirPestana('mapa', rot, alt);
+  const rotActual = state.mapa.tresD ? state.mapa.rot : 0;
+  const altActual = state.mapa.tresD ? state.mapa.alt : 3;
+  if (version !== state.version || state.tab !== 'mapa' || rot !== rotActual || alt !== altActual) return;
   state.mapaDatos = datos;
   state.pistasCurvas = datos.curvas || [];
   destruirTrazadasObsoletas();

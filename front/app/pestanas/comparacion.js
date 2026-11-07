@@ -2,11 +2,12 @@
 
 /* Pestaña Comparación A − B (RF-013). */
 
-async function renderPestanaComparacion() {
+async function renderPestanaComparacion(version = state.version) {
   destroyCharts();
   state.pistasCurvas = [];
   selectorVueltas.poblarSelB();
   const d = await puente.pedirPestana('comparacion');
+  if (version !== state.version || state.tab !== 'comparacion') return;
   if (!d || !d.a || !d.b || !d.grilla.length) {
     vaciarComparacion('Sin vuelta B seleccionada: elegila en el menú "vs B".');
     return;

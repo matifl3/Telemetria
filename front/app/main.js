@@ -10,31 +10,35 @@ function aplicarResumen(resumen) {
 /* Despachador de render (T100): pide el DTO de la pestaña activa y renderiza. */
 async function renderPestanaActiva() {
   if (!state.resumen || !state.resumen.puede_analizar) return;
+  const tab = state.tab;
+  const version = state.version;
   try {
-    switch (state.tab) {
+    switch (tab) {
       case 'vuelta': {
         const datos = await puente.pedirPestana('vuelta');
+        if (version !== state.version || tab !== state.tab) return;
         state.datosVuelta = datos;
         actualizarScrub();
         renderPestanaVuelta(datos);
         break;
       }
       case 'mapa':
-        await renderPestanaMapa();
+        await renderPestanaMapa(version);
         break;
       case 'conjunto':
-        await renderPestanaConjunto();
+        await renderPestanaConjunto(version);
         break;
       case 'comparacion':
-        await renderPestanaComparacion();
+        await renderPestanaComparacion(version);
         break;
       case 'curvas':
-        await renderPestanaCurvas();
+        await renderPestanaCurvas(version);
         break;
       default:
         break;
     }
   } catch (error) {
+    if (version !== state.version || tab !== state.tab) return;
     mostrarError(mensajeComando(error));
   }
 }

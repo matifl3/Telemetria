@@ -2,9 +2,10 @@
 
 /* Pestaña Conjunto (RF-011): agrégados del auto de la REF (12 paneles). */
 
-async function renderPestanaConjunto() {
+async function renderPestanaConjunto(version = state.version) {
   destroyCharts();
   const datos = await puente.pedirPestana('conjunto');
+  if (version !== state.version || state.tab !== 'conjunto') return;
   if (!datos || !datos.tiempos.length) {
     state.pistasCurvas = [];
     vaciarConjuntos();

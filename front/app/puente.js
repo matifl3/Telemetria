@@ -32,13 +32,16 @@ const puente = (() => {
   /* --- datos por pestaña (con caché por versión de sesión) --- */
 
   async function pedirPestana(pestana, rotacion = 0, elevacion = 0) {
+    const version = state.version;
     const cache = state.cacheDatos.get(pestana);
-    if (cache && cache.version === state.version && cache.rot === rotacion && cache.alt === elevacion) {
+    if (cache && cache.version === version && cache.rot === rotacion && cache.alt === elevacion) {
       return cache.datos;
     }
     const respuesta = await invocar('datos_pestana', { pestana, rotacion, elevacion });
     // La respuesta es el enum etiquetado {pestana, datos}; cacheamos los datos crudos.
-    state.cacheDatos.set(pestana, { version: state.version, rot: rotacion, alt: elevacion, datos: respuesta.datos });
+    if (state.version === version) {
+      state.cacheDatos.set(pestana, { version, rot: rotacion, alt: elevacion, datos: respuesta.datos });
+    }
     return respuesta.datos;
   }
 

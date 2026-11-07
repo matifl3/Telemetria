@@ -3,9 +3,10 @@
 /* Pestaña Curvas (RF-011/T119-121): arcos en el mapa, tiempos, tracción
    por curva y delta A/B. Métricas por curva vienen listas del backend. */
 
-async function renderPestanaCurvas() {
+async function renderPestanaCurvas(version = state.version) {
   destroyCharts();
   const datos = await puente.pedirPestana('curvas');
+  if (version !== state.version || state.tab !== 'curvas') return;
   if (!datos || !datos.curvas.length) {
     state.pistasCurvas = [];
     vaciarCurvas();
