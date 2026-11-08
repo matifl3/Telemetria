@@ -22,6 +22,7 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - Pestaña Vueltas (TV01–TV08): jugador por `indice_jugador`; otros autos por
   `tiempo_s` ascendente. Solo válidas; REF/B y visibilidad por fila.
 - Tiempos en `m:ss.mmm`; lista Vueltas muestra tiempo junto al nombre.
+- Avisos de sesión se acumulan sin duplicados en el menú del encabezado; se limpian al resetear sesión o desde el panel.
 ## Aprendizajes y errores a evitar
 - No crear `docs/`: las docs viven en `doc/`.
 - `doc/PLAN_CURVAS.md` menciona scripts smoke inexistentes — no buscarlos.
@@ -38,6 +39,7 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
   las mejores trazadas del replay van superpuestas por sector.
 - README actualizado para v2 Tauri + Rust; `visualizador/` es legado y el empaquetado sigue desactivado.
 - Tarea `spec/distribucion/tareas.md`: primer release Windows en NSIS/GitHub Releases; updater queda para después.
+- El aviso `referencia_fallback` se oculta en UI; la selección de REF de respaldo sigue igual.
 - En Vueltas, el control global muestra todas las válidas o deja solo REF visible;
   mantener REF evita perder el acceso al análisis.
 ## Próximos pasos

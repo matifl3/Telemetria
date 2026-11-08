@@ -16,11 +16,27 @@
         <p>Análisis y comparación de telemetría de Assetto Corsa</p>
       </div>
     </div>
-    <div class="estado-carga">
-      <button id="btn-abrir-replay" class="btn primario" type="button">Cargar replay</button>
-      <button id="btn-abrir-pista" class="btn" type="button">Cargar pista</button>
-      <button id="btn-limpiar" class="btn fantasma" disabled>Limpiar</button>
+    <div class="topbar-acciones">
+      <div id="menu-avisos" class="avisos-menu">
+        <button id="btn-avisos" class="btn" type="button" aria-expanded="false" aria-controls="panel-avisos">
+          Avisos <span id="contador-avisos" class="contador-avisos oculto" aria-hidden="true">0</span>
+        </button>
+        <section id="panel-avisos" class="panel-avisos oculto" aria-labelledby="titulo-avisos">
+          <div class="avisos-cabecera">
+            <h2 id="titulo-avisos">Avisos de la sesión</h2>
+            <button id="btn-limpiar-avisos" class="btn fantasma" type="button">Limpiar avisos</button>
+          </div>
+          <p id="avisos-vacio" class="avisos-vacio">Todavía no hay avisos.</p>
+          <div id="lista-avisos" class="lista-avisos"></div>
+        </section>
+      </div>
+      <div class="estado-carga">
+        <button id="btn-abrir-replay" class="btn primario" type="button">Cargar replay</button>
+        <button id="btn-abrir-pista" class="btn" type="button">Cargar pista</button>
+        <button id="btn-limpiar" class="btn fantasma" disabled>Limpiar</button>
+      </div>
     </div>
+    <span id="estado-avisos" class="solo-lectura" role="status" aria-live="polite" aria-atomic="true"></span>
   </header>
 
   <main>

@@ -11,6 +11,8 @@ const SLIP_VEL_MIN = 30;
 
 const state = {
   resumen: null,          // último DtoResumen (cargo/selector/avisos)
+  avisos: [],             // avisos acumulados durante la sesión actual
+  avisosProcesados: new Set(),
   version: 0,             // invalida el caché de datos de pestaña
   cacheDatos: new Map(),  // pestaña → { version, rot, alt, datos }
   tab: 'vuelta',

@@ -59,6 +59,7 @@ const cargaArchivos = (() => {
   async function limpiar() {
     try {
       const resumen = await puente.limpiarSesion();
+      limpiarAvisosSesion();
       aplicarResumen(resumen);
     } catch (error) {
       mostrarError(mensajeComando(error));
@@ -145,6 +146,7 @@ const cargaArchivos = (() => {
   }
 
   function iniciar() {
+    iniciarAvisos();
     $('btn-abrir-replay').addEventListener('click', (event) => abrirConDialogo('replay', event.currentTarget));
     $('btn-abrir-pista').addEventListener('click', (event) => abrirConDialogo('pista', event.currentTarget));
     $('btn-limpiar').addEventListener('click', limpiar);
