@@ -17,8 +17,8 @@ const puente = (() => {
 
   /* --- carga --- */
 
-  async function abrirDialogo() {
-    return invocar('abrir_dialogo');
+  async function abrirDialogo(tipo) {
+    return invocar('abrir_dialogo', { tipo });
   }
 
   async function cargarArchivos(rutas) {

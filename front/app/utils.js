@@ -12,7 +12,7 @@ function fmtTiempo(seg) {
   if (seg == null || !Number.isFinite(seg)) return '';
   const m = Math.floor(seg / 60);
   const s = seg - m * 60;
-  return `${m}:${s.toFixed(2).padStart(5, '0')}`;
+  return `${m}:${s.toFixed(3).padStart(6, '0')}`;
 }
 
 function fmtDelta(v, unidad, dec) {

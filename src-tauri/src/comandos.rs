@@ -67,32 +67,37 @@ pub enum DatosPestana {
     Curvas(DtoCurvas),
 }
 
-/// Abre el diálogo nativo y devuelve las rutas elegidas (T101).
+/// Abre el diálogo nativo para elegir un archivo del tipo pedido (T101).
 #[tauri::command]
-pub async fn abrir_dialogo(app: AppHandle) -> Result<Vec<String>, ErrorComando> {
+pub async fn abrir_dialogo(app: AppHandle, tipo: String) -> Result<Option<String>, ErrorComando> {
     let seleccion = tauri::async_runtime::spawn_blocking(move || {
-        app.dialog()
+        let (titulo, filtro, extension) = match tipo.trim().to_lowercase().as_str() {
+            "replay" => (
+                "Abrir replay de Assetto Corsa",
+                "Replay de Assetto Corsa",
+                "acreplay",
+            ),
+            "pista" => ("Abrir pista", "Pista (fast_lane.ai)", "ai"),
+            _ => return Err(ErrorComando::lote("tipo de archivo desconocido")),
+        };
+        Ok(app
+            .dialog()
             .file()
-            .set_title("Abrir replay o pista")
-            .add_filter("Replay de Assetto Corsa", &["acreplay"])
-            .add_filter("Pista (fast_lane.ai)", &["ai"])
-            .blocking_pick_files()
+            .set_title(titulo)
+            .add_filter(filtro, &[extension])
+            .blocking_pick_file())
     })
     .await
-    .map_err(|error| ErrorComando::interno(format!("no se pudo abrir el diálogo: {error}")))?;
+    .map_err(|error| ErrorComando::interno(format!("no se pudo abrir el diálogo: {error}")))??;
 
-    let Some(rutas) = seleccion else {
-        return Ok(Vec::new());
-    };
-
-    rutas
-        .into_iter()
+    let ruta = seleccion
         .map(|ruta| {
             ruta.into_path()
                 .map(|ruta| ruta.to_string_lossy().into_owned())
                 .map_err(|error| ErrorComando::interno(format!("ruta inválida: {error}")))
         })
-        .collect()
+        .transpose()?;
+    Ok(ruta)
 }
 
 /// Carga atómica de un lote de archivos (T98). Replay y pista entran juntos o
@@ -311,4 +316,3 @@ fn nombre_archivo(ruta: &Path) -> String {
         .map(|nombre| nombre.to_string_lossy().into_owned())
         .unwrap_or_else(|| ruta.to_string_lossy().into_owned())
 }
-

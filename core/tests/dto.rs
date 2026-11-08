@@ -99,6 +99,7 @@ fn t89_resumen_incluye_autos_vueltas_avisos_y_seleccion() {
     assert!(dto.autos[0].es_referencia);
     assert_eq!(dto.vueltas.len(), 4);
     assert_eq!(dto.seleccion.visibles.len(), 2);
+    assert_eq!(dto.indice_jugador, None);
     assert!(dto
         .avisos
         .iter()
@@ -109,7 +110,26 @@ fn t89_resumen_incluye_autos_vueltas_avisos_y_seleccion() {
     assert!(valor["vueltas"][0]["tiempo_s"].is_f64());
     assert_eq!(valor["seleccion"]["referencia"]["auto"], 0);
     assert_eq!(valor["avisos"][0]["codigo"], "referencia_fallback");
+    assert!(valor["indice_jugador"].is_null());
     assert!(valor["pista"]["curvas"].as_u64().unwrap() > 0);
+}
+
+#[test]
+fn t96_resumen_expone_el_indice_del_jugador() {
+    let mut sesion = Sesion::nueva();
+    cargar(
+        &mut sesion,
+        vec![
+            auto_valido("auto_0", "Piloto 0"),
+            auto_valido("auto_1", "Piloto 1"),
+        ],
+        1,
+    );
+
+    let dto = dto::resumen(&sesion);
+    assert_eq!(dto.indice_jugador, Some(1));
+    assert!(dto.autos[1].es_referencia);
+    assert_eq!(json(&dto)["indice_jugador"], 1);
 }
 
 #[test]

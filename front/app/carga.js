@@ -5,14 +5,25 @@
 const cargaArchivos = (() => {
   let cargando = false;
 
-  function ponerCargando(btn) { btn.classList.add('cargando'); btn.disabled = true; }
-  function quitarCargando(btn, deshabilitado) { btn.classList.remove('cargando'); btn.disabled = !!deshabilitado; }
+  function botonesCarga() {
+    return [$('btn-abrir-replay'), $('btn-abrir-pista')];
+  }
 
-  async function cargarDesdeRutas(rutas, desdeDialogo = false) {
-    const btn = $('btn-abrir');
-    if (!rutas || !rutas.length || (cargando && !desdeDialogo)) return;
+  function ponerCargando(btn) {
     cargando = true;
-    ponerCargando(btn);
+    botonesCarga().forEach((boton) => { boton.disabled = true; });
+    if (btn) btn.classList.add('cargando');
+  }
+
+  function quitarCargando(btn) {
+    cargando = false;
+    if (btn) btn.classList.remove('cargando');
+    botonesCarga().forEach((boton) => { boton.disabled = false; });
+  }
+
+  async function cargarDesdeRutas(rutas) {
+    if (!rutas || !rutas.length || cargando) return;
+    ponerCargando(null);
     try {
       const resumen = await puente.cargarArchivos(rutas);
       await aplicarResumen(resumen);
@@ -20,24 +31,24 @@ const cargaArchivos = (() => {
       // El backend descarta el lote inválido y conserva la sesión anterior (D-08).
       mostrarError(mensajeComando(error));
     } finally {
-      cargando = false;
-      quitarCargando(btn, false);
+      quitarCargando(null);
     }
   }
 
-  async function abrirConDialogo() {
-    const btn = $('btn-abrir');
+  async function abrirConDialogo(tipo, btn) {
     if (cargando) return;
-    cargando = true;
     ponerCargando(btn);
     try {
-      const rutas = await puente.abrirDialogo();
-      if (rutas.length) await cargarDesdeRutas(rutas, true);
+      const ruta = await puente.abrirDialogo(tipo);
+      if (!ruta) return;
+      const resumen = tipo === 'replay'
+        ? await puente.cargarArchivos([ruta])
+        : await puente.cargarPista(ruta);
+      await aplicarResumen(resumen);
     } catch (error) {
       mostrarError(mensajeComando(error));
     } finally {
-      cargando = false;
-      quitarCargando(btn, sesionVacia());
+      quitarCargando(btn);
     }
   }
 
@@ -61,6 +72,7 @@ const cargaArchivos = (() => {
     state.cacheDatos.clear();
     state.colorPorId.clear();
     selectorVueltas.render();
+    actualizarEstadoArchivos(resumen);
 
     $('btn-limpiar').disabled = sesionVacia();
 
@@ -86,6 +98,24 @@ const cargaArchivos = (() => {
     if (resumen.puede_analizar) {
       await prepararSesionBase();
       renderPestanaActiva();
+    }
+  }
+
+  function actualizarEstadoArchivos(resumen) {
+    const tieneReplay = !!(resumen && (
+      resumen.autos.length || resumen.falta_pista || resumen.puede_analizar
+    ));
+    const tienePista = !!(resumen && resumen.pista);
+    const replay = $('estado-replay');
+    const pista = $('estado-pista');
+
+    if (replay) {
+      replay.textContent = tieneReplay ? 'Replay: cargado' : 'Replay: pendiente';
+      replay.classList.toggle('cargado', tieneReplay);
+    }
+    if (pista) {
+      pista.textContent = tienePista ? 'Pista: cargada' : 'Pista: pendiente';
+      pista.classList.toggle('cargado', tienePista);
     }
   }
 
@@ -115,8 +145,10 @@ const cargaArchivos = (() => {
   }
 
   function iniciar() {
-    $('btn-abrir').addEventListener('click', abrirConDialogo);
+    $('btn-abrir-replay').addEventListener('click', (event) => abrirConDialogo('replay', event.currentTarget));
+    $('btn-abrir-pista').addEventListener('click', (event) => abrirConDialogo('pista', event.currentTarget));
     $('btn-limpiar').addEventListener('click', limpiar);
+    actualizarEstadoArchivos(state.resumen);
 
     const webview = window.__TAURI__.webviewWindow.getCurrentWebviewWindow();
     webview.onDragDropEvent((event) => {

@@ -22,6 +22,9 @@ async function renderPestanaActiva() {
         renderPestanaVuelta(datos);
         break;
       }
+      case 'vueltas':
+        selectorVueltas.render();
+        break;
       case 'mapa':
         await renderPestanaMapa(version);
         break;
@@ -144,18 +147,6 @@ function iniciarZoomTeorico() {
   });
 }
 
-function iniciarColapsarVueltas() {
-  const btn = $('btn-colapsar-vueltas');
-  const lista = $('lista-vueltas');
-  if (!btn || !lista) return;
-  btn.addEventListener('click', () => {
-    const colapsada = lista.classList.toggle('colapsada');
-    btn.classList.toggle('colapsado', colapsada);
-    btn.setAttribute('aria-expanded', String(!colapsada));
-    btn.title = colapsada ? 'Mostrar la lista de vueltas' : 'Ocultar la lista de vueltas';
-  });
-}
-
 function iniciarSelectoresB() {
   for (const idSel of ['sel-lap-b', 'sel-lap-b-curvas']) {
     const sel = $(idSel);
@@ -181,7 +172,6 @@ function init() {
   iniciarControlesMapa();
   iniciarZoomTeorico();
   iniciarReproductor();
-  iniciarColapsarVueltas();
   iniciarSelectoresB();
   iniciarResize();
 }

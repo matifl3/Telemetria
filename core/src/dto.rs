@@ -121,6 +121,8 @@ pub struct DtoResumen {
     pub pista: Option<DtoPistaResumen>,
     pub puede_analizar: bool,
     pub falta_pista: bool,
+    /// Índice del auto del jugador (`current_recording_index`) si es válido.
+    pub indice_jugador: Option<usize>,
 }
 
 /// Carga de ruedas por posición.
@@ -520,6 +522,11 @@ pub fn resumen(sesion: &Sesion) -> DtoResumen {
         }
     }
 
+    let indice_jugador = sesion.replay().and_then(|replay| {
+        let indice = replay.meta.indice_jugador as usize;
+        replay.autos.get(indice).map(|auto| auto.indice)
+    });
+
     DtoResumen {
         autos,
         vueltas,
@@ -542,6 +549,7 @@ pub fn resumen(sesion: &Sesion) -> DtoResumen {
         }),
         puede_analizar: sesion.puede_analizar(),
         falta_pista: sesion.falta_pista(),
+        indice_jugador,
     }
 }
 

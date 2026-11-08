@@ -17,7 +17,8 @@
       </div>
     </div>
     <div class="estado-carga">
-      <button id="btn-abrir" class="btn primario">Cargar archivos (.acreplay / .ai)</button>
+      <button id="btn-abrir-replay" class="btn primario" type="button">Cargar replay</button>
+      <button id="btn-abrir-pista" class="btn" type="button">Cargar pista</button>
       <button id="btn-limpiar" class="btn fantasma" disabled>Limpiar</button>
     </div>
   </header>
@@ -27,8 +28,12 @@
       <div class="drop-inner">
         <div class="drop-icono" aria-hidden="true"><svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17V4"/><path d="M6 10l6-6 6 6"/><path d="M4 21h16"/></svg></div>
         <h2>Arrastrá tus telemetrías acá</h2>
-        <p>Replays <code>.acreplay</code> y la pista <code>fast_lane.ai</code>: se cargan juntos o no entra ninguno. Después podés cambiar la pista sola con el botón de arriba.</p>
-        <p>También podés usar el botón <em>Cargar archivos</em> del encabezado.</p>
+        <p>Cargá el replay <code>.acreplay</code> y la pista <code>fast_lane.ai</code> por separado, en cualquier orden. El análisis se habilita cuando ambos están cargados.</p>
+        <div class="estado-archivos" aria-live="polite">
+          <p id="estado-replay" class="estado-archivo">Replay: pendiente</p>
+          <p id="estado-pista" class="estado-archivo">Pista: pendiente</p>
+        </div>
+        <p>También podés arrastrar uno o ambos archivos a esta zona.</p>
       </div>
     </section>
 
@@ -36,14 +41,6 @@
 
     <section id="dashboard" class="dashboard oculto">
       <aside class="panel lateral">
-        <div class="panel-titulo fila-colapsable">
-          <span>Vueltas cargadas</span>
-          <button id="btn-colapsar-vueltas" class="colapsar" type="button" title="Ocultar la lista de vueltas" aria-label="Mostrar u ocultar la lista de vueltas" aria-expanded="true" aria-controls="lista-vueltas">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-          </button>
-        </div>
-        <ul id="lista-vueltas" class="lista-vueltas"></ul>
-
         <div class="panel-titulo">Reproductor</div>
         <div class="reproductor">
           <button id="btn-play" class="btn icono" type="button" title="Play/Pausa (espacio)" aria-label="Reproducir vuelta" aria-pressed="false">
@@ -74,6 +71,7 @@
       <section class="contenido">
         <nav class="tabs" role="tablist" aria-label="Vistas de análisis">
           <button class="tab activo" type="button" role="tab" id="tab-vuelta" aria-selected="true" aria-controls="panel-vuelta" data-tab="vuelta">Vuelta</button>
+          <button class="tab" type="button" role="tab" id="tab-vueltas" aria-selected="false" aria-controls="panel-vueltas" data-tab="vueltas">Vueltas</button>
           <button class="tab" type="button" role="tab" id="tab-mapa" aria-selected="false" aria-controls="panel-mapa" data-tab="mapa">Mapa</button>
           <button class="tab" type="button" role="tab" id="tab-conjunto" aria-selected="false" aria-controls="panel-conjunto" data-tab="conjunto">Conjunto</button>
           <button class="tab" type="button" role="tab" id="tab-comparacion" aria-selected="false" aria-controls="panel-comparacion" data-tab="comparacion">Comparación</button>
@@ -112,6 +110,14 @@
           <div class="grafico-card">
             <div class="grafico-titulo">Acelerador / Freno por vuelta <span class="unidad">0–1</span></div>
             <div id="chart-inputs" class="plot"></div>
+          </div>
+        </div>
+
+        <div id="panel-vueltas" class="tab-panel" role="tabpanel" aria-labelledby="tab-vueltas">
+          <div class="grafico-card panel-lista-vueltas">
+            <div class="grafico-titulo">Vueltas <span class="unidad">válidas y seleccionables</span></div>
+            <p class="lista-ayuda">Tus vueltas van primero, en su orden actual. Los demás autos se ordenan de la más rápida a la más lenta. REF y B son excluyentes: una vuelta no puede tener los dos roles. Si ocultás la REF o la B, el sistema elige un reemplazo.</p>
+            <div id="lista-vueltas" class="lista-vueltas"></div>
           </div>
         </div>
 
