@@ -37,9 +37,10 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
   `datosVuelta`; no reutilizar índices de muestras crudas de `mapa.trazas`.
 - Mapa de mejores sectores: usar centro y banda de `fast_lane.ai` de base;
   las mejores trazadas del replay van superpuestas por sector.
-- README actualizado para v2 Tauri + Rust; `visualizador/` es legado y el empaquetado sigue desactivado.
+- El aviso `referencia_fallback` se guarda en el historial del encabezado, no se descarta.
+- README actualizado para v2 Tauri + Rust; `visualizador/` es legado. Bundle NSIS activado, instalación manual vía GitHub Releases.
 - Tarea `spec/distribucion/tareas.md`: primer release Windows en NSIS/GitHub Releases; updater queda para después.
-- El aviso `referencia_fallback` se oculta en UI; la selección de REF de respaldo sigue igual.
+- Avisos de sesión se acumulan sin duplicados en el menú del encabezado; se limpian al resetear sesión o desde el panel.
 - En Vueltas, el control global muestra todas las válidas o deja solo REF visible;
   mantener REF evita perder el acceso al análisis.
 ## Próximos pasos

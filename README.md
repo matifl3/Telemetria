@@ -36,9 +36,11 @@ se conserva solo como referencia; no forma parte de la aplicación de escritorio
 - Rust estable con el toolchain **MSVC** y las herramientas de compilación de
   Visual Studio para C++.
 - Windows SDK.
+- Node.js y npm para ejecutar la CLI de Tauri.
 
 La interfaz y uPlot están incluidos en el repositorio: no hace falta servidor ni
-conexión a Internet para usar la aplicación.
+conexión a Internet para analizar. Si Windows no tiene WebView2 Runtime, el
+instalador lo descarga durante la instalación; en ese caso se necesita Internet.
 
 ## Ejecutar desde el código fuente
 
@@ -92,16 +94,48 @@ Los detalles de los campos y sus offsets están documentados en
 
 ## Compilar y verificar
 
+Desde la raíz del repositorio:
+
 ```powershell
 cargo test --workspace
 cargo build -p ac-telemetry-lab
-node --check front\app\main.js
 ```
 
-`cargo build` compila la aplicación de desarrollo y embebe los archivos del
-frontend. El empaquetado está desactivado actualmente en `src-tauri/tauri.conf.json`:
-el repositorio todavía no configura un instalador para entregar ni un mecanismo
-de actualización automática.
+Para compilar la aplicación de desarrollo, Tauri embebe los archivos de
+`front/`. Para generar el instalador Windows NSIS desde un checkout limpio:
+
+```powershell
+cd src-tauri
+npm ci
+npx tauri build --bundles nsis
+```
+
+El instalador `.exe` se genera en `target\release\bundle\nsis\`. La configuración
+de empaquetado está en `src-tauri/tauri.conf.json`; la versión debe coincidir
+con la de `src-tauri/Cargo.toml`.
+
+## Distribución e instalación
+
+Las versiones se publican manualmente en
+[GitHub Releases](https://github.com/matifl3/Telemetria/releases). Para instalar,
+descarga el `.exe` de la versión elegida y ejecútalo. Para actualizar, descarga
+y ejecuta el instalador de la nueva versión sobre la anterior. También puedes
+desinstalarla desde **Configuración de Windows → Aplicaciones**.
+
+Antes de publicar una versión:
+
+1. Actualiza la versión semántica en `src-tauri/tauri.conf.json` y
+   `src-tauri/Cargo.toml`; verifica que `Cargo.lock` quede sincronizado.
+2. Ejecuta las pruebas y genera el instalador con el comando indicado arriba.
+3. Crea y sube un tag que coincida con la versión, por ejemplo `v0.2.1`.
+4. Crea una release de GitHub desde ese tag, añade notas breves de cambios y
+   adjunta el instalador `.exe` de `target\release\bundle\nsis\`.
+5. Prueba la descarga e instalación del archivo publicado.
+
+El instalador no tiene firma Authenticode configurada. Windows puede mostrar una
+advertencia de seguridad al ejecutarlo. No hay actualizaciones automáticas: para
+recibir una versión nueva hay que descargarla de GitHub Releases e instalarla
+manualmente. La aplicación tampoco guarda replays ni análisis al cerrarse.
 
 El proyecto no tiene lint, pruebas automatizadas de interfaz ni CI. Las pruebas
 de Rust están en `core/tests/` y `src-tauri/tests/`.

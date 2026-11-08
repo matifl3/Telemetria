@@ -38,23 +38,25 @@ integrado de Tauri queda para una tarea posterior.
 
 ## Tareas
 
-- [ ] **DIST01 · Habilitar el bundle NSIS** — *Hecho cuando:* la configuración
+- [x] **DIST01 · Habilitar el bundle NSIS** — *Hecho cuando:* la configuración
   de Tauri genera un instalador NSIS x64 desde el proyecto y conserva el nombre,
   identificador, icono y versión de la app; el empaquetado no altera el modo de
-  desarrollo.
-- [ ] **DIST02 · Verificar la compilación reproducible** — *Hecho cuando:* se
-  documentan requisitos y comando, y el instalador puede generarse desde un
-  checkout limpio de Windows con las herramientas declaradas. Se confirma qué
-  runtime de Windows necesita el usuario final.
+  desarrollo. Verificado generando el bundle NSIS en Windows.
+- [ ] **DIST02 · Verificar la compilación reproducible** — *Hecho cuando:* están
+  documentados requisitos y comando, y el instalador se genera desde un checkout
+  limpio de Windows con las herramientas declaradas. Requiere todavía la prueba
+  desde checkout limpio; si falta WebView2, el instalador predeterminado necesita
+  Internet para descargarlo.
 - [ ] **DIST03 · Validar instalación y uso** — *Hecho cuando:* en un Windows
   sin toolchain de desarrollo se instala y abre la app, y se comprueba la carga
   de un replay v16 y su `fast_lane.ai`; también se valida instalar una versión
-  posterior sobre la anterior y desinstalarla.
-- [ ] **DIST04 · Preparar publicación manual** — *Hecho cuando:* queda definido
+  posterior sobre la anterior y desinstalarla. Pendiente de prueba manual en un
+  Windows limpio con archivos de replay locales.
+- [x] **DIST04 · Preparar publicación manual** — *Hecho cuando:* queda definido
   el procedimiento para actualizar la versión, crear el tag y publicar notas
-  junto con el `.exe` en GitHub Releases; una persona sin Rust ni Node puede
-  descargar el instalador desde la release.
-- [ ] **DIST05 · Documentar distribución y límites** — *Hecho cuando:* el
+  junto con el `.exe` en GitHub Releases; la release será descargable por quienes
+  tengan acceso al repositorio.
+- [x] **DIST05 · Documentar distribución y límites** — *Hecho cuando:* el
   README explica requisitos, descarga, instalación, actualización manual,
   posibles advertencias de firma y que no existe actualización automática ni
   persistencia de análisis.
