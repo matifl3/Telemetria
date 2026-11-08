@@ -119,7 +119,7 @@ Usan **todas** las vueltas cargadas para sacar estadísticas globales.
 | Sectores automáticos | Tramos definidos por curvatura/distancia con su tiempo | dist, `velocidad_kmh` | 🔴 | Alta |
 | Tabla resumen por vuelta | Fila por vuelta: tiempo, media, máx, gas%, freno%, g, cambios, fuel | varios | 🟡 | Alta |
 | Vuelta teórica ("perfecta") | Une el mejor tramo de cada vuelta | varios | 🔴 | Media |
-| Mapa de mejores sectores | Trazada compuesta: junta el tramo del mejor sector de cada vuelta (coloreado por sector) sobre la pista gris de fondo y una base tenue de todas | `pos_x/z`, dist | 🟢 | Media |
+| Mapa de mejores sectores | Línea central y banda de `fast_lane.ai` como base; superpone el tramo del mejor sector de cada vuelta, coloreado por sector | `fast_lane.ai`, `pos_x/z`, dist | 🟢 | Media |
 | Fuel por vuelta | Consumo medio y desvío entre vueltas | `fuel`, `fuel_por_vuelta` | 🟢 | Baja |
 
 ---

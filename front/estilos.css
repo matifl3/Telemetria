@@ -169,6 +169,8 @@ html, body {
 
 /* Lista de vueltas */
 .lista-vueltas { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.vueltas-acciones { display: flex; justify-content: flex-end; margin: 0 0 12px; }
+.vueltas-acciones .btn { min-height: 36px; }
 .vuelta-item {
   display: flex;
   align-items: center;

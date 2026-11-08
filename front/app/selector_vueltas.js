@@ -14,6 +14,8 @@ const selectorVueltas = (() => {
     const cont = $('lista-vueltas');
     if (!cont) return;
     const resumen = state.resumen;
+    const validas = resumen ? resumen.vueltas.filter((v) => v.valida) : [];
+    actualizarBotonVisibilidad(validas);
     if (!resumen || !resumen.autos.length) {
       colapsadas.clear();
       cont.innerHTML = '';
@@ -23,7 +25,6 @@ const selectorVueltas = (() => {
     const foco = capturarFoco(cont);
     const refId = resumen.seleccion && resumen.seleccion.referencia;
     const bId = resumen.seleccion && resumen.seleccion.b;
-    const validas = resumen.vueltas.filter((v) => v.valida);
     const autoJugador = resumen.autos.find((auto) => auto.indice === resumen.indice_jugador) || null;
     const vueltasJugador = autoJugador
       ? validas.filter((v) => v.id.auto === autoJugador.indice)
@@ -50,6 +51,38 @@ const selectorVueltas = (() => {
     }
 
     restaurarFoco(cont, foco);
+  }
+
+  function actualizarBotonVisibilidad(validas) {
+    const boton = $('btn-visibilidad-vueltas');
+    if (!boton) return;
+    const visibles = validas.filter((v) => v.visible).length;
+    const todasVisibles = validas.length > 0 && visibles === validas.length;
+    const sinVueltas = validas.length === 0;
+    const sinCambiosPosibles = sinVueltas || (todasVisibles && validas.length === 1);
+    const ocultar = todasVisibles && validas.length > 1;
+    boton.disabled = sinCambiosPosibles;
+    if (sinVueltas) boton.textContent = 'Sin vueltas válidas';
+    else if (sinCambiosPosibles) boton.textContent = 'Todas seleccionadas';
+    else if (ocultar) boton.textContent = 'Deseleccionar todas';
+    else boton.textContent = 'Seleccionar todas';
+    boton.setAttribute('aria-label', ocultar
+      ? 'Ocultar todas las vueltas excepto la REF'
+      : 'Mostrar todas las vueltas válidas');
+    boton.title = ocultar
+      ? 'Oculta todas menos la REF para conservar el análisis'
+      : 'Muestra todas las vueltas válidas de todos los autos';
+    if (!boton.dataset.iniciado) {
+      boton.dataset.iniciado = 'true';
+      boton.addEventListener('click', alternarVisibilidadTodas);
+    }
+  }
+
+  function alternarVisibilidadTodas() {
+    const validas = state.resumen && state.resumen.vueltas.filter((v) => v.valida);
+    if (!validas || !validas.length) return;
+    const todasVisibles = validas.every((v) => v.visible);
+    ejecutar(() => puente.establecerVisibilidadVueltas(!todasVisibles));
   }
 
   /* Orden fijo: tiempo ascendente, nulos al final y empate estable por vuelta. */

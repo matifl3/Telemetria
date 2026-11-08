@@ -1,147 +1,135 @@
 # AC Telemetry Lab
 
-Aplicación de escritorio para **analizar y comparar** la telemetría de **Assetto
-Corsa (AC1)** a partir de los replays `.acreplay` (versión 16) y del archivo de
-pista `fast_lane.ai`.
+Aplicación de escritorio para analizar y comparar replays de **Assetto Corsa
+(AC1)**. Lee archivos `.acreplay` versión 16 y requiere el `fast_lane.ai`
+correspondiente a la pista.
 
-> Estado: v2 funcional con las pestañas **Vuelta**, **Vueltas**, **Mapa**,
-> **Conjunto**, **Comparación** y **Curvas**. Parseo y cálculos en Rust, interfaz
-> HTML/JS plana sobre Tauri 2. `cargo test --workspace` en verde (123 tests).
+La aplicación actual usa **Tauri 2**, una interfaz HTML/CSS/JavaScript y un
+backend de análisis en Rust. `visualizador/` contiene la versión web anterior y
+se conserva solo como referencia; no forma parte de la aplicación de escritorio.
 
----
+## Funcionalidades
 
-## 1. Qué hace
+- Parseo de replays v16 con varios autos y segmentación de vueltas.
+- Proyección sobre `fast_lane.ai` y alineación de las vueltas por distancia de
+  pista.
+- Gráficos sincronizados de velocidad, acelerador, freno, RPM, marchas,
+  aceleraciones, cargas y otros canales disponibles.
+- Lista de vueltas válidas, con selección de REF/B y visibilidad individual o
+  global. Al ocultar todas, la REF se mantiene visible para conservar el
+  análisis.
+- Mapas de pista y trazadas, comparación A/B y estadísticas de conjunto.
+- Detección de curvas desde `fast_lane.ai`, círculos de tracción y delta A/B por
+  curva.
+- En el mapa de mejores sectores, `fast_lane.ai` es la base y los tramos más
+  rápidos de cada sector se superponen sobre ella.
 
-- **Parsea `.acreplay` v16** y separa la sesión en vueltas, para todos los autos
-  del replay.
-- **Proyecta cada muestra sobre la pista** (`fast_lane.ai`) y alinea por arco de
-  pista `s`, no por distancia recorrida.
-- **Detecta las curvas una sola vez** sobre la pista, con numeración estable
-  `C1..Cn` independiente de la vuelta o del auto elegido.
-- Dibuja gráficos sincronizados (uPlot), mapa de trazadas, comparación A/B,
-  agregados de conjunto y métricas por curva.
-- Identifica al **jugador real** con `current_recording_index` y permite cambiar
-  la vuelta de referencia (REF) y la de comparación (B).
+## Requisitos
 
-## 2. Requisitos
+### Para ejecutar una compilación existente
 
-- **Windows 10/11** con WebView2 (incluido en el sistema).
-- **Rust estable** con el toolchain MSVC.
-- **Node.js** solo si se usa `npx tauri`; `cargo run` no lo necesita.
-- No requiere servidor, build del front ni conexión a internet: uPlot está
-  vendorizado en `front/vendor/`.
+- Windows 10/11 de 64 bits.
+- WebView2 Runtime, normalmente incluido en Windows 10/11.
 
-## 3. Cómo ejecutar
+### Para compilar desde el código fuente
 
-```bash
+- Rust estable con el toolchain **MSVC** y las herramientas de compilación de
+  Visual Studio para C++.
+- Windows SDK.
+
+La interfaz y uPlot están incluidos en el repositorio: no hace falta servidor ni
+conexión a Internet para usar la aplicación.
+
+## Ejecutar desde el código fuente
+
+Desde la raíz del repositorio:
+
+```powershell
 cargo run -p ac-telemetry-lab
 ```
 
-o, con la CLI de Tauri:
+Tauri carga y embebe `front/` directamente; no hay un paso de build separado
+para el frontend. Después de editar archivos de `front/`, reinicia o recompila
+la aplicación para ver los cambios.
 
-```bash
-cd src-tauri
-npx tauri dev
-```
+## Usar la aplicación
 
-No hay paso de build propio del front: Tauri **embebe `front/` al compilar**.
-Después de editar `front/`, hay que recompilar (`cargo build -p ac-telemetry-lab`);
-recargar la ventana no alcanza.
+1. Guarda el replay desde Assetto Corsa. Normalmente queda en
+   `Documentos\Assetto Corsa\replay\`.
+2. Abre la aplicación y carga el archivo `.acreplay`.
+3. Carga el `fast_lane.ai` de esa pista. Suele estar dentro de
+   `...\content\tracks\<pista>\<configuración>\ai\fast_lane.ai`.
+4. Selecciona las vueltas y recorre las pestañas de análisis.
 
-## 4. Uso
+El replay y la pista se pueden cargar con los botones de la aplicación o
+arrastrando los archivos a la ventana. El análisis requiere ambos archivos. No
+se guardan replays, selecciones ni resultados: los datos permanecen en memoria
+durante la sesión y se pierden al cerrar la aplicación o limpiar la sesión.
 
-1. En Assetto Corsa, correr la sesión y **guardar el replay** (queda en
-   `Documents\Assetto Corsa\replay\`).
-2. Abrir la aplicación y **cargar el replay** (`.acreplay`).
-3. **Cargar la pista** (`fast_lane.ai`), en la carpeta `ai\` de la pista (por
-   ejemplo `...\content\tracks\monza\lfmv2\ai\fast_lane.ai`). Es **obligatoria**
-   para entrar al análisis.
-4. Elegir vueltas, fijar REF/B y recorrer las pestañas.
-
-Los archivos se pueden cargar con los botones del encabezado o arrastrándolos a
-la zona de carga. **No hay persistencia**: los datos viven solo en memoria durante
-la sesión; al cerrar o limpiar se pierden y hay que volver a cargar los archivos.
-
-## 5. Pestañas
+## Pestañas
 
 | Pestaña | Contenido |
 |---|---|
-| **Vuelta** | Gráficos por vuelta (velocidad, pedales, marchas, RPM, G, cargas, etc.), sincronizados y con cursor. |
-| **Vueltas** | Listado de vueltas válidas en dos secciones: **Tus vueltas** (jugador real, en su orden) y **Otros autos** (ordenados por tiempo, de más rápida a más lenta). Permite fijar REF/B y mostrar u ocultar cada vuelta. |
-| **Mapa** | Trazada sobre la pista, canales (velocidad, frenada, cambios…), vista 3D rotable, zoom/pan. |
-| **Conjunto** | Estadísticas de las vueltas válidas del auto de la REF + mapa por sectores (vista 3D). |
-| **Comparación** | Diferencias entre dos vueltas (A/B). |
-| **Curvas** | Curvas detectadas desde `fast_lane.ai`, tracción (g-g) por curva con marcadores de slip y **delta A/B por curva**. |
+| **Vuelta** | Gráficos sincronizados de los canales de las vueltas visibles y lecturas de la REF. |
+| **Vueltas** | Vueltas válidas del jugador y de otros autos; permite elegir REF/B y mostrar u ocultar vueltas. |
+| **Mapa** | Trazadas sobre la pista, visualización por canal y controles de zoom, paneo y vista 3D. |
+| **Conjunto** | Estadísticas, sectores, vuelta teórica y mapa de mejores sectores sobre `fast_lane.ai`. |
+| **Comparación** | Diferencias entre la vuelta REF (A) y la vuelta B. |
+| **Curvas** | Curvas detectadas en la pista, tiempos, tracción y diferencias A/B por curva. |
 
-### Pestaña Vueltas
+En **Vueltas**, las vueltas válidas del jugador aparecen primero en orden de
+replay. Las de otros autos se ordenan de más rápida a más lenta. El botón global
+selecciona todas las vueltas válidas o deja solo la REF visible.
 
-- Solo se listan **vueltas válidas**.
-- **Tus vueltas** usa el jugador real del replay, no el primer auto. Si no se
-  puede identificar, muestra un aviso y todas las vueltas válidas pasan a
-  **Otros autos**.
-- El orden es fijo: no hay botón de ascendente/descendente.
-- **REF** y **B** son excluyentes: una vuelta no puede tener los dos roles.
-- El ojo muestra u oculta la vuelta. Si se oculta la REF o la B, el backend
-  normaliza la selección y asigna un reemplazo cuando hace falta.
+## Formatos compatibles
 
-## 6. Arquitectura
+- **Replay:** `.acreplay`, versión 16. Otras versiones no están soportadas.
+- **Pista:** `fast_lane.ai` de Assetto Corsa. Es obligatorio para analizar y
+  comparar las vueltas.
 
-```
-front/       HTML + JS plano, uPlot local
-   │         invoke() → DTO JSON ya calculado
-src-tauri/   comandos Tauri + sesión en memoria
-   │         llamadas Rust
-core/        parseo, modelo, cálculos y tests (sin Tauri)
-```
+Los detalles de los campos y sus offsets están documentados en
+[`doc/FormatoTelemetria.md`](doc/FormatoTelemetria.md).
 
-Regla de dependencia: `front → src-tauri → core`, nunca al revés. `core` no
-conoce Tauri, rutas, ventanas ni el JSON de la UI.
+## Compilar y verificar
 
-- **Sin persistencia:** `core` recibe bytes, no rutas; la capa Tauri solo lee los
-  archivos elegidos por el usuario. Nada se escribe en disco.
-- **La lógica vive en `core`:** el front solo dibuja los DTO ya calculados.
-
-## 7. Estructura
-
-```
-Telemetria/
-├─ core/                    # crate Rust: parser, modelo, cálculos y tests
-│  ├─ src/
-│  └─ tests/
-├─ src-tauri/               # capa Tauri: comandos, estado y ventana
-│  ├─ src/
-│  ├─ tests/
-│  └─ tauri.conf.json
-├─ front/                   # interfaz (HTML/JS/CSS plano)
-│  ├─ index.html
-│  ├─ estilos.css
-│  ├─ app/
-│  └─ vendor/               # uPlot
-├─ doc/                     # especificación y catálogos
-├─ spec/                    # planes y tareas de cada cambio
-└─ visualizador/            # v1 legada, solo referencia histórica
+```powershell
+cargo test --workspace
+cargo build -p ac-telemetry-lab
+node --check front\app\main.js
 ```
 
-## 8. Verificación
+`cargo build` compila la aplicación de desarrollo y embebe los archivos del
+frontend. El empaquetado está desactivado actualmente en `src-tauri/tauri.conf.json`:
+el repositorio todavía no configura un instalador para entregar ni un mecanismo
+de actualización automática.
 
-```bash
-cargo test --workspace          # tests de core y de la capa Tauri
-cargo build -p ac-telemetry-lab # compila la app y embebe front/
-node --check front/app/main.js  # chequeo de sintaxis del front (opcional)
+El proyecto no tiene lint, pruebas automatizadas de interfaz ni CI. Las pruebas
+de Rust están en `core/tests/` y `src-tauri/tests/`.
+
+## Estructura del proyecto
+
+```text
+core/       Parser, modelo, análisis y pruebas Rust; no depende de Tauri
+src-tauri/  Ventana, comandos y estado en memoria de Tauri
+front/      Interfaz HTML, CSS y JavaScript; uPlot vendorizado
+doc/        Especificaciones y catálogo de gráficos
+spec/       Planes y requisitos de funcionalidades
+visualizador/  Versión web anterior, solo referencia histórica
 ```
 
-El repositorio no tiene lint, tests de front ni CI. Los tests de lógica viven en
-`core/tests/` y `src-tauri/tests/`.
+La lógica de parseo y análisis vive en `core/`; la interfaz recibe DTOs a través
+de los comandos de Tauri. La aplicación no persiste datos en disco.
 
-## 9. Documentación
+## Documentación
 
-- [`doc/FormatoTelemetria.md`](doc/FormatoTelemetria.md) — offsets y señales del
-  `.acreplay` v16 y de `fast_lane.ai`.
-- [`doc/constitucion.md`](doc/constitucion.md) — principios innegociables del
-  proyecto.
-- [`doc/PLAN_CURVAS.md`](doc/PLAN_CURVAS.md) — detección de curvas y delta A/B.
-- [`doc/Catalogo_Graficos.md`](doc/Catalogo_Graficos.md) — catálogo de gráficos.
-- [`spec/migracion-tauri-rust/`](spec/migracion-tauri-rust/) — plan y requisitos
-  de la v2.
-- [`spec/pestana-vueltas/`](spec/pestana-vueltas/) — diseño y tareas de la
+- [`doc/FormatoTelemetria.md`](doc/FormatoTelemetria.md): formato del replay v16
+  y de `fast_lane.ai`.
+- [`doc/constitucion.md`](doc/constitucion.md): principios del proyecto.
+- [`doc/PLAN_CURVAS.md`](doc/PLAN_CURVAS.md): detección y calibración de curvas.
+- [`doc/Catalogo_Graficos.md`](doc/Catalogo_Graficos.md): gráficos de la app.
+- [`spec/migracion-tauri-rust/`](spec/migracion-tauri-rust/): especificación de
+  la versión Tauri + Rust.
+- [`spec/pestana-vueltas/`](spec/pestana-vueltas/): diseño y tareas de la
   pestaña Vueltas.
+- [`spec/distribucion/tareas.md`](spec/distribucion/tareas.md): primera
+  distribución para Windows mediante instalador NSIS y GitHub Releases.

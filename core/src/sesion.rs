@@ -198,6 +198,39 @@ impl Sesion {
         true
     }
 
+    /// Muestra todas las vueltas seleccionables o deja visible solo la REF.
+    ///
+    /// Al ocultar el conjunto se conserva una referencia para que el análisis
+    /// siga disponible. Devuelve `false` si no hay vueltas seleccionables.
+    pub fn establecer_visibilidad_todas(&mut self, visible: bool) -> bool {
+        let Some(replay) = self.replay.as_ref() else {
+            return false;
+        };
+        let ids_validos: Vec<VueltaId> = replay
+            .autos
+            .iter()
+            .flat_map(|auto| auto.vueltas.iter())
+            .filter(|vuelta| vuelta.valida && vuelta.seleccionable)
+            .map(|vuelta| vuelta.id)
+            .collect();
+        if ids_validos.is_empty() {
+            return false;
+        }
+
+        self.seleccion.visibles = if visible {
+            ids_validos
+        } else {
+            let referencia = self
+                .seleccion
+                .ref_id
+                .filter(|id| ids_validos.contains(id))
+                .unwrap_or(ids_validos[0]);
+            vec![referencia]
+        };
+        self.normalizar_seleccion();
+        true
+    }
+
     /// Fija la REF, activándola si estaba oculta (RF-014).
     pub fn fijar_referencia(&mut self, id: VueltaId) -> bool {
         if !self.es_seleccionable(id) {

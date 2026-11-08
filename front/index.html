@@ -116,7 +116,10 @@
         <div id="panel-vueltas" class="tab-panel" role="tabpanel" aria-labelledby="tab-vueltas">
           <div class="grafico-card panel-lista-vueltas">
             <div class="grafico-titulo">Vueltas <span class="unidad">válidas y seleccionables</span></div>
-            <p class="lista-ayuda">Tus vueltas van primero, en su orden actual. Los demás autos se ordenan de la más rápida a la más lenta. REF y B son excluyentes: una vuelta no puede tener los dos roles. Si ocultás la REF o la B, el sistema elige un reemplazo.</p>
+            <p class="lista-ayuda">Tus vueltas van primero, en su orden actual. Los demás autos se ordenan de la más rápida a la más lenta. REF y B son excluyentes: una vuelta no puede tener los dos roles. Si ocultás la REF o la B, el sistema elige un reemplazo. El botón global mantiene la REF visible al deseleccionar.</p>
+            <div class="vueltas-acciones">
+              <button id="btn-visibilidad-vueltas" class="btn fantasma" type="button" aria-controls="lista-vueltas">Seleccionar todas</button>
+            </div>
             <div id="lista-vueltas" class="lista-vueltas"></div>
           </div>
         </div>
@@ -203,7 +206,7 @@
             </div>
             <div class="grafico-card">
               <div class="grafico-titulo">
-                <span>Trazada de mejores sectores <span class="unidad">mejor sector de cada vuelta</span></span>
+                <span>Trazada de mejores sectores <span class="unidad">fast_lane.ai de base · mejor sector de cada vuelta</span></span>
                 <button id="btn-zoom-teorico" class="btn fantasma btn-ampliar" type="button">⤢ Ver en grande</button>
               </div>
               <canvas id="ch-mapa-teorico"></canvas>

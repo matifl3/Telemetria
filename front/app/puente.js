@@ -51,6 +51,10 @@ const puente = (() => {
     return invocar('alternar_vuelta', { auto: id.auto, numeroLocal: id.numero_local });
   }
 
+  async function establecerVisibilidadVueltas(visible) {
+    return invocar('establecer_visibilidad_vueltas', { visible });
+  }
+
   async function fijarReferencia(id) {
     return invocar('fijar_referencia', { auto: id.auto, numeroLocal: id.numero_local });
   }
@@ -63,5 +67,5 @@ const puente = (() => {
     return invocar('limpiar_sesion');
   }
 
-  return { abrirDialogo, cargarArchivos, cargarPista, pedirPestana, alternarVuelta, fijarReferencia, fijarB, limpiarSesion };
+  return { abrirDialogo, cargarArchivos, cargarPista, pedirPestana, alternarVuelta, establecerVisibilidadVueltas, fijarReferencia, fijarB, limpiarSesion };
 })();

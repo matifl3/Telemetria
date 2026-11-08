@@ -280,6 +280,30 @@ fn t85_alternar_visibilidad_mantiene_ref_y_b_validas() {
 }
 
 #[test]
+fn t85b_visibilidad_global_conserva_ref_y_restaura_todas() {
+    let mut sesion = Sesion::nueva();
+    cargar(
+        &mut sesion,
+        vec![auto_con_invalida(), auto_valido("auto_1", "Otro")],
+        0,
+    )
+    .expect("carga válida");
+
+    let referencia = sesion.seleccion().ref_id.expect("hay REF");
+    assert!(sesion.establecer_visibilidad_todas(true));
+    assert_eq!(sesion.seleccion().visibles.len(), 4);
+    assert_eq!(sesion.seleccion().ref_id, Some(referencia));
+    assert_invariantes(&sesion);
+
+    assert!(sesion.establecer_visibilidad_todas(false));
+    assert_eq!(sesion.seleccion().visibles, vec![referencia]);
+    assert_eq!(sesion.seleccion().ref_id, Some(referencia));
+    assert_eq!(sesion.seleccion().b_id, None);
+    assert!(sesion.puede_analizar());
+    assert_invariantes(&sesion);
+}
+
+#[test]
 fn t86_limpiar_deja_todo_vacio() {
     let mut sesion = Sesion::nueva();
     cargar(

@@ -17,6 +17,7 @@ pub fn run() {
             comandos::cargar_pista,
             comandos::datos_pestana,
             comandos::alternar_vuelta,
+            comandos::establecer_visibilidad_vueltas,
             comandos::fijar_referencia,
             comandos::fijar_b,
             comandos::limpiar_sesion,

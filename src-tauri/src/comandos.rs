@@ -180,6 +180,22 @@ pub fn alternar_vuelta(
     Ok(dto::resumen(&sesion))
 }
 
+/// Muestra todas las vueltas seleccionables o conserva visible solo la REF.
+#[tauri::command]
+pub fn establecer_visibilidad_vueltas(
+    app: AppHandle,
+    visible: bool,
+) -> Result<DtoResumen, ErrorComando> {
+    let estado = app.state::<EstadoApp>();
+    let mut sesion = estado.bloquear();
+    if !sesion.establecer_visibilidad_todas(visible) {
+        return Err(ErrorComando::seleccion(
+            "no hay vueltas seleccionables para cambiar",
+        ));
+    }
+    Ok(dto::resumen(&sesion))
+}
+
 /// Fija la vuelta de referencia (T100).
 #[tauri::command]
 pub fn fijar_referencia(

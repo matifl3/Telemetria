@@ -100,9 +100,9 @@ function dibujarTractionCurvas(datos) {
   const cont = $('traction-curvas');
   if (!cont) return;
   const lapsDeDatos = vueltasBaseFront();
-  const refT = curvasRefTraza(datos);
-  if (!refT) return;
-  const porCurva = datos.curvas.map((cx) => puntosDeCurva(lapsDeDatos, refT, cx));
+  const grilla = state.datosVuelta && state.datosVuelta.grilla;
+  if (!grilla || !grilla.length) return;
+  const porCurva = datos.curvas.map((cx) => puntosDeCurva(lapsDeDatos, grilla, cx));
   let maxG = 1.5;
   for (const pts of porCurva) {
     const esc = pts.flatMap((p) => [Math.abs(p.lat), Math.abs(p.lon)]).sort((a, b) => a - b);
@@ -136,15 +136,31 @@ function vueltaBetaPorId(id) {
   return vueltasBaseFront().find((v) => mismaId(v.id, id)) || null;
 }
 
-function indicesDeS(traza, sIni, sFin) {
-  const i0 = sIni == null ? 0 : indiceDeS(traza, sIni);
-  const i1 = sFin == null ? traza.s.length - 1 : indiceDeS(traza, sFin);
-  return { i0: Math.max(i0, 0), i1: Math.min(i1, traza.s.length) };
+function indicesDeS(grilla, sIni, sFin) {
+  if (!grilla.length) return { i0: 0, i1: -1 };
+  const i0 = sIni == null || !Number.isFinite(sIni) ? 0 : indiceMasCercanoEnGrilla(grilla, sIni);
+  const i1 = sFin == null || !Number.isFinite(sFin)
+    ? grilla.length - 1
+    : indiceMasCercanoEnGrilla(grilla, sFin);
+  return { i0: Math.max(i0, 0), i1: Math.min(i1, grilla.length - 1) };
+}
+
+function indiceMasCercanoEnGrilla(grilla, arco) {
+  let inicio = 0;
+  let fin = grilla.length;
+  while (inicio < fin) {
+    const medio = Math.floor((inicio + fin) / 2);
+    if (grilla[medio] < arco) inicio = medio + 1;
+    else fin = medio;
+  }
+  if (inicio === 0) return 0;
+  if (inicio === grilla.length) return grilla.length - 1;
+  return arco - grilla[inicio - 1] <= grilla[inicio] - arco ? inicio - 1 : inicio;
 }
 
 /* Puntos g-g (con marcadores de slip) de una curva, sobre la grilla común. */
-function puntosDeCurva(laps, refTraza, cx) {
-  const { i0, i1 } = indicesDeS(refTraza, cx.s_ini, cx.s_fin);
+function puntosDeCurva(laps, grilla, cx) {
+  const { i0, i1 } = indicesDeS(grilla, cx.s_ini, cx.s_fin);
   const pts = [];
   for (const l of laps) {
     const al = l.acc_long_g || [], at = l.acc_lat_g || [];

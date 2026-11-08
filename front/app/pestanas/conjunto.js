@@ -322,9 +322,13 @@ function dibujarMapaTeorico(datos) {
 function pintarTrazadaTeorica(ctx, vista, mapaData, datos, w, h) {
   const corte = longitudPistaDe(datos) / N_SECTORES;
   const tramos = construirTrazadaTeorica(datos).tramos;
-  if (!tramos.length) { ctx.fillStyle = '#8b97a8'; ctx.fillText('sin sectores medibles', 8, 20); return; }
-  for (const traza of mapaData.trazas) dibujarTrazada(ctx, vista.tf, traza, 'rgba(148,163,184,0.12)', 2);
   dibujarBandaPista(ctx, vista.tf, mapaData.pista);
+  dibujarCentroPista(ctx, vista.tf, mapaData.pista);
+  if (!tramos.length) {
+    ctx.fillStyle = '#8b97a8';
+    ctx.fillText('sin sectores medibles', 8, 20);
+    return;
+  }
   ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 3.5;
   for (const tramo of tramos) {
     ctx.strokeStyle = colorMap(tramo.s / (N_SECTORES - 1));
@@ -344,9 +348,32 @@ function pintarTrazadaTeorica(ctx, vista, mapaData, datos, w, h) {
   const resumen = usadas.length === 1 ? `mejor vuelta: ${usadas[0]}` : `mejores sectores de: ${usadas.join(', ')}`;
   if (w != null) {
     ctx.font = '10px "Segoe UI"'; ctx.fillStyle = '#8b97a8';
-    ctx.fillText(resumen.slice(0, 90), 8, 14);
+    ctx.fillText(`fast_lane.ai · ${resumen}`.slice(0, 90), 8, 14);
     leyendaSectorial(ctx, w, h);
   }
+}
+
+function dibujarCentroPista(ctx, tf, pista) {
+  if (!pista || !pista.centro) return;
+  ctx.strokeStyle = 'rgba(226,232,240,0.72)';
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  let tramo = false;
+  for (const punto of pista.centro) {
+    if (!punto) {
+      tramo = false;
+      continue;
+    }
+    const [x, y] = tf(punto[0], punto[1]);
+    if (tramo) ctx.lineTo(x, y);
+    else {
+      ctx.moveTo(x, y);
+      tramo = true;
+    }
+  }
+  ctx.stroke();
 }
 
 /* Tabla resumen por vuelta (DTO.tabla). */
