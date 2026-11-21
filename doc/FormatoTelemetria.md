@@ -239,8 +239,8 @@ inválida (RF-006).
   documentado públicamente**.
 - AC lo genera en `Documents\Assetto Corsa\aim\telemetry_dump.nkt` y se
   **sobreescribe** cada sesión.
-- **No soportado** por el visualizador: hoy la única vía confiable es abrirlo con
-  **AiM Race Studio**. La aplicación trabaja exclusivamente con replays
+- **No soportado** por la aplicación: hoy la única vía confiable es abrirlo con
+  **AiM Race Studio**. AC Telemetry Lab trabaja exclusivamente con replays
   `.acreplay`.
 
 ---

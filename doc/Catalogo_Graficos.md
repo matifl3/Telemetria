@@ -1,6 +1,6 @@
-# Catálogo de gráficos del visualizador
+# Catálogo de gráficos de la aplicación
 
-Ideas de gráficos para la app de análisis (`visualizador/`), clasificadas por
+Ideas de gráficos para la app de análisis (`front/`), clasificadas por
 **cómo se agrupan las vueltas**:
 
 1. **Una vuelta** — análisis de una sola vuelta.

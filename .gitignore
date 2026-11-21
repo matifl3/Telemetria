@@ -13,3 +13,7 @@ src-tauri/gen/
 
 # --- Temporales ---
 *.bak
+
+# --- Dependencias y editor ---
+node_modules/
+.idea/
