@@ -76,12 +76,7 @@ fn cargar(
     indice_grabacion: u32,
 ) -> acreplay_core::Resultado<()> {
     let replay = replay_bytes(autos, indice_grabacion);
-    sesion.cargar_lote(
-        &replay,
-        "replay.acreplay",
-        &pista_bytes(),
-        "fast_lane.ai",
-    )
+    sesion.cargar_lote(&replay, "replay.acreplay", &pista_bytes(), "fast_lane.ai")
 }
 
 fn assert_invariantes(sesion: &Sesion) {
@@ -107,8 +102,12 @@ fn assert_invariantes(sesion: &Sesion) {
 #[test]
 fn t81_carga_candidata_atomica_conserva_la_sesion_anterior() {
     let mut sesion = Sesion::nueva();
-    cargar(&mut sesion, vec![auto_con_invalida(), auto_valido("auto_1", "Otro")], 0)
-        .expect("la carga inicial es válida");
+    cargar(
+        &mut sesion,
+        vec![auto_con_invalida(), auto_valido("auto_1", "Otro")],
+        0,
+    )
+    .expect("la carga inicial es válida");
     assert!(sesion.puede_analizar());
     let antes = sesion.clone();
 
@@ -129,7 +128,10 @@ fn t81_carga_candidata_atomica_conserva_la_sesion_anterior() {
             "fast_lane.ai",
         )
         .expect_err("la versión 15 no se soporta");
-    assert!(matches!(error.motivo, Motivo::VersionNoSoportada { version: 15 }));
+    assert!(matches!(
+        error.motivo,
+        Motivo::VersionNoSoportada { version: 15 }
+    ));
     assert_eq!(sesion, antes, "un parseo fallido no debe tocar la sesión");
 }
 
@@ -141,7 +143,10 @@ fn t82_jugador_es_el_auto_0_y_fallback_si_no_tiene_vueltas() {
         let mut por_indice = Sesion::nueva();
         cargar(
             &mut por_indice,
-            vec![auto_valido("auto_0", "Piloto 0"), auto_valido("auto_1", "Piloto 1")],
+            vec![
+                auto_valido("auto_0", "Piloto 0"),
+                auto_valido("auto_1", "Piloto 1"),
+            ],
             indice_grabacion,
         )
         .expect("hay autos con vueltas");
@@ -191,8 +196,8 @@ fn t83_rechazo_sin_vueltas_analizables() {
     assert_eq!(sesion, antes, "no se entra al análisis");
 
     let mut vacia = Sesion::nueva();
-    let error = cargar(&mut vacia, vec![auto_sin_vueltas()], 0)
-        .expect_err("tampoco entra desde cero");
+    let error =
+        cargar(&mut vacia, vec![auto_sin_vueltas()], 0).expect_err("tampoco entra desde cero");
     assert_eq!(
         error.motivo.descripcion(),
         "El replay no contiene vueltas analizables"
@@ -248,12 +253,21 @@ fn t84b_seleccion_por_defecto_son_las_dos_mas_rapidas() {
     let jugador = auto(
         "auto_0",
         "Jugador",
-        &[(1, PUNTOS, 100), (2, PUNTOS, 40), (3, PUNTOS, 33), (4, PUNTOS, 36), (5, PUNTOS, 34)],
+        &[
+            (1, PUNTOS, 100),
+            (2, PUNTOS, 40),
+            (3, PUNTOS, 33),
+            (4, PUNTOS, 36),
+            (5, PUNTOS, 34),
+        ],
     );
     let mut sesion = Sesion::nueva();
     cargar(&mut sesion, vec![jugador, auto_valido("auto_1", "Otro")], 0).expect("carga válida");
 
-    let id = |numero_local| VueltaId { auto: 0, numero_local };
+    let id = |numero_local| VueltaId {
+        auto: 0,
+        numero_local,
+    };
     // REF = la más rápida (V3, ritmo 33); B = la segunda (V5, ritmo 34).
     assert_eq!(sesion.seleccion().ref_id, Some(id(2)));
     assert_eq!(sesion.seleccion().b_id, Some(id(4)));
@@ -271,7 +285,10 @@ fn t84c_con_una_sola_valida_queda_solo_la_ref() {
     let mut sesion = Sesion::nueva();
     cargar(&mut sesion, vec![jugador], 0).expect("carga válida");
 
-    let unica = VueltaId { auto: 0, numero_local: 1 };
+    let unica = VueltaId {
+        auto: 0,
+        numero_local: 1,
+    };
     assert_eq!(sesion.seleccion().visibles, vec![unica]);
     assert_eq!(sesion.seleccion().ref_id, Some(unica));
     assert_eq!(sesion.seleccion().b_id, None);
@@ -295,7 +312,12 @@ fn proyeccion_deficiente_genera_un_solo_aviso() {
         .collect();
 
     let mut sesion = Sesion::nueva();
-    cargar(&mut sesion, vec![auto_valido("auto_0", "Jugador"), boxes], 0).expect("carga válida");
+    cargar(
+        &mut sesion,
+        vec![auto_valido("auto_0", "Jugador"), boxes],
+        0,
+    )
+    .expect("carga válida");
 
     let avisos: Vec<_> = sesion
         .avisos()
@@ -333,7 +355,10 @@ fn t85_alternar_visibilidad_mantiene_ref_y_b_validas() {
         numero_local: 0,
     };
     let antes = sesion.clone();
-    assert!(!sesion.alternar_vuelta(invalida), "una inválida no se activa");
+    assert!(
+        !sesion.alternar_vuelta(invalida),
+        "una inválida no se activa"
+    );
     assert_eq!(sesion, antes);
     assert!(!sesion.seleccion().es_visible(invalida));
 

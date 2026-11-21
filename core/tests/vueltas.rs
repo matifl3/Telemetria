@@ -3,8 +3,8 @@ use acreplay_core::modelo::{Auto, MuestrasAuto};
 use acreplay_core::vuelta::{
     aceleraciones, calcular_dt, calcular_yaw, cobertura_s_m, construir_series, construir_vueltas,
     etiqueta_vuelta, normalizar_pedal, segmentar_auto, segmentar_por_reloj, segmentar_vueltas,
-    tiempo_de_vuelta, unwrap_yaw,
-    MotivoVuelta, SegmentoVuelta, Series, Vuelta, VueltaId, DT_POR_DEFECTO, G, MAX_G,
+    tiempo_de_vuelta, unwrap_yaw, MotivoVuelta, SegmentoVuelta, Series, Vuelta, VueltaId,
+    DT_POR_DEFECTO, G, MAX_G,
 };
 
 fn cerca(a: f64, b: f64) -> bool {
@@ -406,9 +406,21 @@ fn segmenta_por_reinicio_del_reloj() {
     assert_eq!(
         segmentos,
         vec![
-            SegmentoVuelta { numero: 0, inicio: 0, fin: 2 },
-            SegmentoVuelta { numero: 1, inicio: 2, fin: 6 },
-            SegmentoVuelta { numero: 2, inicio: 6, fin: 8 },
+            SegmentoVuelta {
+                numero: 0,
+                inicio: 0,
+                fin: 2
+            },
+            SegmentoVuelta {
+                numero: 1,
+                inicio: 2,
+                fin: 6
+            },
+            SegmentoVuelta {
+                numero: 2,
+                inicio: 6,
+                fin: 8
+            },
         ]
     );
     assert!(segmentar_por_reloj(&[]).is_empty());
@@ -417,11 +429,21 @@ fn segmenta_por_reinicio_del_reloj() {
 #[test]
 fn segmentar_auto_usa_current_lap_solo_si_cambia() {
     // Jugador: `current_lap` cambia → se respeta aunque el reloj no se reinicie.
-    let jugador = muestras(&filas_de(&[(1, 100, 0), (1, 200, 0), (2, 300, 0), (2, 400, 0)]));
+    let jugador = muestras(&filas_de(&[
+        (1, 100, 0),
+        (1, 200, 0),
+        (2, 300, 0),
+        (2, 400, 0),
+    ]));
     assert_eq!(segmentar_auto(&jugador), segmentar_vueltas(&jugador.vuelta));
 
     // Otro auto: `current_lap` fijo en 0 → se corta por el reloj.
-    let otro = muestras(&filas_de(&[(0, 5_000, 0), (0, 6_000, 0), (0, 50, 0), (0, 2_000, 0)]));
+    let otro = muestras(&filas_de(&[
+        (0, 5_000, 0),
+        (0, 6_000, 0),
+        (0, 50, 0),
+        (0, 2_000, 0),
+    ]));
     let segmentos = segmentar_auto(&otro);
     assert_eq!(segmentos.len(), 2);
     assert_eq!((segmentos[1].inicio, segmentos[1].fin), (2, 4));
@@ -459,7 +481,10 @@ fn otros_autos_sin_current_lap_tienen_tiempo_por_vuelta() {
     assert_eq!(tiempos.len(), 3);
     assert!(cerca(tiempos[1], 107.733));
     assert!(cerca(tiempos[2], 106.530));
-    assert!(tiempos.iter().all(|t| *t > 0.0), "nunca tiempos negativos: {tiempos:?}");
+    assert!(
+        tiempos.iter().all(|t| *t > 0.0),
+        "nunca tiempos negativos: {tiempos:?}"
+    );
     assert!(vueltas[1].etiqueta.ends_with("V1"));
 }
 
@@ -485,7 +510,10 @@ fn vueltas_que_no_cubren_el_90_por_ciento_de_la_pista_no_son_validas() {
         vuelta(0, 2, 5_000.0, 48.0),
     ];
     clasificar_vueltas(&mut vueltas);
-    assert!(vueltas[..3].iter().all(|v| v.valida), "la mediana sola no las descarta");
+    assert!(
+        vueltas[..3].iter().all(|v| v.valida),
+        "la mediana sola no las descarta"
+    );
 
     descartar_cortas_por_pista(&mut vueltas, 5_757.0);
     assert_eq!(vueltas[0].motivo, MotivoVuelta::Incompleta);

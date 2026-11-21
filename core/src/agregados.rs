@@ -4,9 +4,9 @@
 //! RF-014, [`conjunto`] filtra únicamente las vueltas válidas del auto dueño de
 //! la REF; los gráficos de conjunto no deben mezclar autos.
 
-use crate::alineado::{VueltaAlineada, alinear_vuelta};
+use crate::alineado::{alinear_vuelta, VueltaAlineada};
 use crate::grilla::Grilla;
-use crate::vuelta::{G, Vuelta, VueltaId};
+use crate::vuelta::{Vuelta, VueltaId, G};
 
 /// Cantidad de barras del histograma de velocidad.
 pub const BINS_VELOCIDAD: usize = 30;

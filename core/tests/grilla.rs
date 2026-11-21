@@ -84,7 +84,10 @@ fn t51_marcha_se_remuestrea_por_vecino_y_conserva_escalones() {
 
     let alineado = remuestrear_vecino(&s, &marcha, &grilla);
     let esperado = vec![1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3];
-    assert_eq!(alineado, esperado.iter().copied().map(Some).collect::<Vec<_>>());
+    assert_eq!(
+        alineado,
+        esperado.iter().copied().map(Some).collect::<Vec<_>>()
+    );
 
     // Solo aparecen marchas presentes en la serie: no se interpola 1.5.
     for valor in alineado.iter().flatten() {
@@ -115,7 +118,10 @@ fn t52_fuera_de_rango_y_en_huecos_el_valor_es_none() {
     assert_eq!(alineado[5], Some(1.5));
     assert_eq!(alineado[10], Some(2.0));
     for (indice, valor) in alineado.iter().enumerate().take(40).skip(11) {
-        assert!(valor.is_none(), "índice {indice} interpoló un hueco: {valor:?}");
+        assert!(
+            valor.is_none(),
+            "índice {indice} interpoló un hueco: {valor:?}"
+        );
     }
     assert_eq!(alineado[40], Some(5.0));
     assert_eq!(alineado[45], Some(5.5));
@@ -123,11 +129,7 @@ fn t52_fuera_de_rango_y_en_huecos_el_valor_es_none() {
 
     // La vuelta cubre solo [1, 2]: los extremos de la grilla son huecos, no el
     // primer/último valor repetido.
-    let corta = remuestrear_lineal(
-        &[1.0, 2.0],
-        &[10.0f32, 20.0],
-        &grilla_con_paso(5.0, 0.1),
-    );
+    let corta = remuestrear_lineal(&[1.0, 2.0], &[10.0f32, 20.0], &grilla_con_paso(5.0, 0.1));
     assert_eq!(corta[0], None);
     assert_eq!(corta[10], Some(10.0));
     assert_eq!(corta[20], Some(20.0));

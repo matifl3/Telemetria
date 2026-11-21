@@ -64,10 +64,7 @@ impl Pista {
 
     /// Semiancho de la banda de pista (m), igual para todos los puntos.
     pub fn ancho_m(&self) -> f32 {
-        self.wl
-            .first()
-            .copied()
-            .unwrap_or(SEMIANCHO_POR_DEFECTO)
+        self.wl.first().copied().unwrap_or(SEMIANCHO_POR_DEFECTO)
     }
 
     /// Curvas cacheadas de la pista (RF-011). No se recalculan al consultarlas.

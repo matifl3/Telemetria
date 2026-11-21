@@ -112,8 +112,8 @@ fn t26_sobrantes_que_no_llenan_el_bloque_se_ignoran() {
 #[test]
 fn t27_menos_de_tres_puntos_es_pista_invalida() {
     for cantidad in [0usize, 1, 2] {
-        let error = parsear_pista(&ConstructorPista::recta(cantidad).bytes(), "fast_lane.ai")
-            .unwrap_err();
+        let error =
+            parsear_pista(&ConstructorPista::recta(cantidad).bytes(), "fast_lane.ai").unwrap_err();
         assert!(
             matches!(error.motivo, Motivo::PistaInvalida { .. }),
             "con {cantidad} puntos: {:?}",

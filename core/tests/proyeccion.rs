@@ -72,7 +72,11 @@ fn t43_punto_a_100_m_queda_marcado_y_sin_s() {
     let lejos = proyectar(&pista, 50.0, 100.0, Some(5));
     assert!(lejos.s.is_none());
     assert!(lejos.error_m >= UMBRAL_ERROR_M);
-    assert!((lejos.error_m as f64 - 100.0).abs() < 1e-3, "{:?}", lejos.error_m);
+    assert!(
+        (lejos.error_m as f64 - 100.0).abs() < 1e-3,
+        "{:?}",
+        lejos.error_m
+    );
 
     let serie = proyectar_serie(&pista, &[0.0, 10.0, 20.0, 30.0], &[0.0, 0.0, 100.0, 0.0]);
     assert_eq!(serie.descartadas, 1);
@@ -131,7 +135,18 @@ fn t45_proyeccion_deficiente_deja_la_vuelta_no_analizable() {
         valida: true,
         seleccionable: true,
         muestras: Series {
-            s: vec![0.0, 1.0, f64::NAN, 3.0, f64::NAN, 5.0, f64::NAN, 7.0, 8.0, 9.0],
+            s: vec![
+                0.0,
+                1.0,
+                f64::NAN,
+                3.0,
+                f64::NAN,
+                5.0,
+                f64::NAN,
+                7.0,
+                8.0,
+                9.0,
+            ],
             t_rel: (0..10).map(|i| i as f64 * 0.1).collect(),
             ..Series::default()
         },
@@ -219,12 +234,8 @@ fn t46_dos_trazadas_de_la_misma_curva_dan_la_misma_s() {
 #[test]
 fn t47_trompo_y_salida_no_hacen_retroceder_s() {
     let pista = pista_de(&ConstructorPista::recta(51));
-    let xs = [
-        0.0f32, 10.0, 20.0, 30.0, 40.0, 30.0, 30.0, 20.0, 50.0, 60.0,
-    ];
-    let zs = [
-        0.0f32, 0.0, 0.0, 0.0, 0.0, 100.0, 100.0, 0.0, 0.0, 0.0,
-    ];
+    let xs = [0.0f32, 10.0, 20.0, 30.0, 40.0, 30.0, 30.0, 20.0, 50.0, 60.0];
+    let zs = [0.0f32, 0.0, 0.0, 0.0, 0.0, 100.0, 100.0, 0.0, 0.0, 0.0];
 
     let serie = proyectar_serie(&pista, &xs, &zs);
     assert_eq!(serie.descartadas, 2);
@@ -232,7 +243,11 @@ fn t47_trompo_y_salida_no_hacen_retroceder_s() {
 
     let mut s = serie.s.clone();
     ajustar_meta(pista.longitud_m, &mut s);
-    let validos: Vec<f64> = s.iter().copied().filter(|valor| valor.is_finite()).collect();
+    let validos: Vec<f64> = s
+        .iter()
+        .copied()
+        .filter(|valor| valor.is_finite())
+        .collect();
     assert!(
         validos.windows(2).all(|ventana| ventana[1] >= ventana[0]),
         "{s:?}"

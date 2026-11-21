@@ -55,7 +55,11 @@ fn t55_histéresis_produce_un_solo_arco() {
     assert_eq!(pista.curvas.len(), 1, "{:?}", pista.curvas);
     let curva = &pista.curvas[0];
     assert!(curva.largo > 70.0, "largo {}", curva.largo);
-    assert!(cerca(curva.radio_min, 50.0, 1.5), "Rmin {}", curva.radio_min);
+    assert!(
+        cerca(curva.radio_min, 50.0, 1.5),
+        "Rmin {}",
+        curva.radio_min
+    );
     assert_eq!(curva.sentido, Sentido::Derecha);
 }
 
@@ -146,7 +150,11 @@ fn t59_curva_que_cruza_la_meta_queda_entera() {
         cruza.largo
     );
     assert!(cruza.s_ini > pista.longitud_m / 2.0);
-    assert!(cerca(cruza.radio_min, 40.0, 2.0), "Rmin {}", cruza.radio_min);
+    assert!(
+        cerca(cruza.radio_min, 40.0, 2.0),
+        "Rmin {}",
+        cruza.radio_min
+    );
 }
 
 #[test]
@@ -156,7 +164,11 @@ fn t60_pista_sintetica_sin_fantasmas_ni_faltantes() {
     for curva in &pista.curvas {
         assert_eq!(curva.sentido, Sentido::Derecha);
         assert!(curva.largo >= CURVA_LARGO_MIN);
-        assert!(cerca(curva.radio_min, 40.0, 2.0), "Rmin {}", curva.radio_min);
+        assert!(
+            cerca(curva.radio_min, 40.0, 2.0),
+            "Rmin {}",
+            curva.radio_min
+        );
         assert!(curva.s_ini >= 0.0);
         assert!(curva.s_apex >= curva.s_ini);
         assert!(curva.s_apex <= curva.s_fin);
@@ -183,7 +195,11 @@ fn t60_chicane_l_r_l_conserva_los_tres_arcos() {
     assert_eq!(pista.curvas[1].sentido, Sentido::Izquierda);
     assert_eq!(pista.curvas[2].sentido, Sentido::Derecha);
     for curva in &pista.curvas {
-        assert!(cerca(curva.radio_min, 40.0, 2.0), "Rmin {}", curva.radio_min);
+        assert!(
+            cerca(curva.radio_min, 40.0, 2.0),
+            "Rmin {}",
+            curva.radio_min
+        );
     }
 }
 
@@ -220,7 +236,9 @@ fn caso_manual() -> (Vec<f64>, CurvaPista, Vec<f32>, Vec<f32>, Vec<f32>) {
         giro: 1.0,
         sentido: Sentido::Derecha,
     };
-    let velocidad = vec![100.0, 95.0, 90.0, 80.0, 70.0, 60.0, 70.0, 80.0, 85.0, 40.0, 30.0];
+    let velocidad = vec![
+        100.0, 95.0, 90.0, 80.0, 70.0, 60.0, 70.0, 80.0, 85.0, 40.0, 30.0,
+    ];
     let freno = vec![0.0, 0.0, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     let gas = vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.95, 0.95, 0.95, 0.0, 0.0];
     (s, curva, velocidad, freno, gas)

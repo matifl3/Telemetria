@@ -193,11 +193,7 @@ fn periodo_ciclico(pista: &Pista, s: &[f64]) -> Option<f64> {
 }
 
 /// Rumbo y curvatura con ventana cíclica (pista cerrada).
-fn curvatura_cerrada(
-    pista: &Pista,
-    s: &[f64],
-    periodo: f64,
-) -> (Vec<f64>, Vec<f64>, f64) {
+fn curvatura_cerrada(pista: &Pista, s: &[f64], periodo: f64) -> (Vec<f64>, Vec<f64>, f64) {
     let n = s.len();
     let kw = VENTANA_CURVATURA;
     let largo = n + 2 * kw + 1;
@@ -353,12 +349,7 @@ pub fn detectar_curvas(pista: &Pista) -> Vec<CurvaPista> {
             geometria.giro_total,
             periodo,
         ),
-        None => detectar_abierto(
-            &geometria.s,
-            &radios,
-            &geometria.kappa,
-            &geometria.theta,
-        ),
+        None => detectar_abierto(&geometria.s, &radios, &geometria.kappa, &geometria.theta),
     };
 
     let mut curvas: Vec<CurvaPista> = arcos.into_iter().map(ArcoDetectado::a_curva).collect();
@@ -376,12 +367,7 @@ pub fn detectar_curvas(pista: &Pista) -> Vec<CurvaPista> {
     salida
 }
 
-fn detectar_abierto(
-    s: &[f64],
-    radios: &[f64],
-    kappa: &[f64],
-    theta: &[f64],
-) -> Vec<ArcoDetectado> {
+fn detectar_abierto(s: &[f64], radios: &[f64], kappa: &[f64], theta: &[f64]) -> Vec<ArcoDetectado> {
     let n = s.len();
     let mut arcos = Vec::new();
     let mut dentro = false;

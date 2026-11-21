@@ -13,10 +13,7 @@ pub enum Motivo {
     /// La versión del `.acreplay` no es la 16.
     VersionNoSoportada { version: u32 },
     /// El archivo termina antes de completar la lectura pedida.
-    ArchivoTruncado {
-        necesita: usize,
-        disponibles: usize,
-    },
+    ArchivoTruncado { necesita: usize, disponibles: usize },
     /// Estructura inválida: longitudes imposibles, desbordamientos, etc.
     ArchivoCorrupto { detalle: String },
     /// Cadena con largo fuera de rango o bytes UTF-8 inválidos.
@@ -37,28 +34,23 @@ impl Motivo {
     /// Texto en español del motivo, sin el nombre del archivo.
     pub fn descripcion(&self) -> String {
         match self {
-            Motivo::VersionNoSoportada { version } => format!(
-                ".acreplay de versión {version}; solo se soporta la 16"
-            ),
+            Motivo::VersionNoSoportada { version } => {
+                format!(".acreplay de versión {version}; solo se soporta la 16")
+            }
             Motivo::ArchivoTruncado {
                 necesita,
                 disponibles,
-            } => format!(
-                "archivo truncado: se necesitan {necesita} bytes y quedan {disponibles}"
-            ),
+            } => format!("archivo truncado: se necesitan {necesita} bytes y quedan {disponibles}"),
             Motivo::ArchivoCorrupto { detalle } => format!("archivo corrupto: {detalle}"),
-            Motivo::CadenaInvalida { largo, posicion } => format!(
-                "cadena inválida en el offset {posicion}: largo {largo}"
-            ),
-            Motivo::ExtensionNoSoportada { extension } => format!(
-                "extensión no soportada ({extension}); se espera .acreplay o fast_lane.ai"
-            ),
+            Motivo::CadenaInvalida { largo, posicion } => {
+                format!("cadena inválida en el offset {posicion}: largo {largo}")
+            }
+            Motivo::ExtensionNoSoportada { extension } => {
+                format!("extensión no soportada ({extension}); se espera .acreplay o fast_lane.ai")
+            }
             Motivo::PistaInvalida { detalle } => format!("pista inválida: {detalle}"),
             Motivo::ReplaySinVueltas => "El replay no contiene vueltas analizables".to_string(),
-            Motivo::ProyeccionDeficiente {
-                descartadas,
-                total,
-            } => format!(
+            Motivo::ProyeccionDeficiente { descartadas, total } => format!(
                 "proyección deficiente: {descartadas} de {total} muestras quedaron fuera de pista"
             ),
             Motivo::ReferenciaFallback { auto } => {
@@ -85,11 +77,7 @@ impl ErrorFormato {
         }
     }
 
-    pub fn en_offset(
-        archivo: impl Into<String>,
-        motivo: Motivo,
-        offset: usize,
-    ) -> Self {
+    pub fn en_offset(archivo: impl Into<String>, motivo: Motivo, offset: usize) -> Self {
         Self {
             archivo: archivo.into(),
             motivo,
@@ -100,7 +88,11 @@ impl ErrorFormato {
     /// Mensaje listo para mostrar: `archivo: motivo`.
     pub fn mensaje(&self) -> String {
         match self.offset {
-            Some(offset) => format!("{}: {} (offset {offset})", self.archivo, self.motivo.descripcion()),
+            Some(offset) => format!(
+                "{}: {} (offset {offset})",
+                self.archivo,
+                self.motivo.descripcion()
+            ),
             None => format!("{}: {}", self.archivo, self.motivo.descripcion()),
         }
     }
@@ -130,7 +122,10 @@ mod pruebas {
         let mensaje = error.mensaje();
         assert!(mensaje.contains("vuelta.acreplay"), "mensaje: {mensaje}");
         assert!(mensaje.contains("15"), "mensaje: {mensaje}");
-        assert!(mensaje.contains("solo se soporta la 16"), "mensaje: {mensaje}");
+        assert!(
+            mensaje.contains("solo se soporta la 16"),
+            "mensaje: {mensaje}"
+        );
     }
 
     #[test]
