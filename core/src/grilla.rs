@@ -167,7 +167,11 @@ pub fn remuestrear_lineal<T: Interpolable>(
 ///
 /// Se usa con la marcha y con cualquier canal que no deba interpolarse. En un
 /// empate gana la muestra posterior, igual que v1.
-pub fn remuestrear_vecino<T: Copy>(s: &[f64], valores: &[T], grilla: &Grilla) -> Vec<Option<T>> {
+pub fn remuestrear_vecino<T: Copy>(
+    s: &[f64],
+    valores: &[T],
+    grilla: &Grilla,
+) -> Vec<Option<T>> {
     let tramos = tramos_validos(s, valores.len());
     let mut salida = Vec::with_capacity(grilla.s.len());
     let mut cursor = 0usize;
@@ -213,10 +217,7 @@ fn tramos_validos(s: &[f64], valores: usize) -> Vec<Tramo> {
     for indice in 0..total {
         let finito = s[indice].is_finite();
         if abierto && (!finito || s[indice] < s[indice - 1]) {
-            tramos.push(Tramo {
-                inicio,
-                fin: indice,
-            });
+            tramos.push(Tramo { inicio, fin: indice });
             abierto = false;
         }
         if !abierto && finito {
@@ -226,14 +227,22 @@ fn tramos_validos(s: &[f64], valores: usize) -> Vec<Tramo> {
     }
 
     if abierto {
-        tramos.push(Tramo { inicio, fin: total });
+        tramos.push(Tramo {
+            inicio,
+            fin: total,
+        });
     }
 
     tramos
 }
 
 /// Tramo que contiene `g`, avanzando el cursor (la grilla es creciente).
-fn tramo_que_contiene(s: &[f64], tramos: &[Tramo], g: f64, cursor: &mut usize) -> Option<usize> {
+fn tramo_que_contiene(
+    s: &[f64],
+    tramos: &[Tramo],
+    g: f64,
+    cursor: &mut usize,
+) -> Option<usize> {
     while *cursor < tramos.len() && s[tramos[*cursor].fin - 1] < g {
         *cursor += 1;
     }

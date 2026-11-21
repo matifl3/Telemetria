@@ -1,14 +1,13 @@
 use acreplay_core::agregados::{
-    conjunto, consumos, desvio_lateral, envolvente_velocidad, histograma_marchas,
+    BINS_VELOCIDAD, conjunto, consumos, desvio_lateral, envolvente_velocidad, histograma_marchas,
     histograma_velocidad, tabla_resumen, tiempos_ordenados, velocidad_media_max, velocidades,
-    BINS_VELOCIDAD,
 };
 use acreplay_core::comparacion::{
     delta_acumulado, delta_pedales, delta_por_sector, delta_velocidad,
 };
 use acreplay_core::grilla::Grilla;
 use acreplay_core::sectores::{sectores_de_vuelta, tiempos_por_sector, vuelta_teorica};
-use acreplay_core::vuelta::{MotivoVuelta, Series, Vuelta, VueltaId, G};
+use acreplay_core::vuelta::{G, MotivoVuelta, Series, Vuelta, VueltaId};
 
 fn cerca(a: f64, b: f64, tolerancia: f64) -> bool {
     (a - b).abs() <= tolerancia
@@ -308,14 +307,16 @@ fn t72_conjunto_solo_mezcla_vueltas_validas_del_auto_de_la_ref() {
     let de_a = conjunto(&vueltas, vueltas[0].id);
     assert_eq!(de_a.len(), 2);
     assert!(de_a.iter().all(|vuelta| vuelta.id.auto == 0));
-    assert!(conjunto(
-        &vueltas,
-        VueltaId {
-            auto: 9,
-            numero_local: 0
-        }
-    )
-    .is_empty());
+    assert!(
+        conjunto(
+            &vueltas,
+            VueltaId {
+                auto: 9,
+                numero_local: 0
+            }
+        )
+        .is_empty()
+    );
 }
 
 #[test]

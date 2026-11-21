@@ -111,7 +111,10 @@ fn t17_frame_a_canales_conocidos() {
     assert_eq!(m.gasolina[0], 40);
     assert_eq!(m.gasolina_por_vuelta[0], 3);
     for rueda in 0..4 {
-        assert!(aproximadamente(m.carga[rueda][0], frame.carga[rueda]));
+        assert!(aproximadamente(
+            m.carga[rueda][0],
+            frame.carga[rueda]
+        ));
         assert!(aproximadamente(
             m.slip_ratio[rueda][0],
             frame.slip_ratio[rueda]
@@ -192,11 +195,7 @@ fn el_jugador_es_siempre_el_primer_auto() {
         let mut constructor = ConstructorReplay::con_autos(3, 1);
         constructor.indice_grabacion = indice_grabacion;
         let replay = parsear_replay(&constructor.bytes(), "jugador.acreplay").unwrap();
-        assert_eq!(
-            replay.auto_referencia,
-            Some(0),
-            "indice_grabacion = {indice_grabacion}"
-        );
+        assert_eq!(replay.auto_referencia, Some(0), "indice_grabacion = {indice_grabacion}");
         assert_eq!(replay.meta.indice_grabacion, indice_grabacion);
     }
 }

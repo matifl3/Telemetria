@@ -188,12 +188,7 @@ impl Sesion {
             return false;
         }
 
-        match self
-            .seleccion
-            .visibles
-            .iter()
-            .position(|visible| *visible == id)
-        {
+        match self.seleccion.visibles.iter().position(|visible| *visible == id) {
             Some(posicion) => {
                 self.seleccion.visibles.remove(posicion);
             }
@@ -282,9 +277,7 @@ impl Sesion {
 
     /// Auto de referencia elegido para el análisis (jugador o fallback).
     pub fn auto_referencia(&self) -> Option<usize> {
-        self.replay
-            .as_ref()
-            .and_then(|replay| replay.auto_referencia)
+        self.replay.as_ref().and_then(|replay| replay.auto_referencia)
     }
 
     pub fn referencia(&self) -> Option<&Vuelta> {
@@ -480,10 +473,7 @@ fn analizar(mut replay: Replay, pista: Pista, archivo_replay: &str) -> Resultado
     };
 
     let Some(auto_referencia) = elegido else {
-        return Err(ErrorFormato::nuevo(
-            archivo_replay,
-            Motivo::ReplaySinVueltas,
-        ));
+        return Err(ErrorFormato::nuevo(archivo_replay, Motivo::ReplaySinVueltas));
     };
     replay.auto_referencia = Some(auto_referencia);
 
@@ -508,16 +498,8 @@ fn analizar(mut replay: Replay, pista: Pista, archivo_replay: &str) -> Resultado
 
 /// Resumen de las vueltas descartadas por quedar fuera de la pista.
 fn mensaje_proyeccion_deficiente(vueltas: usize, autos: usize) -> String {
-    let vueltas_txt = if vueltas == 1 {
-        "1 vuelta".to_string()
-    } else {
-        format!("{vueltas} vueltas")
-    };
-    let autos_txt = if autos == 1 {
-        "1 auto".to_string()
-    } else {
-        format!("{autos} autos")
-    };
+    let vueltas_txt = if vueltas == 1 { "1 vuelta".to_string() } else { format!("{vueltas} vueltas") };
+    let autos_txt = if autos == 1 { "1 auto".to_string() } else { format!("{autos} autos") };
     format!("proyección deficiente: se descartaron {vueltas_txt} de {autos_txt} por muestras fuera de pista")
 }
 
@@ -540,16 +522,8 @@ fn seleccion_por_defecto(auto: &Auto) -> Seleccion {
         .filter(|vuelta| vuelta.valida && vuelta.seleccionable)
         .collect();
     validas.sort_by(|a, b| {
-        let ta = if a.tiempo_s.is_finite() {
-            a.tiempo_s
-        } else {
-            f64::INFINITY
-        };
-        let tb = if b.tiempo_s.is_finite() {
-            b.tiempo_s
-        } else {
-            f64::INFINITY
-        };
+        let ta = if a.tiempo_s.is_finite() { a.tiempo_s } else { f64::INFINITY };
+        let tb = if b.tiempo_s.is_finite() { b.tiempo_s } else { f64::INFINITY };
         ta.total_cmp(&tb)
             .then(a.id.numero_local.cmp(&b.id.numero_local))
     });
