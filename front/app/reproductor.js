@@ -42,9 +42,7 @@ function tick(ts) {
       else { nueva = state.longitudPista; togglePlay(); }
     }
     fijarDistancia(nueva);
-    const redibujarMapa = state.tab === 'mapa' && state._tick % 3 === 0;
-    state._tick++;
-    actualizarPorIdx({ moverCursor: true, mapa: redibujarMapa });
+    actualizarPorIdx({ moverCursor: true });
   } catch (err) {
     console.error('[reproductor]', err);
   }
@@ -110,7 +108,8 @@ function actualizarPorIdx(opts = { moverCursor: true }) {
   }
   if (state.tab === 'vuelta') dibujarReglaCurvas();
   if (opts.moverCursor) moverCursor();
-  if (state.tab === 'mapa' && opts.mapa) dibujarMapaPestana({ soloVivo: true });
+  // Solo la capa en vivo y la figura de carga: el mapa base no se repinta.
+  if (state.tab === 'mapa') dibujarMapaPestana({ soloVivo: true });
 }
 
 function iniciarReproductor() {

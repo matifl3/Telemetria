@@ -56,7 +56,7 @@ pruebas (offset a confirmar).
 
 | Gráfico | Qué muestra | Datos | Estado | Prioridad |
 |---|---|---|---|---|
-| Mapa de pista | Trazada x/z con marcador + reproductor | `pos_x`, `pos_z` | ✅ | — |
+| Mapa de pista | Trazada x/z con marcador + reproductor. La posición actual de cada vuelta va en una capa transparente (`capa-vivo`) que se redibuja sola al reproducir; sigue zoom/pan/3D | `pos_x`, `pos_z`, `s` | ✅ | — |
 | Mapa coloreado por canal | La línea pintada según velocidad/gas/freno/marcha | `pos_x/z` + canal | 🟡 | Alta |
 | Mapa 3D | x/z + elevación (`pos_y`) coloreado | `pos_x/y/z` | 🟡 | Media |
 | Marcadores de frenada | Puntos donde se frena fuerte | `freno`, `pos_x/z` | 🟢 | Media |
@@ -75,6 +75,7 @@ pruebas (offset a confirmar).
 | Círculo de tracción | `acc_lat` vs `acc_long` (g usado) | `acc_x/y/z` | 🟢 | Alta |
 | Rumbo / yaw | `rot_y` vs distancia (giro real del auto) | `rot_y` | 🟢 | Media |
 | Carga por rueda | Fuerza vertical sobre cada neumático | `carga_*` | 🟢 | Media |
+| Carga por rueda en vivo | Auto visto desde arriba: ruedas coloreadas por carga (N y %) y, al centro, punto de balance de pesos (del/tras, izq/der) con estela de 1,5 s | `carga_*`, tiempo | ✅ | — |
 
 
 

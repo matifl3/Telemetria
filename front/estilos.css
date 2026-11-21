@@ -373,14 +373,17 @@ html, body {
 
 /* Canvas de gráficos: tamaño estable (evita que crezcan al redibujar en cada cursor/scrub) */
 .grafico-card canvas { width: 100%; display: block; }
-#chart-carga-vivo { height: 240px; }
+#chart-carga-vivo { height: 320px; }
 #ch-barras-tiempos, #ch-velmedia { height: 240px; }
 #ch-histvel, #ch-histgear, #ch-fuel { height: 200px; }
 #ch-sectores { height: 260px; }
 #ch-mini-delta { height: 240px; }
 
 .mapa-card { position: relative; }
-#mapa-canvas { width: 100%; }
+#mapa-canvas { width: 100%; position: relative; }
+/* Capa de posición en vivo: se redibuja sola en cada cuadro, sin repintar el mapa. */
+.lienzo-mapa { position: relative; }
+.capa-vivo { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 #mapa { width: 100%; height: 460px; display: block; }
 
 /* Grilla de trazadas por vuelta */
@@ -917,5 +920,6 @@ html, body {
 
 @media (max-width: 640px) {
   #mapa { height: 320px; }
+  #chart-carga-vivo { height: 300px; }
   .trazada-canvas { height: 220px; }
 }

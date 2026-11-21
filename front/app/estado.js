@@ -29,7 +29,6 @@ const state = {
   raf: null,
   lastTs: 0,
   ultVms: 0,
-  _tick: 0,
   charts: { lines: [], inputs: [] },
   mapa: { visual: 'canal', canal: 'velocidad_kmh', bordes: true, frenada: true, cambios: false, tresD: false, rot: 0, alt: 3, zoom: 1, panX: 0, panY: 0, resetView: true },
   mapaSectores: { tresD: false, rot: 0, alt: 3 },

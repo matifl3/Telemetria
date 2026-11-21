@@ -23,6 +23,11 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - Telemetría: sin marcas C1..Cn en los uPlot; las curvas se ven en una "regla de
   curvas" fija arriba (`dibujarReglaCurvas`, alineada a `u.over`) + lectura `ro-curva`.
 - Mapa de Curvas: la etiqueta la pone solo `dibujarArcosCurvas` (como v1).
+- Pestaña Mapa: posición en vivo (perdida en la migración; v1 `dibujarPosicion`) en
+  una capa `capa-vivo` sobre cada mapa; al reproducir/scrub solo se repinta esa capa
+  (`dibujarVivoMapa`). Solo en Mapa (decisión del usuario), no en Conjunto/Curvas.
+- "Carga por rueda en vivo" = auto desde arriba + punto de balance con estela
+  (`dibujarAutoCarga`; escala por vuelta REF en `escalaCarga`).
 - Comparación "Delta por sector": barras como v1 (paridad) + delta final. Canvas 240 px.
 ## Aprendizajes y errores a evitar
 - Tras editar `front/`, `cargo build -p ac-telemetry-lab`: el front va embebido.
