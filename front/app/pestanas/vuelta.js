@@ -90,6 +90,9 @@ function renderPestanaVuelta(datos) {
 
   if (state.grilla.length) { state.idx = state.datosVuelta && state.idx >= state.grilla.length ? state.grilla.length - 1 : state.idx; }
   actualizarPorIdx({ moverCursor: true });
+  // uPlot aplica tamaño y escalas un instante después de crear/redimensionar:
+  // dibujada ahora, la regla daría posiciones inválidas y quedaría vacía.
+  requestAnimationFrame(() => { if (state.tab === 'vuelta') dibujarReglaCurvas(); });
 }
 
 /* La regla se dibuja cuando el canvas toma tamaño: al primer render el panel

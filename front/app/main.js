@@ -72,18 +72,20 @@ function crearReadouts() {
   const cont = $('readouts');
   if (!cont || cont.children.length) return;
   const defs = [
-    ['ro-vel', 'velocidad'],
-    ['ro-dist', 'distancia'],
-    ['ro-gas', 'gas'],
-    ['ro-freno', 'freno'],
-    ['ro-marcha', 'marcha'],
-    ['ro-tiempo', 'tiempo'],
-    ['ro-curva', 'curva', 'ro-ancha'],
+    ['ro-vel', 'velocidad', 'km/h'],
+    ['ro-dist', 'distancia', 'm'],
+    ['ro-gas', 'gas', '%'],
+    ['ro-freno', 'freno', '%'],
+    ['ro-marcha', 'marcha', ''],
+    ['ro-tiempo', 'tiempo', 's'],
+    ['ro-curva', 'curva', '', 'ro-ancha'],
   ];
-  for (const [id, etiqueta, clase] of defs) {
+  for (const [id, etiqueta, unidad, clase] of defs) {
     const caja = document.createElement('div');
     caja.className = clase ? `ro ${clase}` : 'ro';
-    caja.innerHTML = `<span class="ro-label">${etiqueta}</span><span class="ro-valor mono" id="${id}">–</span>`;
+    caja.innerHTML = `<span class="ro-label">${etiqueta}</span>` +
+      `<span class="ro-dato"><span class="ro-valor mono" id="${id}">–</span>` +
+      (unidad ? `<span class="ro-unidad">${unidad}</span>` : '') + '</span>';
     cont.appendChild(caja);
   }
 }
@@ -156,17 +158,27 @@ function iniciarSelectoresB() {
   }
 }
 
-/* Alto real de la barra superior: la regla de curvas se fija justo debajo. */
-function medirTopbar() {
+/* Altos reales de la barra superior y de las pestañas: las pestañas se fijan
+   bajo la barra y la regla de curvas bajo las pestañas. Se miden con
+   ResizeObserver porque las pestañas miden 0 hasta entrar al análisis y cambian
+   de alto al pasar a dos filas. */
+function medirBarras() {
+  const raiz = document.documentElement.style;
   const barra = document.querySelector('.topbar');
-  if (barra) document.documentElement.style.setProperty('--alto-topbar', `${barra.offsetHeight}px`);
+  const tabs = document.querySelector('.tabs');
+  if (barra) raiz.setProperty('--alto-topbar', `${barra.offsetHeight}px`);
+  if (tabs) raiz.setProperty('--alto-tabs', `${tabs.offsetHeight}px`);
 }
 
 function iniciarResize() {
   let pendiente = null;
-  medirTopbar();
+  medirBarras();
+  if (typeof ResizeObserver !== 'undefined') {
+    const obs = new ResizeObserver(medirBarras);
+    for (const el of [document.querySelector('.topbar'), document.querySelector('.tabs')]) if (el) obs.observe(el);
+  }
   window.addEventListener('resize', () => {
-    medirTopbar();
+    medirBarras();
     clearTimeout(pendiente);
     pendiente = setTimeout(() => {
       if (state.resumen && state.resumen.puede_analizar) renderPestanaActiva();

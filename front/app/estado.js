@@ -16,6 +16,7 @@ const state = {
   version: 0,             // invalida el caché de datos de pestaña
   cacheDatos: new Map(),  // pestaña → { version, rot, alt, datos }
   tab: 'vuelta',
+  archivos: { replay: null, pista: null }, // rutas cargadas (solo para mostrar)
   datosVuelta: null,      // DtoVuelta base (grilla + canales de vueltas visibles)
   colorPorId: new Map(),  // id "auto NumeroLocal" → color de paleta
   grilla: [],             // s de pista (eje X común)
