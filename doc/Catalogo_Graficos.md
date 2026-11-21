@@ -49,6 +49,7 @@ pruebas (offset a confirmar).
 | Marcha | Escalones de cambio | `marcha` | 🟢 | Alta |
 | Volante | Ángulo de dirección (correcciones) | `steer_angle` | 🟢 | Alta |
 | Aceleración total | Módulo de aceleración (frenada/arranque) | `acc_total` | 🟢 | Media |
+| Regla de curvas | Franja fija sobre los gráficos de Telemetría: un tramo por curva (`C1..Cn`, colores del mapa de Curvas), alineada al eje X; resalta la curva del cursor. La lectura "curva" muestra `Cn` o `recta` | curvas de `fast_lane.ai` (`s_ini`, `s_fin`), distancia | ✅ | — |
 
 
 ### 1.2 Mapas del trazado

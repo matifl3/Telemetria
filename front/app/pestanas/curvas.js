@@ -52,8 +52,8 @@ function dibujarMapaCurvas(datos) {
   const vista = construirVistaFija(cv, datos.mapa.bounds);
   dibujarGrillaFondo(ctx, w, h);
   dibujarTrazada(ctx, vista.tf, ref, 'rgba(148,163,184,0.28)', 2);
+  // La etiqueta C1..Cn ya la pone dibujarArcosCurvas (paridad v1): no repetirla.
   dibujarArcosCurvas(ctx, vista.tf, ref, datos.curvas);
-  dibujarNumeralesCurvas(ctx, vista.tf, ref, datos.curvas);
   dibujarMarcadoresRef(ctx, vista.tf, ref, { frenada: true, cambios: false });
 }
 

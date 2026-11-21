@@ -78,10 +78,11 @@ function crearReadouts() {
     ['ro-freno', 'freno'],
     ['ro-marcha', 'marcha'],
     ['ro-tiempo', 'tiempo'],
+    ['ro-curva', 'curva', 'ro-ancha'],
   ];
-  for (const [id, etiqueta] of defs) {
+  for (const [id, etiqueta, clase] of defs) {
     const caja = document.createElement('div');
-    caja.className = 'ro';
+    caja.className = clase ? `ro ${clase}` : 'ro';
     caja.innerHTML = `<span class="ro-label">${etiqueta}</span><span class="ro-valor mono" id="${id}">–</span>`;
     cont.appendChild(caja);
   }
@@ -155,9 +156,17 @@ function iniciarSelectoresB() {
   }
 }
 
+/* Alto real de la barra superior: la regla de curvas se fija justo debajo. */
+function medirTopbar() {
+  const barra = document.querySelector('.topbar');
+  if (barra) document.documentElement.style.setProperty('--alto-topbar', `${barra.offsetHeight}px`);
+}
+
 function iniciarResize() {
   let pendiente = null;
+  medirTopbar();
   window.addEventListener('resize', () => {
+    medirTopbar();
     clearTimeout(pendiente);
     pendiente = setTimeout(() => {
       if (state.resumen && state.resumen.puede_analizar) renderPestanaActiva();
@@ -167,6 +176,7 @@ function iniciarResize() {
 
 function init() {
   crearReadouts();
+  observarReglaCurvas();
   cargaArchivos.iniciar();
   iniciarTabs();
   iniciarControlesMapa();

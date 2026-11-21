@@ -72,7 +72,7 @@ durante la sesión y se pierden al cerrar la aplicación o limpiar la sesión.
 
 | Pestaña | Contenido |
 |---|---|
-| **Vuelta** | Gráficos sincronizados de los canales de las vueltas visibles y lecturas de la REF. |
+| **Telemetría** | Gráficos sincronizados de los canales de las vueltas visibles y lecturas de la REF. |
 | **Vueltas** | Vueltas válidas del jugador y de otros autos; permite elegir REF/B y mostrar u ocultar vueltas. |
 | **Mapa** | Trazadas sobre la pista, visualización por canal y controles de zoom, paneo y vista 3D. |
 | **Conjunto** | Estadísticas, sectores, vuelta teórica y mapa de mejores sectores sobre `fast_lane.ai`. |

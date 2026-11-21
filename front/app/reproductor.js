@@ -102,6 +102,13 @@ function actualizarPorIdx(opts = { moverCursor: true }) {
     const tiempo = valorSerie(ref.tiempo, state.idx);
     $('ro-tiempo').textContent = (tiempo == null ? 0 : tiempo).toFixed(2);
   }
+  const roCurva = $('ro-curva');
+  if (roCurva) {
+    const curvas = state.datosVuelta ? state.datosVuelta.curvas || [] : [];
+    const curva = curvaEn(curvas, state.grilla[state.idx] ?? state.dis);
+    roCurva.textContent = !curvas.length ? '–' : curva ? curva.nombre : 'recta';
+  }
+  if (state.tab === 'vuelta') dibujarReglaCurvas();
   if (opts.moverCursor) moverCursor();
   if (state.tab === 'mapa' && opts.mapa) dibujarMapaPestana({ soloVivo: true });
 }
