@@ -2,7 +2,7 @@
 Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aporte.
 ## Estado actual
 - v2 Tauri + Rust completa (fases 0–13): `core` parsea replay v16/`fast_lane.ai` y
-  calcula el análisis; 133 tests (`cargo test --workspace`). `visualizador/` es legado.
+  calcula el análisis; 160 tests en `core` (`cargo test -p core`). `visualizador/` es legado.
 - Datos solo en memoria por sesión; cero escrituras en runtime (T126).
 - Curvas calibradas en Monza, Imola, Spa y Mugello.
 ## Decisiones (y por qué)
@@ -30,6 +30,9 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
   barra (`--alto-tabs`, no en ≤640 px); bloque "Sesión" en el lateral (rutas en
   `state.archivos`, solo para mostrar). Pendiente tanda 2: celular (barra de
   reproductor abajo, encabezado compacto), botones de carga y confirmar "Limpiar".
+- Análisis de ingeniero (`spec/analisis-ingeniero/`): integrado en Comparación
+  (ranking), Curvas (fases, balance, slip) y Conjunto (consistencia), sin pestaña
+  nueva. Umbrales de slip ahora en `core/src/slip.rs` (el front los recibe en el DTO).
 - Comparación "Delta por sector": barras como v1 (paridad) + delta final. Canvas 240 px.
 ## Aprendizajes y errores a evitar
 - Tras editar `front/`, `cargo build -p ac-telemetry-lab`: el front va embebido.
@@ -51,5 +54,6 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 ## Próximos pasos
 - Replays de prueba (locales, no commitear): `Downloads/temp (1)-20261107T021753Z-1-001/temp (1)`
   (Misano) y `Downloads/temp-20261108T163338Z-1-001/temp` (7 de Monza).
-- Pendientes manuales: TV06, T123 (paridad de 32 paneles), DIST02/DIST03.
+- Pendientes manuales: TV06, T123 (paridad de 32 paneles), DIST02/DIST03;
+  ING02–ING04, ING28, ING35, ING47 (validar signos y calibración con replay real).
 - `spec/modificacion de pista/`: 14 tareas sin empezar.

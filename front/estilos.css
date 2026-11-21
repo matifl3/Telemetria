@@ -717,6 +717,17 @@ html, body {
 .tabla-delta .delta-pierde { color: var(--freno); }
 .delta-leyenda { font-size: 11px; color: var(--muted); margin: 8px 0 0; }
 
+/* Análisis de ingeniero: ranking, fases, balance y consistencia */
+.tabla-ranking tbody tr { cursor: pointer; }
+.tabla-ranking tbody tr:focus-visible td { outline: 2px solid var(--acento, #38bdf8); outline-offset: -2px; }
+.tabla-ranking td.causas { white-space: normal; min-width: 220px; line-height: 1.45; }
+.tabla-ranking .pos { color: var(--muted); }
+.tabla-delta .sub-titulo td { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; border-bottom: none; padding-top: 12px; }
+.diag { display: inline-block; min-width: 46px; padding: 1px 6px; border-radius: 9px; font-size: 11px; text-align: center; background: var(--panel-2); color: var(--muted); }
+.diag-subvira { background: rgba(56, 189, 248, 0.18); color: #7dd3fc; }
+.diag-sobrevira { background: rgba(248, 113, 113, 0.18); color: #fca5a5; }
+.aviso-autos { font-size: 12px; color: #facc15; margin: 0 0 8px; }
+
 /* Curvas: círculo de tracción por curva */
 .traction-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 14px; }
 .traction-curva {

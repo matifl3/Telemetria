@@ -193,7 +193,8 @@ pub struct BalanceCurva {
     pub entrada: f64,
     pub vertice: f64,
     pub salida: f64,
-    /// Deriva máxima en valor absoluto dentro de la curva (grados).
+    /// Deriva del chasis dentro de la curva (grados), percentil 95 del valor
+    /// absoluto: un punto aislado con ruido de interpolación no la domina.
     pub deriva_max_grados: f64,
 }
 
@@ -229,12 +230,13 @@ pub fn balance_por_curva(
                     valores.iter().sum::<f64>() / valores.len() as f64
                 }
             };
-            let deriva_max = [Fase::Entrada, Fase::Vertice, Fase::Salida]
+            let mut derivas: Vec<f64> = [Fase::Entrada, Fase::Vertice, Fase::Salida]
                 .iter()
                 .flat_map(|&fase| puntos_de_fase(&vuelta.s, &f.limites, fase))
                 .filter_map(|p| balance.deriva_rad.get(p.indice).copied().flatten())
                 .map(f64::abs)
-                .fold(f64::NAN, f64::max);
+                .collect();
+            let deriva_max = percentil(&mut derivas, 0.95);
             BalanceCurva {
                 n: f.n,
                 entrada: media(Fase::Entrada),
@@ -244,4 +246,14 @@ pub fn balance_por_curva(
             }
         })
         .collect()
+}
+
+/// Percentil `p` (0..1) de una lista; `NaN` si está vacía.
+fn percentil(valores: &mut [f64], p: f64) -> f64 {
+    if valores.is_empty() {
+        return f64::NAN;
+    }
+    valores.sort_by(f64::total_cmp);
+    let indice = ((valores.len() - 1) as f64 * p).round() as usize;
+    valores[indice]
 }

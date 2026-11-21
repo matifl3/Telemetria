@@ -160,3 +160,35 @@ Por *hoisting* gana la segunda, que espera la grilla de una vuelta; `curvasBase(
 pasa la pista, obtiene una lista vacía y la pestaña Curvas queda sin datos. La v2 tiene
 **una sola implementación** sobre el `.ai` (ver `plan.md`, D-02) y un test de regresión
 que falla si aparecen curvas vacías en una pista con curvas reales.
+
+## 8. Análisis de ingeniero sobre las curvas
+
+Ver `spec/analisis-ingeniero/tareas.md`. Todo vive en `core` y usa la grilla
+común de `s`. Constantes de calibración en cada módulo:
+
+- **Fases** (`core/src/fases.rs`): inicio de frenada = corrida de freno
+  > `FRENO_INICIO` (0,05) que contiene el freno máximo antes del vértice,
+  buscada hasta `VENTANA_APROXIMACION_M` (250 m) antes de `s_ini` sin entrar en
+  la curva anterior. Turn-in = primer punto con |volante| ≥ `FRACCION_TURN_IN`
+  (25 %) del máximo de la curva. Vértice = velocidad mínima del arco, con una
+  ventana de ±`VENTANA_VERTICE_M` (10 m). Gas a fondo = gas ≥ `GAS_FONDO` (0,98)
+  sostenido `GAS_FONDO_SOSTENIDO_M` (20 m), hasta `VENTANA_SALIDA_M` (300 m)
+  después de `s_fin` sin llegar a la curva siguiente. Trail braking = metros con
+  freno > 0,05 entre turn-in y vértice. Coasting = gas y freno < `PEDAL_SUELTO`
+  (0,05). `d_fren` de `metricas_curva` no cambió: sigue buscando solo dentro
+  del arco.
+- **Slip** (`core/src/slip.rs`): bloqueo con `slip_ratio` < −0,3, patinamiento
+  con > 0,15, solo por encima de 30 km/h y en tramos de al menos 2 m.
+- **Balance** (`core/src/balance.rs`): índice = volante · ganancia / κ − 1, con κ
+  la curvatura de la trayectoria real (`x`/`z`) y la ganancia calibrada por
+  vuelta en puntos con menos de 0,5 g lateral. Positivo = subviraje, negativo =
+  sobreviraje; neutro dentro de ±0,15. La deriva del chasis es yaw − rumbo de la
+  trayectoria, con signo y desfasaje calibrados por vuelta.
+- **Ranking** (`core/src/ranking.rs`): segmentos encadenados (fases de cada curva
+  con los límites de la REF + rectas); la suma de pérdidas es el delta de la
+  vuelta. Pendiente del delta suavizada a 30 m.
+- **Consistencia** (`core/src/consistencia.rs`): vueltas del auto de la REF
+  dentro del 107 % de la mejor; mínimo 3.
+
+Pendiente de validar con replays reales: signos de `slip_ratio`, volante y yaw
+(ING02–ING03) y la calibración del balance y del ranking (ING28, ING35).

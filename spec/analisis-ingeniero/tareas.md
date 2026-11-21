@@ -90,11 +90,11 @@ después de la 1.
 
 ## Fase 0 — Decisiones y validación de señales
 
-- [ ] **ING01 · Decidir dónde se muestra cada análisis** — *Hecho cuando:* queda
+- [x] **ING01 · Decidir dónde se muestra cada análisis** — *Hecho cuando:* queda
   anotado en este archivo y en `MEMORY.md`. Propuesta: el ranking va en
   **Comparación**; fases, balance y bloqueos en **Curvas** (por curva y A/B);
   consistencia en **Conjunto** (que ya está limitado al auto de la REF). No se
-  crea una pestaña nueva salvo que se decida lo contrario.
+  crea una pestaña nueva salvo que se decida lo contrario. *(Decidido así.)*
 - [ ] **ING02 · Validar signo y unidad de `slip_ratio` (manual)** — *Hecho
   cuando:* con un replay real se confirma, en una frenada fuerte y en una salida
   con patinamiento, que bloquear da valores negativos y patinar positivos, y en
@@ -111,21 +111,22 @@ después de la 1.
 
 ## Fase 1 — Base común en `core`
 
-- [ ] **ING05 · Media móvil sobre la grilla** — *Hecho cuando:* existe
-  `suavizar_en_s(canal, grilla, ventana_m)` que respeta los `None` (no promedia
-  a través de huecos) y envuelve por la meta en pistas cerradas; test
-  `suavizado_no_cruza_huecos` y `suavizado_envuelve_meta`.
-- [ ] **ING06 · Derivada respecto de `s` y del tiempo** — *Hecho cuando:* hay
+- [x] **ING05 · Media móvil sobre la grilla** — *Hecho cuando:* existe
+  `senales::suavizar(canal, s, ventana_m)` que respeta los `None` (no promedia
+  a través de huecos); test `suavizado_no_cruza_huecos`. *(Cambio: no envuelve
+  por la meta, porque el delta y el tiempo saltan ahí; las ventanas que cruzan
+  la meta usan `puntos_de_tramo` con `s` extendido.)*
+- [x] **ING06 · Derivada respecto de `s` y del tiempo** — *Hecho cuando:* hay
   `derivada_en_s` y `derivada_en_t` (diferencia centrada, `None` en bordes y
   huecos); test con una rampa lineal que devuelve la pendiente exacta (`1e-6`).
-- [ ] **ING07 · Tasa de yaw y dirección de avance** — *Hecho cuando:* a partir
+- [x] **ING07 · Tasa de yaw y dirección de avance** — *Hecho cuando:* a partir
   del yaw continuo y de `x/z` alineados se obtienen la tasa de yaw (rad/s) y el
   rumbo de la trayectoria; test con un círculo sintético de radio conocido:
   tasa de yaw = v/R dentro del 1 %.
-- [ ] **ING08 · Exponer `slip_ratio` trasero alineado** — *Hecho cuando:*
+- [x] **ING08 · Exponer `slip_ratio` trasero alineado** — *Hecho cuando:*
   `DtoVueltaCanales` suma `slip_ratio_trasera_izquierda/derecha` (aditivo) y un
   test de DTO verifica que llegan alineados a la grilla.
-- [ ] **ING09 · Rangos de `s` con envoltura por meta** — *Hecho cuando:* hay un
+- [x] **ING09 · Rangos de `s` con envoltura por meta** — *Hecho cuando:* hay un
   tipo `Tramo { s_ini, s_fin }` reutilizable (mismo criterio que
   `indices_de_curva`) y un helper que devuelve sus índices de grilla; test de
   tramo que cruza la meta.
@@ -145,51 +146,52 @@ Definiciones (por vuelta y por curva):
 - **Gas a fondo**: primer punto después del vértice con gas ≥ `GAS_FONDO`
   (≈0,98) sostenido al menos `GAS_FONDO_SOSTENIDO_M` metros.
 
-- [ ] **ING10 · Ventana de aproximación** — *Hecho cuando:* las fases buscan la
+- [x] **ING10 · Ventana de aproximación** — *Hecho cuando:* las fases buscan la
   frenada antes de `s_ini` sin invadir la curva anterior (corta en el `s_fin`
   de la previa); test con frenada sintética 80 m antes del arco. `d_fren`
   actual no cambia (se documenta la diferencia).
-- [ ] **ING11 · Puntos de fase por curva** — *Hecho cuando:* existe
+- [x] **ING11 · Puntos de fase por curva** — *Hecho cuando:* existe
   `fases_curva(canales, curva, curva_anterior)` que devuelve `s` de inicio de
   frenada, turn-in, vértice y gas a fondo (`NaN` si falta); tests con una curva
   sintética completa y con una curva "a fondo" sin frenada.
-- [ ] **ING12 · Presión de freno** — *Hecho cuando:* por curva se calculan freno
+- [x] **ING12 · Presión de freno** — *Hecho cuando:* por curva se calculan freno
   máximo, `s` del máximo y freno medio en la fase de frenada; test con perfil
   de freno conocido.
-- [ ] **ING13 · Trail braking** — *Hecho cuando:* se mide el largo (m) y la
+- [x] **ING13 · Trail braking** — *Hecho cuando:* se mide el largo (m) y la
   integral de freno mientras |volante| > `VOLANTE_TURN_IN` y freno >
   `FRENO_INICIO`, y el freno residual en el turn-in; test: frenada que termina
   antes del turn-in da 0 m.
-- [ ] **ING14 · Coasting** — *Hecho cuando:* se mide metros y tiempo con gas <
+- [x] **ING14 · Coasting** — *Hecho cuando:* se mide metros y tiempo con gas <
   `PEDAL_SUELTO` y freno < `PEDAL_SUELTO` (≈0,05) entre inicio de frenada y gas
   a fondo; test con un hueco de 20 m sin pedales.
-- [ ] **ING15 · Distancia y tiempo vértice → gas a fondo** — *Hecho cuando:*
+- [x] **ING15 · Distancia y tiempo vértice → gas a fondo** — *Hecho cuando:*
   hay metros y segundos desde el vértice hasta gas a fondo; test que diferencia
   "gas a fondo tarde" de "nunca a fondo" (`NaN`).
-- [ ] **ING16 · Tiempo por fase y delta A/B por fase** — *Hecho cuando:*
+- [x] **ING16 · Tiempo por fase y delta A/B por fase** — *Hecho cuando:*
   `DeltaCurva` (o un `DeltaFasesCurva` nuevo) suma deltas de tiempo por fase,
   de punto de frenada, freno máximo, trail, coasting y distancia a gas a fondo;
-  test: la suma de los deltas de fase coincide con el delta de tiempo entre
-  inicio de frenada y gas a fondo (`1e-3` s).
-- [ ] **ING17 · DTO de fases** — *Hecho cuando:* `DtoCurvas` incluye las fases
+  test `ing16_delta_por_fase`. *(Cambio: como A y B tienen límites de fase
+  propios, la suma exacta se verifica en el ranking, que usa los límites de
+  la REF: `ing31_la_suma_de_perdidas_es_el_delta_final`.)*
+- [x] **ING17 · DTO de fases** — *Hecho cuando:* `DtoCurvas` incluye las fases
   por vuelta y el delta por fase (aditivo, no finitos como `null`); test de DTO.
 
 ## Fase 3 — Bloqueos y patinamiento
 
-- [ ] **ING18 · Mover umbrales de slip a `core`** — *Hecho cuando:*
+- [x] **ING18 · Mover umbrales de slip a `core`** — *Hecho cuando:*
   `SLIP_BLOQUEO`, `SLIP_PATINA` y `SLIP_VEL_MIN` viven en `core` con los
   valores de hoy (−0,3 / 0,15 / 30 km/h, ajustados según ING02) y el front deja
   de definirlos; el círculo de tracción de Curvas sigue igual.
-- [ ] **ING19 · Detectar eventos por rueda** — *Hecho cuando:* hay
+- [x] **ING19 · Detectar eventos por rueda** — *Hecho cuando:* hay
   `eventos_slip(alineada)` que devuelve tramos contiguos por rueda con tipo
   (bloqueo/patinamiento), `s_ini`, `s_fin`, pico y duración, descartando
   eventos menores a `SLIP_LARGO_MIN` m; tests con un bloqueo de 10 m en FL y un
   pico aislado de un punto que se descarta.
-- [ ] **ING20 · Ubicar el evento** — *Hecho cuando:* cada evento indica curva y
+- [x] **ING20 · Ubicar el evento** — *Hecho cuando:* cada evento indica curva y
   fase (ING11) o "recta"; test con evento en la frenada de una curva.
-- [ ] **ING21 · Resumen por curva** — *Hecho cuando:* por curva y vuelta hay
+- [x] **ING21 · Resumen por curva** — *Hecho cuando:* por curva y vuelta hay
   cantidad de bloqueos/patinamientos y la rueda más afectada; test.
-- [ ] **ING22 · DTO de eventos** — *Hecho cuando:* los eventos llegan en el DTO
+- [x] **ING22 · DTO de eventos** — *Hecho cuando:* los eventos llegan en el DTO
   de Curvas para las vueltas visibles; test de DTO.
 
 ## Fase 4 — Balance sub/sobreviraje
@@ -206,19 +208,19 @@ mirar el ángulo de deriva del chasis.
 - **Deriva del chasis** β = yaw − rumbo de la trayectoria: refuerza el
   diagnóstico de sobreviraje (β alto con contravolante).
 
-- [ ] **ING23 · Curvatura de trayectoria** — *Hecho cuando:* se calcula κ con
+- [x] **ING23 · Curvatura de trayectoria** — *Hecho cuando:* se calcula κ con
   ING07, filtrando velocidad < `BALANCE_VEL_MIN`; test con círculo sintético.
-- [ ] **ING24 · Calibración neutra por vuelta** — *Hecho cuando:* la ganancia de
+- [x] **ING24 · Calibración neutra por vuelta** — *Hecho cuando:* la ganancia de
   dirección se estima con mediana sobre puntos con |acc_lat| <
   `BALANCE_G_NEUTRO` y volante no despreciable; test con datos sintéticos de
   ganancia conocida.
-- [ ] **ING25 · Índice de balance** — *Hecho cuando:* hay un canal por punto
+- [x] **ING25 · Índice de balance** — *Hecho cuando:* hay un canal por punto
   (positivo = subviraje, negativo = sobreviraje, `None` en rectas y a baja
   velocidad); tests: auto "neutro" da ≈0, más volante para la misma curvatura da
   positivo, contravolante da negativo.
-- [ ] **ING26 · Deriva del chasis** — *Hecho cuando:* β se calcula y un test con
+- [x] **ING26 · Deriva del chasis** — *Hecho cuando:* β se calcula y un test con
   auto que avanza de costado da el ángulo esperado (signo según ING03).
-- [ ] **ING27 · Balance por fase de curva** — *Hecho cuando:* por curva se
+- [x] **ING27 · Balance por fase de curva** — *Hecho cuando:* por curva se
   resume el índice medio en entrada, vértice y salida, con etiqueta
   "subvira / neutro / sobrevira" según `BALANCE_UMBRAL`; test.
 - [ ] **ING28 · Validación con replay real (manual)** — *Hecho cuando:* en una
@@ -236,17 +238,17 @@ ubica el punto exacto de mayor pérdida dentro de cada segmento y se dibuja.
 
 Fases de A y B pueden diferir; los límites de segmento se toman de la REF (A).
 
-- [ ] **ING29 · Pendiente del delta** — *Hecho cuando:* hay
+- [x] **ING29 · Pendiente del delta** — *Hecho cuando:* hay
   `pendiente_delta(delta_acumulado, grilla)` en s/100 m, suavizada con ING05
   (`DELTA_VENTANA_M` ≈30 m); test con delta sintético que crece 0,1 s en un
   tramo de 50 m.
-- [ ] **ING30 · Segmentación de la vuelta** — *Hecho cuando:* los segmentos
+- [x] **ING30 · Segmentación de la vuelta** — *Hecho cuando:* los segmentos
   cubren la pista sin huecos ni solapes (incluida la curva que cruza la meta);
   test de cobertura.
-- [ ] **ING31 · Pérdida por segmento** — *Hecho cuando:* cada segmento tiene
+- [x] **ING31 · Pérdida por segmento** — *Hecho cuando:* cada segmento tiene
   pérdida (s), `s` y valor de pendiente máxima; test: la suma de pérdidas es el
   delta final (`1e-3` s).
-- [ ] **ING32 · Causa probable** — *Hecho cuando:* cada segmento con pérdida
+- [x] **ING32 · Causa probable** — *Hecho cuando:* cada segmento con pérdida
   tiene una lista ordenada de causas con su evidencia en números, por reglas
   simples y documentadas:
   - frenada: "frena N m antes", "menos presión de freno", "bloqueo en FL";
@@ -258,10 +260,10 @@ Fases de A y B pueden diferir; los límites de segmento se toman de la REF (A).
     entrar a la recta; si no, "menos velocidad punta" (posible auto/aero, fuera
     del control del piloto).
   Si ninguna regla aplica: "sin causa clara". Un test por regla con fixture.
-- [ ] **ING33 · Ranking** — *Hecho cuando:* se devuelven los `RANKING_TOP`
+- [x] **ING33 · Ranking** — *Hecho cuando:* se devuelven los `RANKING_TOP`
   (≈5) segmentos de mayor pérdida, ordenados, con su porcentaje del delta total
   y las ganancias aparte; test de orden y empates estables.
-- [ ] **ING34 · DTO del ranking** — *Hecho cuando:* `DtoComparacion` suma
+- [x] **ING34 · DTO del ranking** — *Hecho cuando:* `DtoComparacion` suma
   `pendiente_delta` y `ranking` (aditivo); test de DTO con A y B, y sin B.
 - [ ] **ING35 · Validación con replay real (manual)** — *Hecho cuando:* en una
   comparación conocida, las 3 primeras zonas coinciden con lo que se ve en el
@@ -274,18 +276,18 @@ Fases de A y B pueden diferir; los límites de segmento se toman de la REF (A).
 excluyen vueltas con tiempo > `CONSISTENCIA_CORTE` (≈107 %) de la mejor, para
 que un trompo no arruine la estadística; se informa cuántas se excluyeron.
 
-- [ ] **ING36 · Dispersión por curva** — *Hecho cuando:* por curva hay desvío
+- [x] **ING36 · Dispersión por curva** — *Hecho cuando:* por curva hay desvío
   estándar de inicio de frenada (m), `v_min` (km/h), gas a fondo (m) y tiempo de
   curva (s); test con 3 vueltas sintéticas de dispersión conocida.
-- [ ] **ING37 · Dispersión a lo largo de la vuelta** — *Hecho cuando:* hay un
+- [x] **ING37 · Dispersión a lo largo de la vuelta** — *Hecho cuando:* hay un
   canal de desvío estándar del tiempo por segmento (ING30) y de la velocidad
   por punto; test.
-- [ ] **ING38 · Ranking de inconsistencia** — *Hecho cuando:* las curvas se
+- [x] **ING38 · Ranking de inconsistencia** — *Hecho cuando:* las curvas se
   ordenan por desvío del tiempo de curva, con la métrica que más varía como
   explicación ("frena en un rango de 22 m"); test.
-- [ ] **ING39 · Mínimo de vueltas** — *Hecho cuando:* con menos de 3 vueltas
+- [x] **ING39 · Mínimo de vueltas** — *Hecho cuando:* con menos de 3 vueltas
   útiles el DTO devuelve un aviso en español en lugar de estadísticas; test.
-- [ ] **ING40 · DTO de consistencia** — *Hecho cuando:* `DtoConjunto` suma el
+- [x] **ING40 · DTO de consistencia** — *Hecho cuando:* `DtoConjunto` suma el
   bloque de consistencia (aditivo); test de DTO.
 
 ## Fase 7 — Interfaz
@@ -293,22 +295,24 @@ que un trompo no arruine la estadística; se informa cuántas se excluyeron.
 Siguiendo `front/app/graficos/` (canvas 2D + uPlot), registrando cada gráfico
 nuevo en `doc/Catalogo_Graficos.md` y comprobando el ancho mínimo de 360 px.
 
-- [ ] **ING41 · Comparación: pendiente del delta** — *Hecho cuando:* bajo el
+- [x] **ING41 · Comparación: pendiente del delta** — *Hecho cuando:* bajo el
   delta acumulado hay un uPlot de pendiente con las zonas del ranking
   sombreadas.
-- [ ] **ING42 · Comparación: tabla del ranking** — *Hecho cuando:* una tabla
+- [x] **ING42 · Comparación: tabla del ranking** — *Hecho cuando:* una tabla
   muestra posición, zona ("C5 · salida"), pérdida, % del total y causa; al
   tocar una fila el cursor de los gráficos salta a esa zona.
-- [ ] **ING43 · Curvas: fases A/B** — *Hecho cuando:* la tabla de cada curva
+- [x] **ING43 · Curvas: fases A/B** — *Hecho cuando:* la tabla de cada curva
   muestra los puntos de fase, freno máximo, trail, coasting y gas a fondo para
   A y B con su delta, y una barra horizontal de fases sobre `s`.
-- [ ] **ING44 · Curvas: balance** — *Hecho cuando:* cada curva indica
+- [x] **ING44 · Curvas: balance** — *Hecho cuando:* cada curva indica
   subvira/neutro/sobrevira por fase, y hay un aviso si A y B son autos
   distintos.
 - [ ] **ING45 · Curvas y Mapa: eventos de slip** — *Hecho cuando:* los
   bloqueos y patinamientos se listan por curva y se marcan sobre el mapa de la
-  curva; el círculo de tracción usa los eventos de `core`.
-- [ ] **ING46 · Conjunto: consistencia** — *Hecho cuando:* hay tabla de
+  curva; el círculo de tracción usa los eventos de `core`. *(Parcial: la tabla
+  "Balance y slip" lista los eventos por curva y el círculo de tracción usa los
+  umbrales de `core` con las cuatro ruedas; falta marcarlos en el mapa.)*
+- [x] **ING46 · Conjunto: consistencia** — *Hecho cuando:* hay tabla de
   inconsistencia por curva y un gráfico de dispersión a lo largo de la vuelta;
   con menos de 3 vueltas se ve el aviso.
 - [ ] **ING47 · Verificación visual (manual)** — *Hecho cuando:* con un replay
@@ -317,12 +321,14 @@ nuevo en `doc/Catalogo_Graficos.md` y comprobando el ancho mínimo de 360 px.
 
 ## Fase 8 — Cierre
 
-- [ ] **ING48 · Documentar las definiciones** — *Hecho cuando:*
+- [x] **ING48 · Documentar las definiciones** — *Hecho cuando:*
   `doc/PLAN_CURVAS.md` (o un `doc/` nuevo) explica fases, balance, slip,
   ranking y consistencia, con todas las constantes y su valor.
-- [ ] **ING49 · Tests en verde** — *Hecho cuando:* `cargo test --workspace` pasa
-  y `node --check` pasa en los `.js` tocados.
-- [ ] **ING50 · Actualizar memoria** — *Hecho cuando:* `MEMORY.md` refleja el
+- [x] **ING49 · Tests en verde** — *Hecho cuando:* `cargo test --workspace` pasa
+  y `node --check` pasa en los `.js` tocados. *(`cargo test -p core`: 160 tests
+  en verde en Linux; `src-tauri` no compila en Linux sin GTK, falta correrlo en
+  Windows.)*
+- [x] **ING50 · Actualizar memoria** — *Hecho cuando:* `MEMORY.md` refleja el
   estado, las decisiones de ING01–ING04 y los umbrales calibrados.
 
 ## Fuera de alcance

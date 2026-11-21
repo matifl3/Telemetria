@@ -17,6 +17,8 @@ async function renderPestanaCurvas(version = state.version) {
   dibujarTractionCurvas(datos);
   renderTablaCurvas(datos);
   renderDeltaCurvas(datos);
+  renderFasesCurvas(datos);
+  renderBalanceSlip(datos);
   actualizarPorIdx({ moverCursor: true });
 }
 
@@ -31,6 +33,10 @@ function vaciarCurvas() {
   if (dc) { dc.ctx.fillStyle = '#8b97a8'; dc.ctx.fillText('Elegí dos vueltas distintas (A vs B).', 12, 20); }
   const td = $('tabla-curva-delta');
   if (td) td.innerHTML = '<em>Elegí dos vueltas distintas (A vs B).</em>';
+  for (const id of ['tabla-fases-curvas', 'tabla-balance-slip']) {
+    const el = $(id);
+    if (el) el.innerHTML = '';
+  }
 }
 
 /* Referencia para índices y trazas de la pestaña curvas (mapa incluido). */
@@ -162,17 +168,19 @@ function puntosDeCurva(laps, grilla, cx) {
   const pts = [];
   for (const l of laps) {
     const al = l.acc_long_g || [], at = l.acc_lat_g || [];
-    const sf = l.slip_ratio_delantera_izquierda || [], sr = l.slip_ratio_delantera_derecha || [];
+    // Umbrales de core (ING18): bloqueo en cualquier rueda, patinamiento en cualquiera.
+    const umbral = umbralesSlip();
+    const ruedas = [l.slip_ratio_delantera_izquierda, l.slip_ratio_delantera_derecha,
+      l.slip_ratio_trasera_izquierda, l.slip_ratio_trasera_derecha].map((r) => r || []);
     const vel = l.velocidad_kmh || [];
     const color = colorDeVuelta(l.id);
     for (let i = i0; i <= i1; i++) {
       if (!Number.isFinite(al[i]) || !Number.isFinite(at[i])) continue;
       let spin = false, lock = false;
-      if (Number.isFinite(vel[i]) && vel[i] > SLIP_VEL_MIN) {
-        const s1 = Number.isFinite(sf[i]) ? clamp(sf[i], -1, 1) : 0;
-        const s2 = Number.isFinite(sr[i]) ? clamp(sr[i], -1, 1) : 0;
-        if (Math.max(s1, s2) > SLIP_SPIN) spin = true;
-        if (Math.min(s1, s2) < SLIP_LOCK) lock = true;
+      if (Number.isFinite(vel[i]) && vel[i] > umbral.velocidad_min_kmh) {
+        const valores = ruedas.map((r) => (Number.isFinite(r[i]) ? clamp(r[i], -1, 1) : 0));
+        if (Math.max(...valores) > umbral.patinamiento) spin = true;
+        if (Math.min(...valores) < umbral.bloqueo) lock = true;
       }
       pts.push({ lat: at[i] / G, lon: al[i] / G, color, spin, lock });
     }
@@ -328,4 +336,103 @@ function tablaDeltaCurvasHTML(delta) {
     </tr></thead>
     <tbody>${filas}</tbody></table>
     <p class="delta-leyenda">Verde = A mejor en esa métrica · rojo = A peor (todo relativo a B).</p>`;
+}
+
+/* ---------- Análisis de ingeniero: fases, balance y slip ---------- */
+
+function umbralesSlip() {
+  const u = state.curvasDatos && state.curvasDatos.umbrales_slip;
+  return u || { bloqueo: -0.3, patinamiento: 0.15, velocidad_min_kmh: 30 };
+}
+
+function analisisPorId(datos, id) {
+  return (datos.analisis || []).find((a) => mismaId(a.id, id)) || null;
+}
+
+const metros = (v) => (v == null ? '–' : Math.round(v) + ' m');
+const redondeo = (v) => Number(Number(v).toFixed(2));
+const porciento = (v) => (v == null ? '–' : Math.round(v * 100) + ' %');
+
+/* Fases de cada curva para A y B, con su delta (ING43). */
+function renderFasesCurvas(datos) {
+  const cont = $('tabla-fases-curvas');
+  if (!cont) return;
+  if (!datos.delta) { cont.innerHTML = '<em class="vacio">Elegí dos vueltas distintas (A vs B).</em>'; return; }
+  const A = analisisPorId(datos, datos.delta.a.id);
+  const B = analisisPorId(datos, datos.delta.b.id);
+  if (!A || !B) { cont.innerHTML = '<em class="vacio">A y B tienen que estar visibles.</em>'; return; }
+  const aviso = datos.delta.mismo_auto ? '' :
+    '<p class="aviso-autos">A y B son autos distintos: freno, gas y volante no son del todo comparables.</p>';
+  const celdaPar = (a, b, fmt) => `<td class="mono">${fmt(a)} <span class="unidad">/ ${fmt(b)}</span></td>`;
+  const filas = datos.delta.fases.map((d) => {
+    const fa = A.fases.find((f) => f.n === d.n);
+    const fb = B.fases.find((f) => f.n === d.n);
+    if (!fa || !fb) return '';
+    const frenadaA = fa.con_frenada ? metros(fa.s_inicio_frenada) : 'sin frenar';
+    const tFases = [d.d_t_frenada, d.d_t_entrada, d.d_t_vertice, d.d_t_salida]
+      .map((v) => `<span class="${claseDelta(v, 'menor')}">${fmtDelta(v, '', 2)}</span>`).join(' / ');
+    return `<tr>
+      <td>${d.nombre}</td>
+      <td class="mono">${frenadaA}</td>
+      <td class="mono ${claseDelta(d.d_inicio_frenada_m, 'mayor')}">${fmtDelta(d.d_inicio_frenada_m, 'm', 0)}</td>
+      ${celdaPar(fa.freno_max, fb.freno_max, porciento)}
+      ${celdaPar(fa.trail_m, fb.trail_m, metros)}
+      ${celdaPar(fa.coasting_m, fb.coasting_m, metros)}
+      ${celdaPar(fa.vertice_a_gas_m, fb.vertice_a_gas_m, metros)}
+      <td class="mono ${claseDelta(d.d_v_min, 'mayor')}">${fmtDelta(d.d_v_min, '', 1)}</td>
+      <td class="mono">${tFases}</td>
+    </tr>`;
+  }).join('');
+  cont.innerHTML = aviso + `<table class="tabla-delta">
+    <thead><tr>
+      <th>Curva</th>
+      <th title="Dónde empieza a frenar A (m de pista)">Frenada A</th>
+      <th title="Positivo = A frena más tarde que B">Δ frenada</th>
+      <th title="Freno máximo A / B">Freno máx</th>
+      <th title="Metros frenando con el volante girado, entre turn-in y vértice. A / B">Trail</th>
+      <th title="Metros sin gas ni freno entre la frenada y el gas a fondo. A / B">Coasting</th>
+      <th title="Metros desde el vértice hasta gas a fondo (98 %). A / B">Vértice→gas</th>
+      <th title="Δ velocidad mínima (km/h). Positivo = A más rápido">Δv mín</th>
+      <th title="Δ tiempo por fase: frenada / entrada / vértice / salida (s). Negativo = A más rápido">Δt fases</th>
+    </tr></thead>
+    <tbody>${filas}</tbody></table>
+    <p class="delta-leyenda">Cada valor se muestra como A / B. La frenada se busca hasta 250 m antes de la curva y el gas a fondo hasta 300 m después.</p>`;
+}
+
+/* Balance sub/sobreviraje y eventos de slip por curva, para A y B (ING44, ING45). */
+function renderBalanceSlip(datos) {
+  const cont = $('tabla-balance-slip');
+  if (!cont) return;
+  const ids = datos.delta ? [datos.delta.a.id, datos.delta.b.id] : (datos.analisis || []).slice(0, 1).map((a) => a.id);
+  const vueltas = ids.map((id) => analisisPorId(datos, id)).filter(Boolean);
+  if (!vueltas.length) { cont.innerHTML = '<em class="vacio">Sin vueltas visibles.</em>'; return; }
+  const chip = (diag) => diag ? `<span class="diag diag-${diag}">${diag}</span>` : '<span class="diag">–</span>';
+  const slipTexto = (v, n) => {
+    const r = v.resumen_slip.find((x) => x.n === n);
+    if (!r) return '–';
+    const partes = [];
+    if (r.bloqueos) partes.push(`${r.bloqueos} bloq.`);
+    if (r.patinamientos) partes.push(`${r.patinamientos} pat.`);
+    return partes.join(' · ') + (r.rueda_principal ? ` (${r.rueda_principal})` : '');
+  };
+  const cabeceras = vueltas.map((v, k) => `<th colspan="3">${k === 0 && datos.delta ? 'A' : 'B'} · ${v.etiqueta}</th><th>Slip</th>`).join('');
+  const filas = datos.curvas.map((cx) => {
+    const celdas = vueltas.map((v) => {
+      const b = v.balance.find((x) => x.n === cx.n);
+      return b
+        ? `<td>${chip(b.diagnostico_entrada)}</td><td>${chip(b.diagnostico_vertice)}</td><td>${chip(b.diagnostico_salida)}</td><td class="mono">${slipTexto(v, cx.n)}</td>`
+        : '<td colspan="3">–</td><td>–</td>';
+    }).join('');
+    return `<tr><td>${cx.nombre}</td>${celdas}</tr>`;
+  }).join('');
+  const sinCalibrar = vueltas.some((v) => !v.calibracion_neutra)
+    ? ' En alguna vuelta faltaron tramos lentos para calibrar el neutro: el balance es relativo al promedio de esa vuelta.'
+    : '';
+  cont.innerHTML = `<table class="tabla-delta">
+    <thead>
+      <tr><th></th>${cabeceras}</tr>
+      <tr><th>Curva</th>${vueltas.map(() => '<th>Entrada</th><th>Vértice</th><th>Salida</th><th></th>').join('')}</tr>
+    </thead>
+    <tbody>${filas}</tbody></table>
+    <p class="delta-leyenda">El balance compara el volante con la curvatura real de la trayectoria, calibrado en los tramos lentos de cada vuelta. Slip: bloqueo con slip_ratio &lt; ${redondeo(umbralesSlip().bloqueo)}, patinamiento con &gt; ${redondeo(umbralesSlip().patinamiento)}, por encima de ${redondeo(umbralesSlip().velocidad_min_kmh)} km/h. Signos a confirmar con un replay real.${sinCalibrar}</p>`;
 }

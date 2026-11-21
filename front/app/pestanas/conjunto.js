@@ -23,6 +23,7 @@ async function renderPestanaConjunto(version = state.version) {
   dibujarMapaTeorico(datos);
   renderTablaResumen(datos);
   renderTeorica(datos);
+  renderConsistencia(datos);
 }
 
 function vaciarConjuntos() {
@@ -32,6 +33,10 @@ function vaciarConjuntos() {
   }
   $('tabla-resumen').innerHTML = '';
   $('teorica').innerHTML = '';
+  const tc = $('tabla-consistencia');
+  if (tc) tc.innerHTML = '';
+  const dv = $('chart-desvio-vel');
+  if (dv) dv.innerHTML = '';
 }
 
 /* Tiempos por vuelta (barra más corta = mejor, backend entrega orden ascendente). */
@@ -480,4 +485,46 @@ function configurarZoomTeorico() {
     dibujarZoomTeorico();
   });
   window.addEventListener('mouseup', () => { zoomTeorico.arrastrando = false; });
+}
+
+/* Consistencia entre vueltas del auto de la REF (ING46). */
+function renderConsistencia(datos) {
+  const cont = $('tabla-consistencia');
+  const grafico = $('chart-desvio-vel');
+  const c = datos.consistencia;
+  if (!cont || !c) return;
+  const excluidas = c.vueltas_excluidas
+    ? ` Se dejaron afuera ${c.vueltas_excluidas} vuelta(s) más lentas que el 107 % de la mejor.`
+    : '';
+  if (c.aviso) {
+    cont.innerHTML = `<em class="vacio">${c.aviso}</em>`;
+    if (grafico) grafico.innerHTML = '<p class="hint" style="margin:6px">Sin datos de dispersión.</p>';
+    return;
+  }
+  const num = (v, dec, u) => (v == null ? '–' : v.toFixed(dec) + u);
+  const filas = c.curvas.map((f) => `<tr>
+      <td>${f.nombre}</td>
+      <td class="mono">${num(f.desvio_t_curva_s, 3, ' s')}</td>
+      <td class="mono">${num(f.rango_inicio_frenada_m, 0, ' m')}</td>
+      <td class="mono">${num(f.rango_v_min_kmh, 1, ' km/h')}</td>
+      <td class="mono">${num(f.rango_gas_fondo_m, 0, ' m')}</td>
+      <td>${f.explicacion}</td>
+    </tr>`).join('');
+  cont.innerHTML = `<table class="tabla-delta">
+    <thead><tr><th>Curva</th>
+      <th title="Desvío estándar del tiempo dentro del arco de la curva">σ tiempo</th>
+      <th title="Diferencia entre la frenada más temprana y la más tardía">Rango frenada</th>
+      <th title="Diferencia entre la velocidad mínima más alta y la más baja">Rango v mín</th>
+      <th title="Diferencia entre el gas a fondo más temprano y el más tardío">Rango gas</th>
+      <th>Qué varía más</th></tr></thead>
+    <tbody>${filas}</tbody></table>
+    <p class="delta-leyenda">${c.vueltas_usadas} vueltas usadas.${excluidas}</p>`;
+  if (grafico) {
+    lineChart(grafico, 160, null, 'σ km/h',
+      [datos.grilla, c.desvio_velocidad],
+      [
+        serieX(),
+        { label: 'σ velocidad', stroke: '#facc15', width: 1.5, fill: 'rgba(250,204,21,0.12)', points: { show: false }, spanGaps: false },
+      ]);
+  }
 }
