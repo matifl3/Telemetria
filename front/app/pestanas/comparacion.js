@@ -48,26 +48,36 @@ function vaciarComparacion(msg) {
   if (c) { c.ctx.font = '13px "Segoe UI"'; c.ctx.fillText(msg.slice(0, 70), 10, 24); }
 }
 
-/* Delta por sector + delta final como texto coloreado. */
+/* Delta por sector como barras (paridad v1: rojo arriba = A pierde) + delta final. */
 function dibujarMiniDeltaSectores(d) {
-  const c = prepCanvas('ch-mini-delta', 120);
+  const c = prepCanvas('ch-mini-delta', 240);
   if (!c) return;
   const { ctx, w, h } = c;
-  ctx.font = '15px "Consolas", monospace';
-  let y = 24;
-  d.delta_sectores.forEach((v, i) => {
+  const difs = d.delta_sectores;
+  const maxAbs = Math.max(...difs.filter((v) => v != null).map((v) => Math.abs(v)), 0.001);
+  const pad = 28;
+  const anchoGrupo = (w - pad * 2) / Math.max(difs.length, 1);
+  const cy = h / 2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.beginPath(); ctx.moveTo(pad, cy); ctx.lineTo(w - pad, cy); ctx.stroke();
+  difs.forEach((v, i) => {
     if (v == null) return;
-    const texto = `S${i + 1}  ${deltaATexto(v)}`;
-    ctx.fillStyle = colorDelta(v);
-    ctx.fillText(texto, 14, y + i * 22);
+    const bh = (v / maxAbs) * (h / 2 - pad);
+    ctx.fillStyle = v >= 0 ? '#f87171' : '#4ade80';
+    ctx.fillRect(pad + i * anchoGrupo + 3, v >= 0 ? cy - bh : cy, anchoGrupo - 6, Math.abs(bh));
+    ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+    ctx.fillText('S' + (i + 1), pad + i * anchoGrupo + 3, h - 8);
   });
+  ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+  ctx.fillText(`${d.a.etiqueta} − ${d.b.etiqueta}  (rojo = A pierde)`, 4, 14);
   const fin = ultimoValor(d.delta_tiempo);
   if (fin != null) {
-    ctx.font = 'bold 18px "Consolas", monospace';
+    // En la franja superior, para no pisar las barras (empiezan en y = pad).
+    ctx.font = 'bold 15px "Consolas", monospace';
     ctx.fillStyle = colorDelta(fin);
     const txt = deltaATexto(fin);
     ctx.textAlign = 'right';
-    ctx.fillText(txt, w - 14, 28);
+    ctx.fillText(txt, w - 14, 18);
     ctx.textAlign = 'left';
   }
 }

@@ -43,6 +43,12 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - Avisos de sesión se acumulan sin duplicados en el menú del encabezado; se limpian al resetear sesión o desde el panel.
 - En Vueltas, el control global muestra todas las válidas o deja solo REF visible;
   mantener REF evita perder el acceso al análisis.
+- El CSS de `front/` heredó selectores de v1: si se renombra un id en `index.html`,
+  revisar `estilos.css` (pasó con `#ch-minidelta` → `#ch-mini-delta`; canvas sin
+  altura toma proporción 2:1 y queda gigante).
+- Comparación "Delta por sector": vuelve a barras como v1 (la spec exige paridad
+  total); se conserva el delta final de v2 arriba a la derecha. Canvas 240 px.
 ## Próximos pasos
+- Verificar a ojo "Delta por sector" con un replay real (pendiente).
 - TV06: checklist manual de la pestaña Vueltas con un replay multi-auto
   (`spec/pestana-vueltas/tareas.md`); TV01–TV05, TV07 y TV08 ya están hechas.
