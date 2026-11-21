@@ -44,6 +44,8 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - No crear `docs/` (las docs viven en `doc/`); `doc/PLAN_CURVAS.md` cita smoke
   scripts inexistentes.
 - `kernel32.dll`, `node_modules/` y `.idea/` ya están ignorados en git.
+- Release v0.3.0 (2026-11-21): instalador NSIS `AC Telemetry Lab_0.3.0_x64-setup.exe`.
+  `gh` no está instalado en esta PC; sin él, la release se publica desde la web.
 ## Próximos pasos
 - Verificar a ojo "Delta por sector" y la pestaña Vueltas con un replay real.
 - Replays de prueba (locales, no commitear): `Downloads/temp (1)-20261107T021753Z-1-001/temp (1)`
