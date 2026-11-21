@@ -8,11 +8,9 @@ async function renderPestanaCurvas(version = state.version) {
   const datos = await puente.pedirPestana('curvas');
   if (version !== state.version || state.tab !== 'curvas') return;
   if (!datos || !datos.curvas.length) {
-    state.pistasCurvas = [];
     vaciarCurvas();
     return;
   }
-  state.pistasCurvas = datos.curvas;
   state.curvasDatos = datos;
   dibujarMapaCurvas(datos);
   dibujarTiemposCurvas(datos);

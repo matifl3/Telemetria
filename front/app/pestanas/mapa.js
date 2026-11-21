@@ -10,7 +10,6 @@ async function renderPestanaMapa(version = state.version) {
   const altActual = state.mapa.tresD ? state.mapa.alt : 3;
   if (version !== state.version || state.tab !== 'mapa' || rot !== rotActual || alt !== altActual) return;
   state.mapaDatos = datos;
-  state.pistasCurvas = datos.curvas || [];
   destruirTrazadasObsoletas();
   dibujarMapaPestana();
   dibujarAutoCarga(state.idx);

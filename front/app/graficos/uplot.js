@@ -1,7 +1,6 @@
 'use strict';
 
-/* Wrapper de uPlot: opciones comunes, gráfico de líneas con sincronía de cursor
-   y marcas verticales de curvas (C1..Cn). */
+/* Wrapper de uPlot: opciones comunes y gráfico de líneas con sincronía de cursor. */
 
 const SYNC_KEY = 'ac-tele-lab-v2';
 
@@ -30,7 +29,7 @@ function opcionesGrafico(cont, height, yRango, yLabel) {
         size: 52, labelSize: 26,
       },
     ],
-    hooks: { setCursor: [alCursor], draw: [dibujarMarcasCurvas] },
+    hooks: { setCursor: [alCursor] },
   };
 }
 
@@ -79,26 +78,4 @@ function moverCursor() {
   if (Math.abs(left - _ultimoCursorPx) < 1) return;
   _ultimoCursorPx = left;
   u.setCursor({ left, top: u.over.height / 2 });
-}
-
-/* Marcas verticales con el nombre de curva (C1..Cn) sobre el plot. */
-function dibujarMarcasCurvas(u) {
-  const curvas = state.pistasCurvas;
-  if (!curvas || !curvas.length || !u || !u.ctx || !u.bbox) return;
-  const ctx = u.ctx, b = u.bbox;
-  ctx.save();
-  ctx.beginPath(); ctx.rect(b.left, b.top, b.width, b.height); ctx.clip();
-  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  ctx.font = '10px "Segoe UI", sans-serif';
-  for (const c of curvas) {
-    const sApex = c.s_apex == null ? c.s_ini : c.s_apex;
-    if (sApex == null) continue;
-    const x = u.valToPos(sApex, 'x');
-    if (!Number.isFinite(x) || x < b.left - 1 || x > b.left + b.width + 1) continue;
-    ctx.strokeStyle = 'rgba(148,163,184,0.16)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x, b.top); ctx.lineTo(x, b.top + b.height); ctx.stroke();
-    ctx.fillStyle = 'rgba(203,213,225,0.6)';
-    ctx.fillText(c.nombre, x, b.top + 1);
-  }
-  ctx.restore();
 }

@@ -4,7 +4,6 @@
 
 async function renderPestanaComparacion(version = state.version) {
   destroyCharts();
-  state.pistasCurvas = [];
   selectorVueltas.poblarSelB();
   const d = await puente.pedirPestana('comparacion');
   if (version !== state.version || state.tab !== 'comparacion') return;

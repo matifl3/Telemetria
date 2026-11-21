@@ -17,7 +17,6 @@ const state = {
   cacheDatos: new Map(),  // pestaña → { version, rot, alt, datos }
   tab: 'vuelta',
   datosVuelta: null,      // DtoVuelta base (grilla + canales de vueltas visibles)
-  pistasCurvas: [],       // curvas del DTO activo p/ marcas en uPlot y lecturas
   colorPorId: new Map(),  // id "auto NumeroLocal" → color de paleta
   grilla: [],             // s de pista (eje X común)
   paso: 1,                // paso de la grilla (m) p/ índices de arcos

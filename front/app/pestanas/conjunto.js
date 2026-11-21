@@ -7,11 +7,9 @@ async function renderPestanaConjunto(version = state.version) {
   const datos = await puente.pedirPestana('conjunto');
   if (version !== state.version || state.tab !== 'conjunto') return;
   if (!datos || !datos.tiempos.length) {
-    state.pistasCurvas = [];
     vaciarConjuntos();
     return;
   }
-  state.pistasCurvas = datos.mapa.curvas || [];
   state.ultimoConjunto = datos;
   dibujarBarrasTiempos(datos);
   dibujarVelMedia(datos);

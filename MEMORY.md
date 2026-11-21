@@ -28,6 +28,8 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - Inválidas: auto con un solo tramo, o vuelta < 90 % del largo del `fast_lane.ai`.
 - Selección al cargar (RF-013): 2 válidas más rápidas; REF = 1.ª, B = 2.ª.
 - Proyección deficiente: un único aviso total por replay (no uno por vuelta).
+- Gráficos uPlot sin marcas de curva C1..Cn (pedido del usuario); los numerales
+  siguen solo en los mapas (`dibujarNumeralesCurvas`).
 - Avisos de sesión se acumulan sin duplicados en el menú del encabezado; se limpian al resetear sesión o desde el panel.
 ## Aprendizajes y errores a evitar
 - `kernel32.dll`, `node_modules/` y `.idea/` se colaron en git (revisión 2026-11-20); ya ignorados.

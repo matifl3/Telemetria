@@ -4,7 +4,6 @@
 
 function renderPestanaVuelta(datos) {
   destroyCharts();
-  state.pistasCurvas = (datos && datos.curvas) || [];
   if (!datos || !datos.grilla.length) return;
   const grilla = datos.grilla;
   const vueltas = datos.vueltas;
