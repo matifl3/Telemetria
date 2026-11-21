@@ -5,15 +5,16 @@
 Mover el listado de vueltas que hoy ocupa el lateral del análisis a una pestaña
 propia, para despejar la pantalla principal. La pestaña mostrará las vueltas
 válidas de todos los autos en dos bloques: primero las del jugador real
-(`current_recording_index`), en su orden actual, y después las de los demás
+(el primer auto del replay), en su orden actual, y después las de los demás
 autos ordenadas por tiempo, de más rápida a más lenta.
 
 ## Alcance y reglas
 
 - La nueva pestaña se llamará **Vueltas** y mostrará dos secciones:
   **«Tus vueltas»** (auto del jugador real) y **«Otros autos»** (el resto).
-- El jugador real se identifica con `indice_jugador` (`current_recording_index`),
-  no con el primer auto del replay ni con la REF actual.
+- El jugador real se identifica con `indice_jugador`, que siempre es el primer
+  auto del replay (`current_recording_index` es un frame, no un auto), no con la
+  REF actual.
 - Solo se listan vueltas válidas y seleccionables.
 - Las vueltas del jugador conservan su orden actual.
 - Las vueltas de los demás autos se ordenan por `tiempo_s` ascendente: la más
@@ -69,8 +70,10 @@ autos ordenadas por tiempo, de más rápida a más lenta.
   lenta; los empates se resuelven de forma estable; no hay control de orden; y
   los roles REF/B y la visibilidad no se alteran.
 - [x] **TV08 · Exponer el jugador en el DTO** — *Hecho cuando:* `DtoResumen`
-  incluye `indice_jugador: Option<usize>`, se completa desde
-  `replay.meta.indice_jugador` validando el rango, y hay un test que lo cubre.
+  incluye `indice_jugador: Option<usize>`, vale el primer auto del replay
+  (`None` si no hay autos), y hay un test que lo cubre. *(Corregido: antes se
+  leía de `current_recording_index`, que es un frame y dejaba «Tus vueltas»
+  vacía.)*
 
 ## Fuera de alcance
 

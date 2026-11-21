@@ -17,6 +17,12 @@ pub const DT_MAXIMO: f64 = 2.0;
 pub const G: f32 = 9.80665;
 /// Tope de aceleración aceptada, en múltiplos de `G`.
 pub const MAX_G: f32 = 4.0;
+/// Caída mínima de `current_lap_time` que cuenta como reinicio en meta (ms).
+/// Los autos que no son el del jugador no traen `current_lap`: sus vueltas se
+/// cortan donde el reloj vuelve a cero.
+pub const RESET_RELOJ_MS: u32 = 1_000;
+/// Frames de la vuelta siguiente donde se busca el `last_lap_time` nuevo.
+pub const FRAMES_TIEMPO_OFICIAL: usize = 10;
 /// Umbral de yaw distinto de cero para confiar en el canal del archivo.
 pub const YAW_UMBRAL: f32 = 0.001;
 
@@ -133,8 +139,12 @@ pub struct Vuelta {
     pub motivo: MotivoVuelta,
     /// Solo las vueltas válidas se pueden seleccionar (RF-016).
     pub seleccionable: bool,
-    /// Duración de la vuelta: último `t_rel` válido (s).
+    /// Duración de la vuelta (s): el tiempo del juego si existe; si no, el
+    /// último `t_rel` válido.
     pub tiempo_s: f64,
+    /// Tiempo que da el propio juego (s): `last_lap_time` oficial o, sin él, el
+    /// `current_lap_time` al cerrar el tramo. `None` si el archivo no lo trae.
+    pub tiempo_juego_s: Option<f64>,
     /// Máximo arco de pista alcanzado en la vuelta (m).
     pub cobertura_s_m: f64,
     /// Cobertura dividida por la duración (m/s); 0 si no se puede calcular.
@@ -166,6 +176,73 @@ pub fn segmentar_vueltas(numeros: &[u8]) -> Vec<SegmentoVuelta> {
         }
     }
     salida
+}
+
+/// Segmenta por reinicios de `current_lap_time` (autos sin `current_lap`).
+///
+/// Cada tramo se numera con su orden (0, 1, 2…), porque el archivo no trae
+/// número de vuelta para estos autos.
+pub fn segmentar_por_reloj(tiempos_ms: &[u32]) -> Vec<SegmentoVuelta> {
+    let mut salida = Vec::new();
+    if tiempos_ms.is_empty() {
+        return salida;
+    }
+
+    let mut inicio = 0usize;
+    for fin in 1..=tiempos_ms.len() {
+        let reinicio = fin < tiempos_ms.len()
+            && tiempos_ms[fin].saturating_add(RESET_RELOJ_MS) < tiempos_ms[fin - 1];
+        if fin == tiempos_ms.len() || reinicio {
+            salida.push(SegmentoVuelta {
+                numero: salida.len() as u8,
+                inicio,
+                fin,
+            });
+            inicio = fin;
+        }
+    }
+    salida
+}
+
+/// Elige cómo segmentar un auto: por `current_lap` si el archivo lo trae (el
+/// número cambia al menos una vez); si no, por reinicios del reloj.
+pub fn segmentar_auto(muestras: &MuestrasAuto) -> Vec<SegmentoVuelta> {
+    if muestras.vuelta.windows(2).any(|par| par[0] != par[1]) {
+        segmentar_vueltas(&muestras.vuelta)
+    } else {
+        segmentar_por_reloj(&muestras.tiempo_vuelta_ms)
+    }
+}
+
+/// Tiempo de la vuelta según el juego (s).
+///
+/// 1. `last_lap_time` oficial: el valor nuevo que aparece al empezar la vuelta
+///    siguiente (solo lo trae el auto del jugador).
+/// 2. Si no hay, `current_lap_time` en el último frame del tramo: el reloj del
+///    juego justo antes de reiniciarse en meta.
+pub fn tiempo_de_juego(
+    muestras: &MuestrasAuto,
+    segmento: &SegmentoVuelta,
+    siguiente: Option<&SegmentoVuelta>,
+) -> Option<f64> {
+    let ultimo = segmento.fin.checked_sub(1)?;
+    if let Some(siguiente) = siguiente {
+        let previo = muestras.ultima_vuelta_ms.get(ultimo).copied().unwrap_or(0);
+        let fin = siguiente.fin.min(siguiente.inicio + FRAMES_TIEMPO_OFICIAL);
+        let oficial = (siguiente.inicio..fin)
+            .filter_map(|indice| muestras.ultima_vuelta_ms.get(indice).copied())
+            .find(|&ms| ms > 0 && ms != previo);
+        if let Some(ms) = oficial {
+            return Some(ms as f64 / 1000.0);
+        }
+    }
+
+    muestras
+        .tiempo_vuelta_ms
+        .get(ultimo)
+        .copied()
+        .filter(|&ms| ms > 0)
+        .map(|ms| ms as f64 / 1000.0)
 }
 
 /// Construye las series de un segmento, recortando todos los canales.
@@ -237,12 +314,14 @@ pub fn construir_series(
 /// Construye una vuelta a partir de un segmento.
 ///
 /// `numero_local` es el orden de la vuelta dentro del auto, estable durante la
-/// sesión y distinto de `current_lap`.
+/// sesión y distinto de `current_lap`. `tiempo_juego_s` sale de
+/// [`tiempo_de_juego`].
 pub fn construir_vuelta(
     auto: &Auto,
     numero_local: usize,
     s_por_frame: &[f64],
     segmento: &SegmentoVuelta,
+    tiempo_juego_s: Option<f64>,
 ) -> Vuelta {
     let mut vuelta = Vuelta {
         id: VueltaId {
@@ -255,6 +334,7 @@ pub fn construir_vuelta(
         motivo: MotivoVuelta::Ninguno,
         seleccionable: true,
         tiempo_s: f64::NAN,
+        tiempo_juego_s,
         cobertura_s_m: f64::NAN,
         vel_media_mps: 0.0,
         muestras: construir_series(&auto.muestras, s_por_frame, segmento),
@@ -269,12 +349,16 @@ pub fn construir_vuelta(
 /// Se descartan los tramos de menos de dos frames, igual que v1: no alcanzan
 /// para calcular tiempos ni aceleraciones.
 pub fn construir_vueltas(auto: &Auto, s_por_frame: &[f64]) -> Vec<Vuelta> {
-    segmentar_vueltas(&auto.muestras.vuelta)
+    let segmentos: Vec<SegmentoVuelta> = segmentar_auto(&auto.muestras)
         .into_iter()
         .filter(|segmento| segmento.largo() >= 2)
+        .collect();
+    segmentos
+        .iter()
         .enumerate()
         .map(|(numero_local, segmento)| {
-            construir_vuelta(auto, numero_local, s_por_frame, &segmento)
+            let tiempo = tiempo_de_juego(&auto.muestras, segmento, segmentos.get(numero_local + 1));
+            construir_vuelta(auto, numero_local, s_por_frame, segmento, tiempo)
         })
         .collect()
 }
@@ -467,7 +551,10 @@ pub fn cobertura_s_m(s: &[f64]) -> f64 {
 ///
 /// La fase 4 llama a esta función después de completar `muestras.s`.
 pub fn recalcular_metricas(vuelta: &mut Vuelta) {
-    let tiempo = tiempo_de_vuelta(&vuelta.muestras.t_rel);
+    let tiempo = vuelta
+        .tiempo_juego_s
+        .filter(|valor| valor.is_finite() && *valor > 0.0)
+        .unwrap_or_else(|| tiempo_de_vuelta(&vuelta.muestras.t_rel));
     let cobertura = cobertura_s_m(&vuelta.muestras.s);
     vuelta.tiempo_s = tiempo;
     vuelta.cobertura_s_m = cobertura;

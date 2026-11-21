@@ -11,6 +11,7 @@ use crate::comparacion;
 use crate::curvas::{self, CanalesAlineados};
 use crate::grilla::{grilla_de_pista, Grilla};
 use crate::mapa::{self, Bounds, Proyeccion};
+use crate::modelo::INDICE_JUGADOR;
 use crate::pista::Pista;
 use crate::sectores::{sectores_de_vuelta, vuelta_teorica, N_SECTORES};
 use crate::sesion::{CodigoAviso, Sesion};
@@ -121,7 +122,7 @@ pub struct DtoResumen {
     pub pista: Option<DtoPistaResumen>,
     pub puede_analizar: bool,
     pub falta_pista: bool,
-    /// Índice del auto del jugador (`current_recording_index`) si es válido.
+    /// Índice del auto del jugador (siempre el primero) si el replay tiene autos.
     pub indice_jugador: Option<usize>,
 }
 
@@ -522,10 +523,9 @@ pub fn resumen(sesion: &Sesion) -> DtoResumen {
         }
     }
 
-    let indice_jugador = sesion.replay().and_then(|replay| {
-        let indice = replay.meta.indice_jugador as usize;
-        replay.autos.get(indice).map(|auto| auto.indice)
-    });
+    let indice_jugador = sesion
+        .replay()
+        .and_then(|replay| replay.autos.get(INDICE_JUGADOR).map(|auto| auto.indice));
 
     DtoResumen {
         autos,

@@ -107,7 +107,8 @@ pub struct ConstructorReplay {
     pub clima: String,
     pub pista: String,
     pub config_pista: String,
-    pub indice_jugador: u32,
+    /// `current_recording_index`: frame de reproducción (no es un auto).
+    pub indice_grabacion: u32,
     pub objetos_pista: u32,
     pub autos: Vec<AutoFixture>,
     pub con_pie_csp: bool,
@@ -121,7 +122,7 @@ impl Default for ConstructorReplay {
             clima: "3_clear".to_string(),
             pista: "monza".to_string(),
             config_pista: String::new(),
-            indice_jugador: 0,
+            indice_grabacion: 0,
             objetos_pista: 0,
             autos: vec![AutoFixture::nuevo("auto_0", "Piloto 0", 2)],
             con_pie_csp: false,
@@ -163,7 +164,7 @@ impl ConstructorReplay {
         escribir_cadena(&mut salida, &self.pista);
         escribir_cadena(&mut salida, &self.config_pista);
         salida.extend_from_slice(&(self.autos.len() as u32).to_le_bytes());
-        salida.extend_from_slice(&self.indice_jugador.to_le_bytes());
+        salida.extend_from_slice(&self.indice_grabacion.to_le_bytes());
         salida.extend_from_slice(&self.frames_globales().to_le_bytes());
         salida.extend_from_slice(&self.objetos_pista.to_le_bytes());
 

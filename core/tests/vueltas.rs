@@ -1,8 +1,9 @@
-use acreplay_core::clasificacion::clasificar_vueltas;
+use acreplay_core::clasificacion::{clasificar_vueltas, descartar_cortas_por_pista};
 use acreplay_core::modelo::{Auto, MuestrasAuto};
 use acreplay_core::vuelta::{
     aceleraciones, calcular_dt, calcular_yaw, cobertura_s_m, construir_series, construir_vueltas,
-    etiqueta_vuelta, normalizar_pedal, segmentar_vueltas, tiempo_de_vuelta, unwrap_yaw,
+    etiqueta_vuelta, normalizar_pedal, segmentar_auto, segmentar_por_reloj, segmentar_vueltas,
+    tiempo_de_vuelta, unwrap_yaw,
     MotivoVuelta, SegmentoVuelta, Series, Vuelta, VueltaId, DT_POR_DEFECTO, G, MAX_G,
 };
 
@@ -26,6 +27,8 @@ struct Fila {
     marcha: u8,
     vuelta: u8,
     tiempo_ms: u32,
+    /// `last_lap_time` (ms).
+    ultima_ms: u32,
     gasolina: u8,
 }
 
@@ -41,6 +44,7 @@ impl Default for Fila {
             marcha: 0,
             vuelta: 1,
             tiempo_ms: 0,
+            ultima_ms: 0,
             gasolina: 0,
         }
     }
@@ -67,7 +71,7 @@ fn muestras(filas: &[Fila]) -> MuestrasAuto {
         muestras.marcha.push(fila.marcha);
         muestras.vuelta.push(fila.vuelta);
         muestras.tiempo_vuelta_ms.push(fila.tiempo_ms);
-        muestras.ultima_vuelta_ms.push(0);
+        muestras.ultima_vuelta_ms.push(fila.ultima_ms);
         muestras.mejor_vuelta_ms.push(0);
         muestras.gasolina.push(fila.gasolina);
         muestras.gasolina_por_vuelta.push(0);
@@ -301,9 +305,13 @@ fn t37_vuelta_construida_calcula_tiempo_y_cobertura() {
     let auto = auto(0, muestras(&filas));
     let vueltas = construir_vueltas(&auto, &[0.0, 100.0, 250.0]);
     assert_eq!(vueltas.len(), 1);
-    assert!(cerca(vueltas[0].tiempo_s, 1.0));
+    // Sin `last_lap_time`, el tiempo es el reloj del juego al cerrar el tramo
+    // (`current_lap_time` ya cuenta desde la meta), no la resta contra el
+    // primer frame.
+    assert!(cerca(vueltas[0].tiempo_s, 2.0));
+    assert_eq!(vueltas[0].tiempo_juego_s, Some(2.0));
     assert!(cerca(vueltas[0].cobertura_s_m, 250.0));
-    assert!(cerca(vueltas[0].vel_media_mps, 250.0));
+    assert!(cerca(vueltas[0].vel_media_mps, 125.0));
 }
 
 #[test]
@@ -376,4 +384,121 @@ fn t40_etiqueta_exacta() {
         etiqueta_vuelta("Piloto 0", "auto_0", 3),
         "Piloto 0 · auto_0 · V3"
     );
+}
+
+/// Filas de un auto: `(current_lap, current_lap_time, last_lap_time)` por frame.
+fn filas_de(datos: &[(u8, u32, u32)]) -> Vec<Fila> {
+    datos
+        .iter()
+        .map(|&(vuelta, tiempo_ms, ultima_ms)| Fila {
+            vuelta,
+            tiempo_ms,
+            ultima_ms,
+            ..Fila::default()
+        })
+        .collect()
+}
+
+#[test]
+fn segmenta_por_reinicio_del_reloj() {
+    // Dos reinicios en meta; la caída chica (500 → 400) es ruido, no meta.
+    let segmentos = segmentar_por_reloj(&[900_000, 900_120, 90, 500, 400, 107_000, 60, 200]);
+    assert_eq!(
+        segmentos,
+        vec![
+            SegmentoVuelta { numero: 0, inicio: 0, fin: 2 },
+            SegmentoVuelta { numero: 1, inicio: 2, fin: 6 },
+            SegmentoVuelta { numero: 2, inicio: 6, fin: 8 },
+        ]
+    );
+    assert!(segmentar_por_reloj(&[]).is_empty());
+}
+
+#[test]
+fn segmentar_auto_usa_current_lap_solo_si_cambia() {
+    // Jugador: `current_lap` cambia → se respeta aunque el reloj no se reinicie.
+    let jugador = muestras(&filas_de(&[(1, 100, 0), (1, 200, 0), (2, 300, 0), (2, 400, 0)]));
+    assert_eq!(segmentar_auto(&jugador), segmentar_vueltas(&jugador.vuelta));
+
+    // Otro auto: `current_lap` fijo en 0 → se corta por el reloj.
+    let otro = muestras(&filas_de(&[(0, 5_000, 0), (0, 6_000, 0), (0, 50, 0), (0, 2_000, 0)]));
+    let segmentos = segmentar_auto(&otro);
+    assert_eq!(segmentos.len(), 2);
+    assert_eq!((segmentos[1].inicio, segmentos[1].fin), (2, 4));
+}
+
+#[test]
+fn tiempo_oficial_sale_de_last_lap_time_de_la_vuelta_siguiente() {
+    // V1 termina con el reloj en 105_714; al empezar V2 el juego publica
+    // `last_lap_time` = 105_781 (oficial). V2 no tiene siguiente: usa el reloj.
+    let datos = [
+        (1, 100, 99_000),
+        (1, 105_714, 99_000),
+        (2, 54, 105_781),
+        (2, 106_000, 105_781),
+    ];
+    let vueltas = construir_vueltas(&auto(0, muestras(&filas_de(&datos))), &[]);
+    assert_eq!(vueltas.len(), 2);
+    assert!(cerca(vueltas[0].tiempo_s, 105.781));
+    assert!(cerca(vueltas[1].tiempo_s, 106.0));
+}
+
+#[test]
+fn otros_autos_sin_current_lap_tienen_tiempo_por_vuelta() {
+    // Como en los replays online: `current_lap` y `last_lap_time` siempre en 0.
+    let datos = [
+        (0, 1_024_000, 0),
+        (0, 1_024_023, 0),
+        (0, 93, 0),
+        (0, 107_733, 0),
+        (0, 90, 0),
+        (0, 106_530, 0),
+    ];
+    let vueltas = construir_vueltas(&auto(1, muestras(&filas_de(&datos))), &[]);
+    let tiempos: Vec<f64> = vueltas.iter().map(|v| v.tiempo_s).collect();
+    assert_eq!(tiempos.len(), 3);
+    assert!(cerca(tiempos[1], 107.733));
+    assert!(cerca(tiempos[2], 106.530));
+    assert!(tiempos.iter().all(|t| *t > 0.0), "nunca tiempos negativos: {tiempos:?}");
+    assert!(vueltas[1].etiqueta.ends_with("V1"));
+}
+
+#[test]
+fn auto_con_un_solo_tramo_no_tiene_vueltas_validas() {
+    // Un auto que nunca cruza la meta dos veces no tiene una vuelta completa.
+    let mut vueltas = vec![vuelta(7, 0, 4_000.0, 40.0)];
+    clasificar_vueltas(&mut vueltas);
+    assert!(!vueltas[0].valida);
+    assert!(!vueltas[0].seleccionable);
+    assert_eq!(vueltas[0].motivo, MotivoVuelta::Incompleta);
+}
+
+#[test]
+fn vueltas_que_no_cubren_el_90_por_ciento_de_la_pista_no_son_validas() {
+    // Un auto con todas sus vueltas parciales: la mediana propia no las detecta.
+    let mut vueltas = vec![
+        vuelta(6, 0, 1_500.0, 23.0),
+        vuelta(6, 1, 1_480.0, 23.0),
+        vuelta(6, 2, 1_490.0, 23.0),
+        vuelta(0, 0, 5_700.0, 48.0),
+        vuelta(0, 1, 5_190.0, 48.0),
+        vuelta(0, 2, 5_000.0, 48.0),
+    ];
+    clasificar_vueltas(&mut vueltas);
+    assert!(vueltas[..3].iter().all(|v| v.valida), "la mediana sola no las descarta");
+
+    descartar_cortas_por_pista(&mut vueltas, 5_757.0);
+    assert_eq!(vueltas[0].motivo, MotivoVuelta::Incompleta);
+    assert_eq!(vueltas[1].motivo, MotivoVuelta::Cortada);
+    assert_eq!(vueltas[2].motivo, MotivoVuelta::Incompleta);
+    assert!(vueltas[..3].iter().all(|v| !v.valida && !v.seleccionable));
+    // 5_190 m ≥ 90 % de 5_757 m: sigue válida; 5_000 m no.
+    assert!(vueltas[3].valida && vueltas[4].valida);
+    assert!(!vueltas[5].valida);
+
+    // Sin largo de pista utilizable no se toca nada.
+    let mut sin_pista = vec![vuelta(1, 0, 10.0, 1.0)];
+    sin_pista[0].valida = true;
+    descartar_cortas_por_pista(&mut sin_pista, f64::NAN);
+    assert!(sin_pista[0].valida);
 }

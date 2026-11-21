@@ -6,7 +6,7 @@
 
 use crate::error::{ErrorFormato, Motivo, Resultado};
 use crate::lector::{medio_a_f32, Lector};
-use crate::modelo::{Auto, MetaReplay, MuestrasAuto, Replay};
+use crate::modelo::{Auto, MetaReplay, MuestrasAuto, Replay, INDICE_JUGADOR};
 
 /// Única versión soportada.
 pub const VERSION_SOPORTADA: u32 = 16;
@@ -32,11 +32,9 @@ pub fn parsear_replay(bytes: &[u8], archivo: &str) -> Resultado<Replay> {
     // El pie CSP no aporta datos usados por la app: se detecta y se ignora.
     descartar_pie_csp(&mut lector)?;
 
-    let auto_referencia = if (meta.indice_jugador as usize) < autos.len() {
-        Some(meta.indice_jugador as usize)
-    } else {
-        None
-    };
+    // El jugador es siempre el primer auto; `current_recording_index` es un
+    // frame, no un auto.
+    let auto_referencia = (INDICE_JUGADOR < autos.len()).then_some(INDICE_JUGADOR);
 
     Ok(Replay {
         meta,
@@ -62,19 +60,19 @@ fn leer_encabezado(lector: &mut Lector<'_>) -> Resultado<(MetaReplay, u32)> {
         clima: lector.cadena()?,
         pista: lector.cadena()?,
         config_pista: lector.cadena()?,
-        indice_jugador: 0,
+        indice_grabacion: 0,
         frames_globales: 0,
         objetos_pista: 0,
     };
 
     let num_autos = lector.u32()?;
-    let indice_jugador = lector.u32()?;
+    let indice_grabacion = lector.u32()?;
     let frames_globales = lector.u32()?;
     let objetos_pista = lector.u32()?;
 
     Ok((
         MetaReplay {
-            indice_jugador,
+            indice_grabacion,
             frames_globales,
             objetos_pista,
             ..meta
