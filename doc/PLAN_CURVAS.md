@@ -120,6 +120,7 @@ El `.ai` mide ~5757 m y **no comparte origen de distancia con las vueltas** en v
 - v2 (fase 13): calibración sobre Monza, Imola, Spa y Mugello (§1.1) sin cambios de
   umbrales; `cargo test --workspace` verde y la guarda `t88` revisa `core/src`,
   `src-tauri/src` y `front/` (sin escrituras ni `localStorage`).
+- v1 (histórico, scripts ya borrados):
 - `ai_smoke.js`: ancho constante, `env.ns`, nº de arcos = 11, orden creciente, Curva Grande y Parabólica derecha, Ascari L-R-L, mapeo identidad+monótono. `exit=0`.
 - `smoke_visualizador.js`: sin regresiones nuevas (queda un `[FAIL] no hay rects de barras` preexistente, ajeno a curvas).
 - `replay_e2e.js`: parsea el `.ai` real (11 arcos) + un `.acreplay` real → 17 vueltas, `grid.slipFL` poblado, marcadores presentes (spin/lock) y `renderTabActiva()` sin excepciones.
@@ -138,10 +139,15 @@ El `.ai` mide ~5757 m y **no comparte origen de distancia con las vueltas** en v
 - No se toca el tab Comparación (sigue con los 3 sectores).
 
 ### Verificación
-- `delta_curvas_smoke.js`: `deltaCurvas(A,A)` → todo 0; `deltaCurvas(A,B)` finito en las 11 curvas y con diferencias; `renderCurvas` sin excepciones; tabla y selector renderizados. `TODO OK`.
+- v2: `cargo test -p core --test curvas` (delta A/B incluido en T54–T64).
+- v1 (histórico, script ya borrado): `delta_curvas_smoke.js`: `deltaCurvas(A,A)` → todo 0; `deltaCurvas(A,B)` finito en las 11 curvas y con diferencias; `renderCurvas` sin excepciones; tabla y selector renderizados. `TODO OK`.
 
 
 ### Archivos afectados
+v2: `core/src/curvas.rs` (detección, métricas y delta), `core/src/dto.rs`
+(`curvas`), `front/app/pestanas/curvas.js` y `front/estilos.css`.
+
+v1 (histórico):
 - `visualizador/app.js`: `parsearAi` (guarda `ns`), `detectarCurvas`, `mapearCurvas`, `calcularCurvas`, `indicesCurva`, `sentidoCurva`, `metricasCurva`, `renderCurvas`, `drawMapaCurvas`, `drawCurvasTiempos`, `drawTractionCurvas`, `puntosDeCurva`, `pintarCirculoTraction`, `dibujarCirculoTraction`, `abrirZoomTraction`, `dibujarZoomTeorico` (rama tracción), `marcaTriangulo`, `marcaCruz`, `hoverCurvas`, `renderTablaCurvas`, `deltaCurvas`, `renderDeltaCurvas`, `drawBarrasDelta`, `tablaDeltaHTML`, `fmtDelta`, `claseDelta`, `poblarSelB`, `ocultarTooltip`, `state.curvas`, ALIAS/series/grid de `slipFL/FR/RL/RR`.
 - `visualizador/index.html`: tab + panel "Curvas" (+ selector A/B y delta por curva).
 - `visualizador/estilos.css`: `.curva-*`, `.traction-*`, `.tabla-delta`/`.delta-gana`/`.delta-pierde`.

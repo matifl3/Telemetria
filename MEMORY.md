@@ -4,7 +4,7 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - Datos solo por sesión (en memoria): al refrescar se pierde todo.
 - Constitución en `doc/constitucion.md` (6 principios) para la v2 Rust + Tauri.
 - v2 completa (fases 0–13): `core` parsea replay v16/`fast_lane.ai` y calcula
-  el análisis; 123 tests verdes y fase 12 verificada por CDP.
+  el análisis; ~130 tests (`cargo test --workspace`) y fase 12 verificada por CDP.
 - Curvas calibradas en Monza, Imola, Spa y Mugello; cero escrituras en runtime.
 ## Decisiones (y por qué)
 - Sin persistencia: datos en memoria; Tauri no escribe datos ni ajustes.
@@ -24,6 +24,8 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - Tiempos en `m:ss.mmm`; lista Vueltas muestra tiempo junto al nombre.
 - Avisos de sesión se acumulan sin duplicados en el menú del encabezado; se limpian al resetear sesión o desde el panel.
 ## Aprendizajes y errores a evitar
+- `kernel32.dll`, `node_modules/` y `.idea/` se colaron en git (revisión 2026-11-20); ya ignorados.
+- En esta PC, `link.exe` de Git tapa al de MSVC: `cargo test` falla con `extra operand`.
 - No crear `docs/`: las docs viven en `doc/`.
 - `doc/PLAN_CURVAS.md` menciona scripts smoke inexistentes — no buscarlos.
 - `detectarCurvas` se duplicó en v1 y `claseDelta` en v2; eliminar duplicados.
@@ -38,11 +40,11 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - Mapa de mejores sectores: usar centro y banda de `fast_lane.ai` de base;
   las mejores trazadas del replay van superpuestas por sector.
 - El aviso `referencia_fallback` se guarda en el historial del encabezado, no se descarta.
-- README actualizado para v2 Tauri + Rust; `visualizador/` es legado. Bundle NSIS activado, instalación manual vía GitHub Releases.
+- README y `AGENTS.md` describen la v2 Tauri + Rust; `visualizador/` es legado. Bundle NSIS activado, instalación manual vía GitHub Releases.
 - Tarea `spec/distribucion/tareas.md`: primer release Windows en NSIS/GitHub Releases; updater queda para después.
-- Avisos de sesión se acumulan sin duplicados en el menú del encabezado; se limpian al resetear sesión o desde el panel.
 - En Vueltas, el control global muestra todas las válidas o deja solo REF visible;
   mantener REF evita perder el acceso al análisis.
 ## Próximos pasos
-- TV06: checklist manual de la pestaña Vueltas con un replay multi-auto
-  (`spec/pestana-vueltas/tareas.md`); TV01–TV05, TV07 y TV08 ya están hechas.
+- Tareas manuales pendientes: TV06 (flujo Vueltas multi-auto), T123 (paridad de
+  los 32 paneles), DIST02/DIST03 (build reproducible e instalación).
+- `spec/modificacion de pista/`: 14 tareas sin empezar.
