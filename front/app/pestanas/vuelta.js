@@ -71,8 +71,8 @@ function renderPestanaVuelta(datos) {
       [grilla, v.acelerador, v.freno],
       [
         serieX(),
-        { label: 'gas', stroke: '#4ade80', width: 2, points: { show: false }, spanGaps: true },
-        { label: 'freno', stroke: '#f87171', width: 2, dash: [6, 4], points: { show: false }, spanGaps: true },
+        { label: 'gas', stroke: COLOR.gas, width: 2, points: { show: false }, spanGaps: true },
+        { label: 'freno', stroke: COLOR.freno, width: 2, dash: [6, 4], points: { show: false }, spanGaps: true },
       ]);
   });
 

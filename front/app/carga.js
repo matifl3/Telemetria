@@ -153,8 +153,12 @@ const cargaArchivos = (() => {
     actualizarEstadoArchivos(state.resumen);
 
     const webview = window.__TAURI__.webviewWindow.getCurrentWebviewWindow();
+    const zonaCarga = $('zona-carga');
     webview.onDragDropEvent((event) => {
-      if (event.payload.type === 'drop') cargarDesdeRutas(event.payload.paths);
+      const tipo = event.payload.type;
+      // Resalta la zona mientras hay archivos arrastrándose sobre la ventana.
+      if (zonaCarga) zonaCarga.classList.toggle('encima', tipo === 'enter' || tipo === 'over');
+      if (tipo === 'drop') cargarDesdeRutas(event.payload.paths);
     });
   }
 

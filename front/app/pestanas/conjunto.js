@@ -44,12 +44,12 @@ function dibujarBarrasTiempos(datos) {
   const filas = datos.tiempos
     .filter((f) => f.tiempo_s != null && f.tiempo_s > 0)
     .map((f) => ({ etiqueta: f.etiqueta, valor: f.tiempo_s, delta: f.delta_s, color: colorDeVuelta(f.id) }));
-  if (!filas.length) { ctx.fillStyle = '#8b97a8'; ctx.fillText('sin tiempos', 12, 20); return; }
+  if (!filas.length) { ctx.fillStyle = COLOR.apagado; ctx.fillText('sin tiempos', 12, 20); return; }
   if (dibujarBarrasHorizontales(ctx, w, h, filas, (d) => fmtTiempo(d.valor) + ' ' + deltaTexto(d.delta))) {
     const valores = filas.map((d) => d.valor);
     const media = valores.reduce((a, v) => a + v, 0) / valores.length;
     const sd = Math.sqrt(valores.reduce((a, v) => a + (v - media) ** 2, 0) / valores.length);
-    ctx.fillStyle = '#8b97a8'; ctx.font = '12px "Segoe UI"';
+    ctx.fillStyle = COLOR.apagado; ctx.font = '12px "Segoe UI"';
     ctx.fillText(`consistencia (σ) = ${sd.toFixed(3)} s   ·   promedio ${fmtTiempo(media)}`, 6, h - 4);
   }
 }
@@ -68,7 +68,7 @@ function dibujarVelMedia(datos) {
     etiqueta: f.etiqueta, valor: f.media_kmh || 0, max: f.maxima_kmh, color: colorDeVuelta(f.id),
   }));
   if (!dibujarBarrasHorizontales(ctx, w, h, filas, (d) => `${(d.valor || 0).toFixed(1)} km/h  máx ${(d.max || 0).toFixed(0)}`)) {
-    ctx.fillStyle = '#8b97a8'; ctx.fillText('sin datos', 12, 20);
+    ctx.fillStyle = COLOR.apagado; ctx.fillText('sin datos', 12, 20);
   }
 }
 
@@ -81,9 +81,9 @@ function dibujarEnvolvente(datos) {
     [env.s, env.minimo, env.promedio, env.maximo],
     [
       serieX(),
-      { label: 'mín', stroke: '#f87171', width: 1.5, points: { show: false }, spanGaps: true },
-      { label: 'promedio', stroke: '#22d3ee', width: 2, points: { show: false }, spanGaps: true },
-      { label: 'máx', stroke: '#4ade80', width: 1.5, points: { show: false }, spanGaps: true },
+      { label: 'mín', stroke: COLOR.freno, width: 1.5, points: { show: false }, spanGaps: true },
+      { label: 'promedio', stroke: COLOR.acento, width: 2, points: { show: false }, spanGaps: true },
+      { label: 'máx', stroke: COLOR.gas, width: 1.5, points: { show: false }, spanGaps: true },
     ]);
 }
 
@@ -101,7 +101,7 @@ function dibujarHistVel(datos) {
     ctx.fillStyle = colorMap(i / (conteo.length - 1));
     ctx.fillRect(pad + i * bw, h - pad - bh, bw - 1, bh);
   }
-  ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+  ctx.fillStyle = COLOR.apagado; ctx.font = '11px "Segoe UI"';
   ctx.fillText('0', pad, h - 8);
   ctx.fillText(`${maxKmh.toFixed(0)} km/h`, w - pad - 50, h - 8);
 }
@@ -120,7 +120,7 @@ function dibujarHistMarchas(datos) {
     ctx.fillStyle = colorMap(i / (conteo.length - 1));
     ctx.fillRect(pad + i * bw + 2, h - pad - bh, bw - 4, bh);
   }
-  ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+  ctx.fillStyle = COLOR.apagado; ctx.font = '11px "Segoe UI"';
   for (let i = 0; i < conteo.length; i++) {
     ctx.textAlign = 'center';
     ctx.fillText(String(i + minima), pad + i * bw + bw / 2, h - 8);
@@ -137,7 +137,7 @@ function dibujarFuel(datos) {
     .filter((f) => f.consumo != null)
     .map((f) => ({ etiqueta: f.etiqueta, valor: f.consumo, color: colorDeVuelta(f.id) }));
   if (!dibujarBarrasHorizontales(ctx, w, h, filas, (d) => `${d.valor.toFixed(1)} u`)) {
-    ctx.fillStyle = '#8b97a8'; ctx.fillText('sin datos de combustible', 12, 20);
+    ctx.fillStyle = COLOR.apagado; ctx.fillText('sin datos de combustible', 12, 20);
   }
 }
 
@@ -159,7 +159,7 @@ function dibujarSectores(datos) {
   const { ctx, w, h, cv } = c;
   const mat = datos.sectores.map((s) => ({ id: s.id, etiqueta: s.etiqueta, valores: s.sectores.map((x) => x.tiempo_s) }));
   const todos = mat.flatMap((m) => m.valores).filter((v) => v != null && v > 0);
-  if (!todos.length) { ctx.fillStyle = '#8b97a8'; ctx.fillText('sin tiempos de sector', 12, 20); return; }
+  if (!todos.length) { ctx.fillStyle = COLOR.apagado; ctx.fillText('sin tiempos de sector', 12, 20); return; }
   const maxS = Math.max(...todos);
   const pad = 28, groupW = (w - pad * 2) / N_SECTORES;
   const barW = groupW / (mat.length + 1);
@@ -177,14 +177,14 @@ function dibujarSectores(datos) {
     const cx = pad + s * groupW + groupW / 2;
     const mejores = mat.map((m) => m.valores[s]).filter((v) => v != null && v > 0);
     if (mejores.length) {
-      ctx.fillStyle = '#8b97a8'; ctx.font = '10px "Consolas", monospace';
+      ctx.fillStyle = COLOR.apagado; ctx.font = '10px "Consolas", monospace';
       ctx.fillText(fmtTiempo(Math.min(...mejores)), cx, h - 3);
     }
-    ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+    ctx.fillStyle = COLOR.apagado; ctx.font = '11px "Segoe UI"';
     ctx.fillText('S' + (s + 1), cx, h - 16);
   }
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+  ctx.fillStyle = COLOR.apagado; ctx.font = '11px "Segoe UI"';
   ctx.fillText('tiempo por sector (s)', 4, 14);
   cv._rects = rects;
   cv.onmousemove = (ev) => moverTooltipRects(ev, cv, $('tt-sectores'), (r) => `S${r.sector + 1} · ${r.etiqueta}: ${fmtTiempo(r.v)}`);
@@ -274,12 +274,12 @@ function marcarLineaMeta(ctx, vista, traza) {
   const p0 = traza.puntos.find((p) => p);
   if (!p0) return;
   const [mx, my] = vista.tf(p0[0], p0[1]);
-  ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(mx, my, 4, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#8b97a8'; ctx.font = '10px "Segoe UI"'; ctx.fillText('S/F', mx + 8, my - 6);
+  ctx.fillStyle = COLOR.blanco; ctx.beginPath(); ctx.arc(mx, my, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = COLOR.apagado; ctx.font = '10px "Segoe UI"'; ctx.fillText('S/F', mx + 8, my - 6);
 }
 
 function leyendaSectorial(ctx, w, h) {
-  ctx.font = '10px "Segoe UI"'; ctx.fillStyle = '#8b97a8';
+  ctx.font = '10px "Segoe UI"'; ctx.fillStyle = COLOR.apagado;
   ctx.fillText('S1', 8, h - 8);
   ctx.fillText('S' + N_SECTORES, w - 30, h - 8);
   const lw = w - 58;
@@ -325,7 +325,7 @@ function pintarTrazadaTeorica(ctx, vista, mapaData, datos, w, h) {
   dibujarBandaPista(ctx, vista.tf, mapaData.pista);
   dibujarCentroPista(ctx, vista.tf, mapaData.pista);
   if (!tramos.length) {
-    ctx.fillStyle = '#8b97a8';
+    ctx.fillStyle = COLOR.apagado;
     ctx.fillText('sin sectores medibles', 8, 20);
     return;
   }
@@ -347,7 +347,7 @@ function pintarTrazadaTeorica(ctx, vista, mapaData, datos, w, h) {
   const usadas = [...new Set(tramos.map((t) => t.vuelta))];
   const resumen = usadas.length === 1 ? `mejor vuelta: ${usadas[0]}` : `mejores sectores de: ${usadas.join(', ')}`;
   if (w != null) {
-    ctx.font = '10px "Segoe UI"'; ctx.fillStyle = '#8b97a8';
+    ctx.font = '10px "Segoe UI"'; ctx.fillStyle = COLOR.apagado;
     ctx.fillText(`fast_lane.ai · ${resumen}`.slice(0, 90), 8, 14);
     leyendaSectorial(ctx, w, h);
   }
@@ -419,13 +419,22 @@ const zoomTeorico = { modo: 'teorica', activo: false, zoom: 1, panX: 0, panY: 0,
 function abrirZoomTeorico(datos) {
   zoomTeorico.datos = datos;
   zoomTeorico.modo = 'teorica';
-  zoomTeorico.activo = true;
   zoomTeorico.zoom = 1; zoomTeorico.panX = 0; zoomTeorico.panY = 0;
-  const ov = $('zoom-teorico');
-  ov.classList.remove('oculto');
-  ov.setAttribute('aria-hidden', 'false');
+  // El overlay es compartido con la tracción por curva: restaurar su título.
+  $('zoom-titulo').textContent = 'Trazada de mejores sectores';
+  mostrarOverlayZoom();
   dibujarZoomTeorico();
   if (!zoomTeorico.listo) { zoomTeorico.listo = true; configurarZoomTeorico(); }
+}
+
+/* Muestra el overlay (modal): guarda el foco previo y lo lleva a "Cerrar". */
+function mostrarOverlayZoom() {
+  const ov = $('zoom-teorico');
+  if (!zoomTeorico.activo) zoomTeorico.focoPrevio = document.activeElement;
+  ov.classList.remove('oculto');
+  ov.setAttribute('aria-hidden', 'false');
+  zoomTeorico.activo = true;
+  $('zoom-cerrar').focus();
 }
 
 function cerrarZoomTeorico() {
@@ -434,6 +443,10 @@ function cerrarZoomTeorico() {
   ov.classList.add('oculto');
   ov.setAttribute('aria-hidden', 'true');
   zoomTeorico.activo = false;
+  zoomTeorico.arrastrando = false;
+  const previo = zoomTeorico.focoPrevio;
+  zoomTeorico.focoPrevio = null;
+  if (previo && previo.isConnected) previo.focus();
 }
 
 function actualizarNivelZoom() {
@@ -466,20 +479,41 @@ function configurarZoomTeorico() {
   $('zoom-out').onclick = () => { zoomTeorico.zoom = clamp(zoomTeorico.zoom / 1.25, 1, 8); dibujarZoomTeorico(); };
   $('zoom-reset').onclick = () => { zoomTeorico.zoom = 1; zoomTeorico.panX = 0; zoomTeorico.panY = 0; dibujarZoomTeorico(); };
   const ov = $('zoom-teorico');
-  ov.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') cerrarZoomTeorico(); });
+  // Escape cierra y Tab queda dentro del overlay mientras está abierto.
+  document.addEventListener('keydown', (ev) => {
+    if (!zoomTeorico.activo) return;
+    if (ev.key === 'Escape') { ev.preventDefault(); cerrarZoomTeorico(); return; }
+    if (ev.key !== 'Tab') return;
+    const enfocables = [...ov.querySelectorAll('button:not(:disabled)')];
+    if (!enfocables.length) return;
+    const primero = enfocables[0];
+    const ultimo = enfocables[enfocables.length - 1];
+    const actual = document.activeElement;
+    if (!ov.contains(actual)) { ev.preventDefault(); primero.focus(); }
+    else if (ev.shiftKey && actual === primero) { ev.preventDefault(); ultimo.focus(); }
+    else if (!ev.shiftKey && actual === ultimo) { ev.preventDefault(); primero.focus(); }
+  });
   const cv = $('ch-mapa-zoom');
   cv.addEventListener('wheel', (ev) => {
     ev.preventDefault();
     zoomTeorico.zoom = clamp(zoomTeorico.zoom * (ev.deltaY < 0 ? 1.1 : 0.9), 1, 8);
     dibujarZoomTeorico();
   }, { passive: false });
-  cv.addEventListener('mousedown', (ev) => { zoomTeorico.arrastrando = true; zoomTeorico.lx = ev.clientX; zoomTeorico.ly = ev.clientY; });
-  window.addEventListener('mousemove', (ev) => {
+  // Pointer events: el arrastre funciona igual con mouse, lápiz o dedo.
+  cv.addEventListener('pointerdown', (ev) => {
+    zoomTeorico.arrastrando = true;
+    zoomTeorico.lx = ev.clientX; zoomTeorico.ly = ev.clientY;
+    cv.setPointerCapture(ev.pointerId);
+  });
+  cv.addEventListener('pointermove', (ev) => {
     if (!zoomTeorico.arrastrando) return;
     zoomTeorico.panX -= ev.clientX - zoomTeorico.lx;
     zoomTeorico.panY -= ev.clientY - zoomTeorico.ly;
     zoomTeorico.lx = ev.clientX; zoomTeorico.ly = ev.clientY;
     dibujarZoomTeorico();
   });
-  window.addEventListener('mouseup', () => { zoomTeorico.arrastrando = false; });
+  const soltar = () => { zoomTeorico.arrastrando = false; };
+  cv.addEventListener('pointerup', soltar);
+  cv.addEventListener('pointercancel', soltar);
+  cv.addEventListener('lostpointercapture', soltar);
 }

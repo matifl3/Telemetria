@@ -20,12 +20,12 @@ function opcionesGrafico(cont, height, yRango, yLabel) {
     scales: { x: { time: false }, y: yRango ? { range: yRango } : { auto: true } },
     axes: [
       {
-        stroke: '#8b97a8', grid: { stroke: 'rgba(255,255,255,0.05)' }, ticks: { stroke: '#2a3444' },
+        stroke: COLOR.apagado, grid: { stroke: 'rgba(255,255,255,0.05)' }, ticks: { stroke: '#2a3444' },
         font: '12px "Segoe UI", sans-serif', label: 'Distancia de pista (m)', labelFont: '12px "Segoe UI", sans-serif',
         size: 42, values: (u, vals) => vals.map((v) => Math.round(v)),
       },
       {
-        stroke: '#8b97a8', grid: { stroke: 'rgba(255,255,255,0.05)' }, ticks: { stroke: '#2a3444' },
+        stroke: COLOR.apagado, grid: { stroke: 'rgba(255,255,255,0.05)' }, ticks: { stroke: '#2a3444' },
         font: '12px "Segoe UI", sans-serif', label: yLabel || '', labelFont: '12px "Segoe UI", sans-serif',
         size: 52, labelSize: 26,
       },

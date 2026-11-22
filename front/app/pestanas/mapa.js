@@ -111,7 +111,7 @@ function dibujarMapaTrazadas(datos) {
 
 /* Etiqueta del canal + escala. */
 function dibujarLeyendaCanal(ctx, w, h, min, max, canal) {
-  ctx.fillStyle = '#8b97a8'; ctx.font = '10px "Segoe UI"';
+  ctx.fillStyle = COLOR.apagado; ctx.font = '10px "Segoe UI"';
   ctx.fillText(canal, 10, h - 32);
   dibujarEscalaColor(ctx, w, h, min, max);
 }
@@ -121,7 +121,7 @@ function dibujarAutoCarga(i) {
   const c = prepCanvas('chart-carga-vivo', 240);
   if (!c || !state.datosVuelta) return;
   const ref = vueltaReferencia();
-  if (!ref) { c.ctx.fillStyle = '#8b97a8'; c.ctx.fillText('Sin vuelta de referencia.', 12, 20); return; }
+  if (!ref) { c.ctx.fillStyle = COLOR.apagado; c.ctx.fillText('Sin vuelta de referencia.', 12, 20); return; }
   const { ctx, w, h } = c;
   const carga = ref.carga;
   const series = [
@@ -135,7 +135,7 @@ function dibujarAutoCarga(i) {
   maxC = maxC || 1;
   const ancho = Math.min(w * 0.56, 240), alto = Math.min(h * 0.5, 130);
   const cx = w / 2, cy = h / 2 + 6;
-  ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+  ctx.fillStyle = COLOR.apagado; ctx.font = '11px "Segoe UI"';
   ctx.fillText('Carga por rueda · ' + ref.etiqueta, 8, 16);
   ctx.textAlign = 'center';
   ctx.fillText('▲ adelante', cx, cy - alto / 2 - 14);
@@ -165,11 +165,11 @@ function dibujarAutoCarga(i) {
     ctx.textAlign = 'center';
     ctx.fillStyle = s.color; ctx.font = 'bold 13px "Segoe UI"';
     ctx.fillText(s.etiqueta, rx + rw / 2, ry + rh + 16);
-    ctx.fillStyle = '#e6ebf2'; ctx.font = '11px "Consolas", monospace';
+    ctx.fillStyle = COLOR.texto; ctx.font = '11px "Consolas", monospace';
     ctx.fillText(v == null ? '–' : Math.round(v).toLocaleString(), rx + rw / 2, ry + rh + 30);
     ctx.textAlign = 'left';
   }
-  ctx.fillStyle = '#8b97a8'; ctx.font = '10px "Segoe UI"';
+  ctx.fillStyle = COLOR.apagado; ctx.font = '10px "Segoe UI"';
   ctx.fillText('0', 10, h - 6);
   ctx.fillText(maxC.toLocaleString() + ' N (máx)', w - 92, h - 6);
   for (let k2 = 0; k2 < w - 102 - 10 - 4; k2++) { ctx.fillStyle = colorMap(k2 / Math.max(w - 102 - 10 - 4, 1)); ctx.fillRect(10 + k2, h - 12, 1, 3); }

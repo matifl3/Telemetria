@@ -53,7 +53,7 @@ function marcaCruz(ctx, x, y, s, color) {
 function dibujarEscalaColor(ctx, w, h, min, max) {
   const lw = 140, lx = 10, ly = h - 22;
   for (let i = 0; i < lw; i++) { ctx.fillStyle = colorMap(i / lw); ctx.fillRect(lx + i, ly, 1, 8); }
-  ctx.fillStyle = '#8b97a8'; ctx.font = '10px "Segoe UI"';
+  ctx.fillStyle = COLOR.apagado; ctx.font = '10px "Segoe UI"';
   if (Number.isFinite(min)) ctx.fillText(Number(min).toFixed(0), lx, ly + 18);
   if (Number.isFinite(max)) ctx.fillText(Number(max).toFixed(0), lx + lw - 20, ly + 18);
 }
@@ -65,11 +65,11 @@ function dibujarBarrasHorizontales(ctx, w, h, datos, formatoValor) {
   const pad = 8, izq = 150, filaH = Math.min(30, (h - pad * 2) / datos.length), anchoMax = w - izq - 70;
   datos.forEach((d, i) => {
     const y = pad + i * filaH;
-    ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+    ctx.fillStyle = COLOR.apagado; ctx.font = '11px "Segoe UI"';
     ctx.fillText(d.etiqueta.slice(0, 24), 6, y + filaH * 0.62);
     const bw = (d.valor / maxValor) * anchoMax;
     ctx.fillStyle = hexA(d.color, 0.85); ctx.fillRect(izq, y + 3, bw, filaH - 8);
-    ctx.fillStyle = '#e6ebf2'; ctx.font = '11px "Consolas", monospace';
+    ctx.fillStyle = COLOR.texto; ctx.font = '11px "Consolas", monospace';
     ctx.fillText(formatoValor(d, izq + bw + 6, y + filaH * 0.62), izq + bw + 6, y + filaH * 0.62);
   });
   return true;

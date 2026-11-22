@@ -23,8 +23,23 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
   `tiempo_s` ascendente. Solo válidas; REF/B y visibilidad por fila.
 - Tiempos en `m:ss.mmm`; lista Vueltas muestra tiempo junto al nombre.
 - Avisos de sesión se acumulan sin duplicados en el menú del encabezado; se limpian al resetear sesión o desde el panel.
+- CSS (2026-11-21): colores/fuentes en variables de `:root`, `@media` juntos al final;
+  canvas propios necesitan alto por CSS o su alto depende del ancho.
+- Pestañas: flechas/Inicio/Fin (`iniciarTabs`); zona de carga resaltada al arrastrar (`.encima`).
+- `PRODUCT.md` (2026-11-22, Impeccable init): usuarios piloto + coach/ingeniero,
+  escritorio en sesiones largas; base para futuras tareas de diseño.
+- `DESIGN.md` + `.impeccable/design.json` (2026-11-22): sistema "El muro de boxes";
+  cian = único acento, resplandores del fondo son identidad (no extender), capas tonales
+  + sombra suave. Pendiente: textos de ayuda a 11 px violan su propio mínimo de 12 px.
+- Auditoría front (2026-11-22, 14/20) y arreglos aplicados el mismo día: overlay de zoom
+  con foco/trampa Tab/Escape (`mostrarOverlayZoom`), tarjetas de tracción `role=button`,
+  lectura ≥12 px, targets ≥24 px (32 con `pointer: coarse`), `touch-action: none` en mapas,
+  títulos de tarjeta `<h2>`, colores de canvas vía `COLOR.*` (utils.js, lee `:root`).
+- Ruedas FL/FR/RL/RR mantienen hex propios (categóricos, no semánticos): no pasarlos a `COLOR`.
+- Overlay de zoom compartido (teórica/tracción): cada apertura fija su título, y `activo`
+  solo lo pone `mostrarOverlayZoom` (si no, no guarda el foco previo).
+- Esta PC ya no tiene MSVC (sin Visual Studio/Build Tools): `cargo build` no linkea.
 ## Aprendizajes y errores a evitar
-- `kernel32.dll`, `node_modules/` y `.idea/` se colaron en git (revisión 2026-11-20); ya ignorados.
 - En esta PC, `link.exe` de Git tapa al de MSVC: `cargo test` falla con `extra operand`.
 - No crear `docs/`: las docs viven en `doc/`.
 - `doc/PLAN_CURVAS.md` menciona scripts smoke inexistentes — no buscarlos.

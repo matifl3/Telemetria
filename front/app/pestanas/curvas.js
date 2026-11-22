@@ -24,13 +24,13 @@ async function renderPestanaCurvas(version = state.version) {
 
 function vaciarCurvas() {
   const c = prepCanvas('ch-mapa-curvas', 260);
-  if (c) { c.ctx.fillStyle = '#8b97a8'; c.ctx.fillText('sin curvas detectadas', 12, 20); }
+  if (c) { c.ctx.fillStyle = COLOR.apagado; c.ctx.fillText('sin curvas detectadas', 12, 20); }
   const t = $('tabla-curvas');
   if (t) t.innerHTML = '<em>Sin curvas detectadas. Cargá el fast_lane.ai.</em>';
   const tr = $('traction-curvas');
   if (tr) tr.innerHTML = '';
   const dc = prepCanvas('ch-delta-curvas', 220);
-  if (dc) { dc.ctx.fillStyle = '#8b97a8'; dc.ctx.fillText('Elegí dos vueltas distintas (A vs B).', 12, 20); }
+  if (dc) { dc.ctx.fillStyle = COLOR.apagado; dc.ctx.fillText('Elegí dos vueltas distintas (A vs B).', 12, 20); }
   const td = $('tabla-curva-delta');
   if (td) td.innerHTML = '<em>Elegí dos vueltas distintas (A vs B).</em>';
 }
@@ -66,7 +66,7 @@ function dibujarTiemposCurvas(datos) {
   const { ctx, w, h, cv } = c;
   const tab = datos.vueltas.map((v) => ({ v, valores: v.metricas.map((m) => m.t_curva) }));
   const todos = tab.flatMap((m) => m.valores).filter((v) => v != null && v > 0);
-  if (!todos.length) { ctx.fillStyle = '#8b97a8'; ctx.fillText('sin tiempos de curva', 12, 20); return; }
+  if (!todos.length) { ctx.fillStyle = COLOR.apagado; ctx.fillText('sin tiempos de curva', 12, 20); return; }
   const maxS = Math.max(...todos);
   const nC = datos.curvas.length;
   const pad = 28, groupW = (w - pad * 2) / nC;
@@ -81,11 +81,11 @@ function dibujarTiemposCurvas(datos) {
     rects.push({ x, y: h - pad - bh, w: Math.max(barW - 2, 1), h: bh, v, vuelta: m.v.etiqueta, ci });
   }));
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#8b97a8';
+  ctx.fillStyle = COLOR.apagado;
   ctx.font = (nC > 22 ? '9px' : '11px') + ' "Segoe UI"';
   for (let i = 0; i < nC; i++) ctx.fillText(datos.curvas[i].nombre, pad + i * groupW + groupW / 2, h - 15);
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#8b97a8'; ctx.font = '11px "Segoe UI"';
+  ctx.fillStyle = COLOR.apagado; ctx.font = '11px "Segoe UI"';
   ctx.fillText('tiempo por curva (s)', 4, 14);
   cv._rects = rects;
   cv.onmousemove = (ev) => moverTooltipRects(ev, cv, $('tt-curvas'), (r) => {
@@ -112,8 +112,11 @@ function dibujarTractionCurvas(datos) {
   datos.curvas.forEach((cx, k) => {
     const card = document.createElement('div');
     card.className = 'traction-curva';
-    card.style.cursor = 'pointer';
-    card.title = 'Click para ampliar';
+    // Tarjeta accionable también con teclado (Tab + Enter/Espacio).
+    card.setAttribute('role', 'button');
+    card.tabIndex = 0;
+    card.setAttribute('aria-label', `Ampliar el círculo de tracción de ${cx.nombre}`);
+    card.title = 'Clic para ampliar';
     const titulo = document.createElement('div');
     titulo.className = 'traction-titulo';
     titulo.innerHTML = `<span>${cx.nombre}</span><span class="unidad">${cx.sentido.slice(0, 3)} · R${(cx.radio_min || 0).toFixed(0)} m</span>`;
@@ -123,7 +126,11 @@ function dibujarTractionCurvas(datos) {
     card.appendChild(cv);
     cont.appendChild(card);
     pintarCirculoTraction(prepararCanvas(cv, 150), porCurva[k], maxG);
-    card.addEventListener('click', () => abrirZoomTractionCurva(datos, k, porCurva[k], maxG));
+    const abrir = () => abrirZoomTractionCurva(datos, k, porCurva[k], maxG);
+    card.addEventListener('click', abrir);
+    card.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); abrir(); }
+    });
   });
 }
 
@@ -202,10 +209,10 @@ function pintarCirculoTraction(c, pts, maxG) {
     const X = px(p.lat), Y = py(p.lon);
     ctx.fillStyle = hexA(p.color, 0.35);
     ctx.fillRect(X - 1, Y - 1, 2, 2);
-    if (p.spin) marcaTriangulo(ctx, X, Y, 5, '#facc15');
-    if (p.lock) marcaCruz(ctx, X, Y, 5, '#f87171');
+    if (p.spin) marcaTriangulo(ctx, X, Y, 5, COLOR.amarillo);
+    if (p.lock) marcaCruz(ctx, X, Y, 5, COLOR.freno);
   }
-  ctx.fillStyle = '#8b97a8'; ctx.font = '10px "Segoe UI"';
+  ctx.fillStyle = COLOR.apagado; ctx.font = '10px "Segoe UI"';
   ctx.fillText(`±${maxG.toFixed(1)} g`, 8, 16);
 }
 
@@ -218,9 +225,7 @@ function abrirZoomTractionCurva(datos, k, pts, maxG) {
   zoomTeorico.datos = { tipo: 'traccion', cx, pts, maxG, titulo: `Tracción · ${cx.nombre} (${cx.sentido}) · R ${(cx.radio_min || 0).toFixed(0)} m` };
   const titulo = $('zoom-titulo');
   if (titulo) titulo.textContent = zoomTeorico.datos.titulo;
-  ov.classList.remove('oculto');
-  ov.setAttribute('aria-hidden', 'false');
-  zoomTeorico.activo = true;
+  mostrarOverlayZoom();
   dibujarZoomTeorico();
   if (!zoomTeorico.listo) { zoomTeorico.listo = true; configurarZoomTeorico(); }
 }
@@ -286,9 +291,9 @@ function dibujarBarrasDeltaCurvas(A, B, datos, hay) {
   if (!c) return;
   const { ctx, w, h } = c;
   ctx.font = '11px "Segoe UI"';
-  if (!hay) { ctx.fillStyle = '#8b97a8'; ctx.fillText('Elegí dos vueltas distintas (A vs B).', 12, 20); return; }
+  if (!hay) { ctx.fillStyle = COLOR.apagado; ctx.fillText('Elegí dos vueltas distintas (A vs B).', 12, 20); return; }
   const vals = datos.delta.curvas.map((d) => d.d_t).filter((v) => v != null);
-  if (!vals.length) { ctx.fillStyle = '#8b97a8'; ctx.fillText('sin tiempos de curva', 12, 20); return; }
+  if (!vals.length) { ctx.fillStyle = COLOR.apagado; ctx.fillText('sin tiempos de curva', 12, 20); return; }
   const maxAbs = Math.max(0.001, ...vals.map(Math.abs));
   const pad = 30, n = datos.delta.curvas.length, groupW = (w - pad * 2) / n, cy = h / 2 + 6;
   ctx.strokeStyle = 'rgba(255,255,255,0.2)';
@@ -298,13 +303,13 @@ function dibujarBarrasDeltaCurvas(A, B, datos, hay) {
     if (d.d_t == null) return;
     const x = pad + i * groupW;
     const bh = (d.d_t / maxAbs) * (h / 2 - pad);
-    ctx.fillStyle = d.d_t >= 0 ? '#f87171' : '#4ade80';
+    ctx.fillStyle = d.d_t >= 0 ? COLOR.freno : COLOR.gas;
     ctx.fillRect(x + 3, d.d_t >= 0 ? cy - bh : cy, Math.max(groupW - 6, 1), Math.abs(bh));
-    ctx.fillStyle = '#8b97a8';
+    ctx.fillStyle = COLOR.apagado;
     ctx.fillText(d.nombre, x + groupW / 2, h - 8);
   });
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#8b97a8';
+  ctx.fillStyle = COLOR.apagado;
   ctx.fillText(`Δ tiempo por curva (s)  ·  ${datos.delta.a.etiqueta} − ${datos.delta.b.etiqueta}  (rojo = A pierde)`, 4, 14);
 }
 

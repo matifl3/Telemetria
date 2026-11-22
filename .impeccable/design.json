@@ -1,0 +1,521 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-22T16:20:29.227Z",
+  "title": "Design System: AC Telemetry Lab",
+  "extensions": {
+    "colorMeta": {
+      "fondo": {
+        "role": "neutral",
+        "displayName": "Asfalto Nocturno",
+        "canonical": "#0b0e13",
+        "tonalRamp": [
+          "#05070a",
+          "#0b0e13",
+          "#10141b",
+          "#151a23",
+          "#1b212c",
+          "#232b38",
+          "#3a4556",
+          "#8b97a8"
+        ]
+      },
+      "fondo-2": {
+        "role": "neutral",
+        "displayName": "Asfalto 2",
+        "canonical": "#10141b",
+        "tonalRamp": [
+          "#05070a",
+          "#0b0e13",
+          "#10141b",
+          "#151a23",
+          "#1b212c",
+          "#232b38",
+          "#3a4556",
+          "#8b97a8"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Panel",
+        "canonical": "#151a23",
+        "tonalRamp": [
+          "#05070a",
+          "#0b0e13",
+          "#10141b",
+          "#151a23",
+          "#1b212c",
+          "#232b38",
+          "#3a4556",
+          "#8b97a8"
+        ]
+      },
+      "panel-2": {
+        "role": "neutral",
+        "displayName": "Panel 2",
+        "canonical": "#1b212c",
+        "tonalRamp": [
+          "#05070a",
+          "#0b0e13",
+          "#10141b",
+          "#151a23",
+          "#1b212c",
+          "#232b38",
+          "#3a4556",
+          "#8b97a8"
+        ]
+      },
+      "borde": {
+        "role": "neutral",
+        "displayName": "Línea de Box",
+        "canonical": "#232b38",
+        "tonalRamp": [
+          "#05070a",
+          "#0b0e13",
+          "#10141b",
+          "#151a23",
+          "#1b212c",
+          "#232b38",
+          "#3a4556",
+          "#8b97a8"
+        ]
+      },
+      "texto": {
+        "role": "neutral",
+        "displayName": "Texto",
+        "canonical": "#e6ebf2",
+        "tonalRamp": [
+          "#2b313a",
+          "#454d59",
+          "#5f6979",
+          "#8b97a8",
+          "#aab4c2",
+          "#c8d0db",
+          "#e6ebf2",
+          "#f6f8fb"
+        ]
+      },
+      "apagado": {
+        "role": "neutral",
+        "displayName": "Apagado",
+        "canonical": "#8b97a8",
+        "tonalRamp": [
+          "#2b313a",
+          "#454d59",
+          "#5f6979",
+          "#8b97a8",
+          "#aab4c2",
+          "#c8d0db",
+          "#e6ebf2",
+          "#f6f8fb"
+        ]
+      },
+      "cian-telemetria": {
+        "role": "primary",
+        "displayName": "Cian Telemetría",
+        "canonical": "#22d3ee",
+        "tonalRamp": [
+          "#04222a",
+          "#0a3f4b",
+          "#0e6273",
+          "#14a6bd",
+          "#22d3ee",
+          "#67e8f9",
+          "#a5f3fc",
+          "#ecfeff"
+        ]
+      },
+      "cian-telemetria-profundo": {
+        "role": "primary",
+        "displayName": "Cian Telemetría Profundo",
+        "canonical": "#14a6bd",
+        "tonalRamp": [
+          "#04222a",
+          "#0a3f4b",
+          "#0e6273",
+          "#14a6bd",
+          "#22d3ee",
+          "#67e8f9",
+          "#a5f3fc",
+          "#ecfeff"
+        ]
+      },
+      "texto-sobre-acento": {
+        "role": "primary",
+        "displayName": "Tinta de Box",
+        "canonical": "#04222a"
+      },
+      "rosa-rival": {
+        "role": "secondary",
+        "displayName": "Rosa Rival",
+        "canonical": "#f472b6",
+        "tonalRamp": [
+          "#2a0716",
+          "#500724",
+          "#831843",
+          "#db2777",
+          "#f472b6",
+          "#f9a8d4",
+          "#fbcfe8",
+          "#fdf2f8"
+        ]
+      },
+      "texto-sobre-rival": {
+        "role": "secondary",
+        "displayName": "Tinta Rival",
+        "canonical": "#2a0716"
+      },
+      "verde-gas": {
+        "role": "tertiary",
+        "displayName": "Verde Gas",
+        "canonical": "#4ade80",
+        "tonalRamp": [
+          "#052e16",
+          "#14532d",
+          "#166534",
+          "#16a34a",
+          "#4ade80",
+          "#86efac",
+          "#bbf7d0",
+          "#f0fdf4"
+        ]
+      },
+      "rojo-freno": {
+        "role": "tertiary",
+        "displayName": "Rojo Freno",
+        "canonical": "#f87171",
+        "tonalRamp": [
+          "#450a0a",
+          "#7f1d1d",
+          "#991b1b",
+          "#dc2626",
+          "#f87171",
+          "#fca5a5",
+          "#fecaca",
+          "#fef2f2"
+        ]
+      },
+      "error-texto": {
+        "role": "tertiary",
+        "displayName": "Rosa Error",
+        "canonical": "#fecaca"
+      },
+      "amarillo-senal": {
+        "role": "tertiary",
+        "displayName": "Amarillo Señal",
+        "canonical": "#facc15",
+        "tonalRamp": [
+          "#422006",
+          "#713f12",
+          "#a16207",
+          "#ca8a04",
+          "#facc15",
+          "#fde047",
+          "#fef08a",
+          "#fefce8"
+        ]
+      },
+      "cian-telemetria-claro": {
+        "role": "primary",
+        "displayName": "Cian Telemetría Claro",
+        "canonical": "#23c7e0",
+        "tonalRamp": [
+          "#04222a",
+          "#0a3f4b",
+          "#0e6273",
+          "#14a6bd",
+          "#22d3ee",
+          "#67e8f9",
+          "#a5f3fc",
+          "#ecfeff"
+        ]
+      },
+      "borde-control": {
+        "role": "neutral",
+        "displayName": "Borde de Control",
+        "canonical": "#606c80",
+        "tonalRamp": [
+          "#05070a",
+          "#0b0e13",
+          "#10141b",
+          "#151a23",
+          "#1b212c",
+          "#232b38",
+          "#3a4556",
+          "#8b97a8"
+        ]
+      },
+      "blanco": {
+        "role": "neutral",
+        "displayName": "Blanco",
+        "canonical": "#ffffff"
+      }
+    },
+    "typographyMeta": {
+      "titulo-carga": {
+        "displayName": "Display",
+        "purpose": "Título de la zona de carga."
+      },
+      "titulo-app": {
+        "displayName": "Headline",
+        "purpose": "Nombre de la app en la barra superior."
+      },
+      "lectura": {
+        "displayName": "Lectura",
+        "purpose": "Valores grandes del panel lateral (readouts)."
+      },
+      "titulo-tarjeta": {
+        "displayName": "Title",
+        "purpose": "Títulos de tarjeta, pestañas, botones."
+      },
+      "cuerpo": {
+        "displayName": "Body",
+        "purpose": "Texto general e ítems de lista."
+      },
+      "ayuda": {
+        "displayName": "Ayuda",
+        "purpose": "Ayudas, leyendas, tablas y controles."
+      },
+      "etiqueta": {
+        "displayName": "Label",
+        "purpose": "Títulos de sección del panel, en mayúsculas."
+      },
+      "dato-mono": {
+        "displayName": "Dato",
+        "purpose": "Tiempos, distancias y valores con cifras tabulares."
+      },
+      "titulo-modal": {
+        "displayName": "Título de modal",
+        "purpose": "Encabezado del overlay de zoom."
+      },
+      "enfasis": {
+        "displayName": "Énfasis",
+        "purpose": "Valor destacado de la vuelta teórica."
+      },
+      "titulo-curva": {
+        "displayName": "Título de curva",
+        "purpose": "Nombre de cada curva en sus bloques."
+      },
+      "etiqueta-tabla": {
+        "displayName": "Etiqueta de tabla",
+        "purpose": "Cabeceras de tabla y etiquetas de lectura, en mayúsculas."
+      },
+      "micro": {
+        "displayName": "Micro",
+        "purpose": "Insignias REF/B, botones de rol y etiquetas de estadística."
+      }
+    },
+    "shadows": [
+      {
+        "name": "ambiental",
+        "value": "0 8px 30px rgba(0, 0, 0, 0.35)",
+        "purpose": "Tarjetas, paneles, barra de pestañas y popovers (--sombra)."
+      },
+      {
+        "name": "tooltip",
+        "value": "0 6px 18px rgba(0, 0, 0, 0.45)",
+        "purpose": "Tooltip flotante de los gráficos."
+      },
+      {
+        "name": "anillo-ref",
+        "value": "0 0 0 1px rgba(34, 211, 238, 0.3)",
+        "purpose": "Refuerza el borde de la vuelta REF."
+      },
+      {
+        "name": "luz-de-muro-logo",
+        "value": "drop-shadow(0 0 10px rgba(34, 211, 238, 0.6))",
+        "purpose": "Brillo cian del logo; firma de identidad."
+      },
+      {
+        "name": "luz-de-muro-scrub",
+        "value": "0 0 8px rgba(34, 211, 238, 0.5)",
+        "purpose": "Pulgar del scrub; 14px / 0.65 en hover."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.23, 1, 0.32, 1)",
+        "purpose": "Transiciones de estado por defecto (150–200 ms)."
+      },
+      {
+        "name": "ease-in-out",
+        "value": "cubic-bezier(0.77, 0, 0.175, 1)",
+        "purpose": "Movimientos de ida y vuelta."
+      },
+      {
+        "name": "rapida",
+        "value": "150ms",
+        "purpose": "Hover de ítems, pestañas, iconos."
+      },
+      {
+        "name": "base",
+        "value": "160ms",
+        "purpose": "Botones."
+      },
+      {
+        "name": "suave",
+        "value": "200ms",
+        "purpose": "Zona de carga, rotación de chevrons."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "minimo",
+        "value": "360px"
+      },
+      {
+        "name": "estrecho",
+        "value": "640px"
+      },
+      {
+        "name": "mapas-apilados",
+        "value": "900px"
+      },
+      {
+        "name": "una-columna",
+        "value": "980px"
+      },
+      {
+        "name": "puntero-grueso",
+        "value": "(pointer: coarse)"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón",
+      "kind": "button",
+      "refersTo": "boton",
+      "description": "Acción estándar, sobria; el borde se enciende en cian al pasar.",
+      "html": "<button class=\"ds-btn\">Limpiar sesión</button>",
+      "css": ".ds-btn { border: 1px solid var(--borde, #232b38); background: var(--panel-2, #1b212c); color: var(--texto, #e6ebf2); padding: 9px 16px; border-radius: 10px; font: 600 13px 'Segoe UI', system-ui, sans-serif; cursor: pointer; transition: transform 160ms cubic-bezier(0.23,1,0.32,1), border-color 160ms ease, color 160ms ease; } .ds-btn:hover { border-color: var(--acento, #22d3ee); color: #fff; transform: translateY(-1px); } .ds-btn:active { transform: scale(0.97); } .ds-btn:focus-visible { outline: 2px solid var(--acento, #22d3ee); outline-offset: 2px; }"
+    },
+    {
+      "name": "Botón primario",
+      "kind": "button",
+      "refersTo": "boton-primario",
+      "description": "La acción principal del contexto; degradado cian.",
+      "html": "<button class=\"ds-btn-primario\">Cargar replay</button>",
+      "css": ".ds-btn-primario { border: 1px solid transparent; background: linear-gradient(180deg, #23c7e0, #14a6bd); color: #04222a; padding: 9px 16px; border-radius: 10px; font: 600 13px 'Segoe UI', system-ui, sans-serif; cursor: pointer; transition: transform 160ms cubic-bezier(0.23,1,0.32,1); } .ds-btn-primario:hover { transform: translateY(-1px); } .ds-btn-primario:active { transform: scale(0.97); } .ds-btn-primario:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; }"
+    },
+    {
+      "name": "Botón fantasma",
+      "kind": "button",
+      "refersTo": "boton-fantasma",
+      "description": "Acción secundaria sin fondo.",
+      "html": "<button class=\"ds-btn-fantasma\">Cargar pista</button>",
+      "css": ".ds-btn-fantasma { border: 1px solid var(--borde, #232b38); background: transparent; color: var(--texto, #e6ebf2); padding: 9px 16px; border-radius: 10px; font: 600 13px 'Segoe UI', system-ui, sans-serif; cursor: pointer; transition: border-color 160ms ease, color 160ms ease; } .ds-btn-fantasma:hover { border-color: var(--acento, #22d3ee); color: #fff; } .ds-btn-fantasma:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; }"
+    },
+    {
+      "name": "Pestañas",
+      "kind": "nav",
+      "refersTo": "pestana-activa",
+      "description": "Barra de pestañas de análisis; la activa toma el degradado cian.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\"><button class=\"ds-tab ds-tab-activa\" role=\"tab\" aria-selected=\"true\">Vuelta</button><button class=\"ds-tab\" role=\"tab\">Vueltas</button><button class=\"ds-tab\" role=\"tab\">Mapa</button><button class=\"ds-tab\" role=\"tab\">Curvas</button></div>",
+      "css": ".ds-tabs { display: flex; gap: 6px; flex-wrap: wrap; background: #151a23; border: 1px solid #232b38; border-radius: 12px; padding: 6px; box-shadow: 0 8px 30px rgba(0,0,0,0.35); } .ds-tab { border: 1px solid transparent; background: transparent; color: #8b97a8; padding: 8px 16px; border-radius: 8px; font: 700 13px 'Segoe UI', system-ui, sans-serif; cursor: pointer; transition: color 150ms cubic-bezier(0.23,1,0.32,1); } .ds-tab:hover { color: #e6ebf2; } .ds-tab:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; } .ds-tab-activa { background: linear-gradient(180deg, #23c7e0, #14a6bd); color: #04222a; }"
+    },
+    {
+      "name": "Ítem de vuelta",
+      "kind": "custom",
+      "refersTo": "item-vuelta",
+      "description": "Fila firma: color, nombre, tiempo tabular e insignia de rol. Variante REF.",
+      "html": "<div class=\"ds-vuelta ds-vuelta-ref\"><span class=\"ds-vuelta-color\" style=\"background:#38bdf8\"></span><span class=\"ds-vuelta-nombre\">Vuelta 3</span><span class=\"ds-badge-ref\">REF</span><span class=\"ds-vuelta-tiempo\">1:47.382</span></div>",
+      "css": ".ds-vuelta { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 10px; background: #1b212c; border: 1px solid transparent; color: #e6ebf2; font: 13px 'Segoe UI', system-ui, sans-serif; cursor: pointer; transition: border-color 150ms cubic-bezier(0.23,1,0.32,1); } .ds-vuelta:hover { border-color: #232b38; } .ds-vuelta-ref { border-color: #22d3ee; box-shadow: 0 0 0 1px rgba(34,211,238,0.3); } .ds-vuelta-color { width: 12px; height: 12px; border-radius: 4px; flex: none; } .ds-vuelta-nombre { font-weight: 600; } .ds-vuelta-tiempo { margin-left: auto; font: 600 13px 'Cascadia Code', Consolas, monospace; font-variant-numeric: tabular-nums; } .ds-badge-ref { font-size: 9px; font-weight: 800; letter-spacing: 0.5px; background: #22d3ee; color: #04222a; padding: 2px 5px; border-radius: 5px; }"
+    },
+    {
+      "name": "Insignias REF / B",
+      "kind": "chip",
+      "refersTo": "insignia-b",
+      "description": "Marcas de rol de la comparación.",
+      "html": "<span class=\"ds-badge ds-badge-a\">REF</span> <span class=\"ds-badge ds-badge-b\">B</span>",
+      "css": ".ds-badge { font: 800 9px 'Segoe UI', system-ui, sans-serif; letter-spacing: 0.5px; padding: 2px 5px; border-radius: 5px; } .ds-badge-a { background: #22d3ee; color: #04222a; } .ds-badge-b { background: #f472b6; color: #2a0716; }"
+    },
+    {
+      "name": "Tarjeta de gráfico",
+      "kind": "card",
+      "refersTo": "tarjeta",
+      "description": "Contenedor de un gráfico, con título y unidad.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-titulo\">Velocidad <span class=\"ds-unidad\">km/h</span></div><div class=\"ds-card-cuerpo\"></div></div>",
+      "css": ".ds-card { background: #151a23; border: 1px solid #232b38; border-radius: 14px; padding: 14px 16px 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.35); color: #e6ebf2; font-family: 'Segoe UI', system-ui, sans-serif; } .ds-card-titulo { font-size: 13px; font-weight: 700; margin-bottom: 8px; display: flex; justify-content: space-between; } .ds-unidad { color: #8b97a8; font-weight: 500; font-size: 11px; } .ds-card-cuerpo { height: 120px; border-radius: 10px; background: #10141b; border: 1px solid #232b38; }"
+    },
+    {
+      "name": "Selector",
+      "kind": "input",
+      "refersTo": "selector",
+      "description": "Desplegable compacto de controles de mapa y comparación.",
+      "html": "<select class=\"ds-select\"><option>Velocidad</option><option>Acelerador</option><option>Freno</option></select>",
+      "css": ".ds-select { background: #1b212c; color: #e6ebf2; border: 1px solid #606c80; border-radius: 8px; padding: 5px 8px; font: 12px 'Segoe UI', system-ui, sans-serif; } .ds-select:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; } .ds-select:disabled { opacity: 0.45; }"
+    },
+    {
+      "name": "Chip de dato",
+      "kind": "chip",
+      "refersTo": "chip-dato",
+      "description": "Dato breve de una curva (tipo, radio).",
+      "html": "<span class=\"ds-chip\">Radio 42 m</span>",
+      "css": ".ds-chip { font: 10px 'Segoe UI', system-ui, sans-serif; color: #8b97a8; background: #151a23; border: 1px solid #232b38; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }"
+    },
+    {
+      "name": "Botón de rol",
+      "kind": "button",
+      "refersTo": "boton-rol",
+      "description": "Fija una vuelta como REF o B; 24 px de alto, 32 px con puntero grueso.",
+      "html": "<button class=\"ds-rol\" aria-pressed=\"true\">REF</button> <button class=\"ds-rol\" aria-pressed=\"false\">B</button>",
+      "css": ".ds-rol { min-width: 34px; min-height: 24px; padding: 4px 7px; border: 1px solid #232b38; border-radius: 7px; background: #10141b; color: #8b97a8; font: 800 10px \"Segoe UI\", system-ui, sans-serif; letter-spacing: 0.4px; cursor: pointer; transition: color 150ms ease, border-color 150ms ease; } .ds-rol:hover { color: #e6ebf2; border-color: #22d3ee; } .ds-rol[aria-pressed=\"true\"] { background: #22d3ee; border-color: #22d3ee; color: #04222a; } .ds-rol:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El muro de boxes",
+    "overview": "AC Telemetry Lab se mira como las pantallas del ingeniero en el pit wall: superficies oscuras, datos densos y color usado solo para señalar. Todo el sistema existe para que el piloto o el coach encuentren rápido dónde la vuelta B pierde tiempo frente a la REF. La interfaz se queda en segundo plano y los trazos de los gráficos son lo más brillante de la pantalla.\n\nLa densidad es alta pero ordenada: barra lateral fija de 300 px con la lista de vueltas, el reproductor y las lecturas, y a la derecha una columna de tarjetas con gráficos. La atmósfera tiene una firma propia y contenida: dos resplandores radiales casi imperceptibles en el fondo (cian arriba a la derecha, rojo abajo a la izquierda) y un brillo cian en el logo y en el control de reproducción. Son la luz del muro, no decoración.\n\nLos controles son precisos y discretos: no compiten con los datos y el acento solo aparece en lo que está activo.",
+    "keyCharacteristics": [
+      "Tema oscuro único, pensado para sesiones largas frente al monitor.",
+      "Un solo acento de interfaz (Cian Telemetría); el resto del color tiene significado de dato.",
+      "Profundidad por capas tonales con sombra ambiental suave.",
+      "Números en monoespaciada con cifras tabulares.",
+      "Español en toda la interfaz; etiquetas cortas en mayúsculas para títulos de panel."
+    ],
+    "rules": [
+      {
+        "name": "La regla de la voz única",
+        "body": "Cian Telemetría es el único color de interfaz. Si un elemento no es activo, REF ni foco, no lleva cian.",
+        "section": "colors"
+      },
+      {
+        "name": "La regla del color con significado",
+        "body": "Verde, rojo y rosa nunca son decoración: verde es gas o ganancia, rojo es freno, pérdida o error, rosa es la vuelta B.",
+        "section": "colors"
+      },
+      {
+        "name": "La regla de la cifra tabular",
+        "body": "Todo tiempo (`m:ss.mmm`), distancia o valor numérico comparable va en `dato-mono` con `font-variant-numeric: tabular-nums`, para que las columnas no bailen.",
+        "section": "typography"
+      },
+      {
+        "name": "La regla de la capa antes que la sombra",
+        "body": "Una superficie nueva se distingue primero por su escalón tonal y su borde. La sombra solo acompaña.",
+        "section": "elevation"
+      },
+      {
+        "name": "La regla de la luz de muro",
+        "body": "Los resplandores del fondo (cian al 8 %, rojo al 6 %) y el brillo cian son la firma del sistema. Se mantienen a baja opacidad y solo en el fondo, el logo y el control de reproducción. No se extienden a tarjetas ni a texto.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do usar las variables de `:root` (`--panel`, `--borde`, `--acento`, …) para todo color nuevo; nada de hex sueltos en CSS. En canvas y uPlot, usar `COLOR.*` (`front/app/utils.js`), que lee esas mismas variables.",
+      "Do reservar Cian Telemetría para lo activo, la REF y el foco, y Rosa Rival para la vuelta B.",
+      "Do escribir tiempos y valores en `--fuente-mono` con cifras tabulares.",
+      "Do separar superficies por escalón tonal + borde de 1 px, y sumar `--sombra` solo como refuerzo.",
+      "Do dar alto fijo por CSS a todo canvas nuevo y registrar el gráfico en `doc/Catalogo_Graficos.md`.",
+      "Do respetar `prefers-reduced-motion` y dejar las elevaciones de hover detrás de `(hover: hover) and (pointer: fine)`.",
+      "Do usar las curvas `--ease-out` / `--ease-in-out` con transiciones de 150–200 ms.",
+      "Do llevar el foco a \"Cerrar\" al abrir un overlay, mantener Tab dentro, cerrar con Escape y devolver el foco a quien lo abrió."
+    ],
+    "donts": [
+      "Don't añadir un segundo acento de interfaz ni usar verde, rojo o rosa como decoración.",
+      "Don't llevar los resplandores ni el brillo cian a tarjetas, texto o componentes nuevos; viven en el fondo, el logo y el scrub.",
+      "Don't introducir un tema claro, una fuente web externa ni un framework de UI (el front es HTML/CSS/JS plano y offline).",
+      "Don't depender solo de la sombra para separar una superficie del fondo.",
+      "Don't bajar texto de lectura (ayudas, tablas, cuerpo) de 12 px. Los tamaños de 9–11 px quedan para etiquetas en mayúsculas e insignias."
+    ]
+  }
+}

@@ -53,6 +53,7 @@ function cambiarTab(nombre) {
     const activo = t.dataset.tab === nombre;
     t.classList.toggle('activo', activo);
     t.setAttribute('aria-selected', String(activo));
+    t.tabIndex = activo ? 0 : -1;
   });
   document.querySelectorAll('.tab-panel').forEach((p) => {
     p.classList.toggle('activo', p.id === `panel-${nombre}`);
@@ -62,8 +63,21 @@ function cambiarTab(nombre) {
 }
 
 function iniciarTabs() {
-  document.querySelectorAll('.tab[data-tab]').forEach((t) => {
+  const tabs = Array.from(document.querySelectorAll('.tab[data-tab]'));
+  tabs.forEach((t, i) => {
     t.addEventListener('click', () => cambiarTab(t.dataset.tab));
+    // Patrón de pestañas accesible: flechas, Inicio y Fin mueven y activan.
+    t.addEventListener('keydown', (ev) => {
+      let destino = null;
+      if (ev.key === 'ArrowRight') destino = tabs[(i + 1) % tabs.length];
+      else if (ev.key === 'ArrowLeft') destino = tabs[(i - 1 + tabs.length) % tabs.length];
+      else if (ev.key === 'Home') destino = tabs[0];
+      else if (ev.key === 'End') destino = tabs[tabs.length - 1];
+      if (!destino) return;
+      ev.preventDefault();
+      destino.focus();
+      cambiarTab(destino.dataset.tab);
+    });
   });
 }
 

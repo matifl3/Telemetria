@@ -60,6 +60,8 @@ function stateVista(cv) {
 function adjuntarInteraccionMapa(cv, redibujar) {
   if (!cv) return;
   cv.style.cursor = 'grab';
+  // Sin esto, en táctil el navegador usa el arrastre para desplazar la página.
+  cv.style.touchAction = 'none';
   cv.addEventListener('wheel', (e) => {
     e.preventDefault();
     zoomMapaVista(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - cv.getBoundingClientRect().left, e.clientY - cv.getBoundingClientRect().top, cv, redibujar);
@@ -229,7 +231,7 @@ function dibujarMarcadoresRef(ctx, tf, traza, opts) {
         const p = traza.puntos[i];
         if (!p) continue;
         const [px, py] = tf(p[0], p[1]);
-        ctx.fillStyle = '#f87171';
+        ctx.fillStyle = COLOR.freno;
         ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
       }
       prev = v;
@@ -244,14 +246,14 @@ function dibujarMarcadoresRef(ctx, tf, traza, opts) {
       if (!p) continue;
       const [px, py] = tf(p[0], p[1]);
       ctx.font = '12px "Segoe UI"';
-      ctx.fillStyle = b > a ? '#4ade80' : '#facc15';
+      ctx.fillStyle = b > a ? COLOR.gas : COLOR.amarillo;
       ctx.fillText(b > a ? '↑' : '↓', px - 4, py - 4);
     }
   }
   const p0 = (traza.puntos || []).find((p) => p);
   if (p0) {
     const [mx, my] = tf(p0[0], p0[1]);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = COLOR.blanco;
     ctx.beginPath(); ctx.arc(mx, my, 4, 0, Math.PI * 2); ctx.fill();
     ctx.font = '11px "Segoe UI"'; ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillText('S/F', mx + 8, my - 6);
   }

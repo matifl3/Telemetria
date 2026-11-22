@@ -19,20 +19,20 @@ async function renderPestanaComparacion(version = state.version) {
     [d.grilla, d.delta_tiempo],
     [
       serieX(),
-      { label: 'Δ t', stroke: '#22d3ee', width: 2, points: { show: false }, spanGaps: true },
+      { label: 'Δ t', stroke: COLOR.acento, width: 2, points: { show: false }, spanGaps: true },
     ]);
   lineChart($('chart-dvel'), 180, null, 'Δ velocidad (km/h)',
     [d.grilla, d.delta_velocidad_kmh],
     [
       serieX(),
-      { label: 'Δ v', stroke: '#4ade80', width: 2, points: { show: false }, spanGaps: true },
+      { label: 'Δ v', stroke: COLOR.gas, width: 2, points: { show: false }, spanGaps: true },
     ]);
   lineChart($('chart-dped'), 180, [-1.05, 1.05], 'Δ gas / freno',
     [d.grilla, d.delta_pedales.gas, d.delta_pedales.freno],
     [
       serieX(),
-      { label: 'Δ gas', stroke: '#4ade80', width: 2, points: { show: false }, spanGaps: true },
-      { label: 'Δ freno', stroke: '#f87171', width: 2, dash: [6, 4], points: { show: false }, spanGaps: true },
+      { label: 'Δ gas', stroke: COLOR.gas, width: 2, points: { show: false }, spanGaps: true },
+      { label: 'Δ freno', stroke: COLOR.freno, width: 2, dash: [6, 4], points: { show: false }, spanGaps: true },
     ]);
   actualizarPorIdx({ moverCursor: true });
 }
@@ -44,7 +44,7 @@ function vaciarComparacion(msg) {
     if (el) el.innerHTML = `<p class="hint" style="margin:6px">${msg}</p>`;
   }
   const c = prepCanvas('ch-mini-delta', 120);
-  if (c) c.ctx.fillStyle = '#8b97a8';
+  if (c) c.ctx.fillStyle = COLOR.apagado;
   if (c) { c.ctx.font = '13px "Segoe UI"'; c.ctx.fillText(msg.slice(0, 70), 10, 24); }
 }
 
@@ -78,7 +78,7 @@ function deltaATexto(v) {
 }
 
 function colorDelta(v) {
-  return v > 0.005 ? '#f87171' : v < -0.005 ? '#4ade80' : '#8b97a8';
+  return v > 0.005 ? COLOR.freno : v < -0.005 ? COLOR.gas : COLOR.apagado;
 }
 
 function ultimoValor(arr) {

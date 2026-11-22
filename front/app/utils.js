@@ -5,6 +5,22 @@
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
+/* Colores de tema para canvas y uPlot, leídos de las variables de :root
+   (estilos.css) para que no se desfasen del CSS. */
+const COLOR = (() => {
+  const css = getComputedStyle(document.documentElement);
+  const leer = (variable, porDefecto) => css.getPropertyValue(variable).trim() || porDefecto;
+  return {
+    apagado: leer('--muted', '#8b97a8'),
+    texto: leer('--texto', '#e6ebf2'),
+    acento: leer('--acento', '#22d3ee'),
+    gas: leer('--gas', '#4ade80'),
+    freno: leer('--freno', '#f87171'),
+    amarillo: leer('--amarillo', '#facc15'),
+    blanco: leer('--blanco', '#ffffff'),
+  };
+})();
+
 const idVuelta = (v) => `${v.auto}#${v.numero_local}`;
 const mismaId = (a, b) => a && b && a.auto === b.auto && a.numero_local === b.numero_local;
 
