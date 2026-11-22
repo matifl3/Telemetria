@@ -44,8 +44,10 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - Colores de canvas/uPlot vía `COLOR.*` (utils.js, lee `:root`); las ruedas FL/FR/RL/RR
   conservan hex propios (categóricos).
 ## Aprendizajes y errores a evitar
-- `link.exe` de Git tapa al de MSVC (`extra operand`); el 2026-11-22 tampoco se encontró
-  MSVC instalado, así que `cargo build` no linkeó en esa sesión.
+- Compilar en esta PC (2026-11-22): Build Tools MSVC mínimas en `D:\BuildTools`; usar
+  `cmd /c "call D:\BuildTools\VC\Auxiliary\Build\vcvars64.bat && cargo build -p ac-telemetry-lab
+  --target-dir D:\herramientas\telemetria-target-msvc"` (vcvars evita el `link.exe` de Git).
+  C: casi lleno: no compilar en `target\` del repo.
 - Tras editar `front/`, `cargo build -p ac-telemetry-lab`: el front va embebido.
 - Verificación visual por CDP: lanzar con
   `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9333`, cargar con
