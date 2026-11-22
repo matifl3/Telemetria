@@ -33,12 +33,67 @@ async function renderPestanaComparacion(version = state.version) {
       { label: 'Δ gas', stroke: '#4ade80', width: 2, points: { show: false }, spanGaps: true },
       { label: 'Δ freno', stroke: '#f87171', width: 2, dash: [6, 4], points: { show: false }, spanGaps: true },
     ]);
+  dibujarPendienteDelta(d);
+  renderRanking(d);
   actualizarPorIdx({ moverCursor: true });
+}
+
+/* Pendiente del delta con las zonas de pérdida del ranking sombreadas (ING41). */
+function dibujarPendienteDelta(d) {
+  const cont = $('chart-pendiente');
+  if (!cont) return;
+  const pend = d.pendiente_delta || [];
+  if (!pend.length) { cont.innerHTML = '<p class="hint" style="margin:6px">Sin datos de pendiente.</p>'; return; }
+  const zonas = (d.ranking && d.ranking.perdidas) || [];
+  const enZona = (s) => zonas.some((z) => (z.s_ini <= z.s_fin ? s >= z.s_ini && s <= z.s_fin : s >= z.s_ini || s <= z.s_fin));
+  const sombreado = d.grilla.map((s, i) => (enZona(s) ? pend[i] : null));
+  lineChart(cont, 160, null, 's / 100 m',
+    [d.grilla, pend, sombreado],
+    [
+      serieX(),
+      { label: 'pendiente', stroke: '#22d3ee', width: 1.5, points: { show: false }, spanGaps: false },
+      { label: 'zona del ranking', stroke: '#f87171', width: 2, fill: 'rgba(248,113,113,0.22)', points: { show: false }, spanGaps: false },
+    ]);
+}
+
+/* Tabla de zonas de pérdida y ganancia con su causa probable (ING42). */
+function renderRanking(d) {
+  const cont = $('ranking-perdidas');
+  if (!cont) return;
+  const r = d.ranking;
+  if (!r) { cont.innerHTML = '<em class="vacio">Elegí una vuelta B para ver dónde se pierde tiempo.</em>'; return; }
+  const aviso = d.mismo_auto === false
+    ? '<p class="aviso-autos">A y B son autos distintos: las diferencias de pedal, volante y velocidad punta son orientativas.</p>'
+    : '';
+  const fila = (z, i, clase) => `<tr tabindex="0" data-s="${z.s_pendiente_max ?? z.s_ini ?? 0}" aria-label="Ir a ${z.nombre}">
+      <td class="pos">${i + 1}</td>
+      <td>${z.nombre}</td>
+      <td class="mono ${clase}">${fmtDelta(z.perdida_s, 's', 3)}</td>
+      <td class="mono">${z.porcentaje != null ? z.porcentaje.toFixed(0) + ' %' : '–'}</td>
+      <td class="mono">${z.s_ini != null ? Math.round(z.s_ini) : '–'}–${z.s_fin != null ? Math.round(z.s_fin) : '–'} m</td>
+      <td class="causas">${z.causas.length ? z.causas.join(' · ') : '–'}</td>
+    </tr>`;
+  const perdidas = r.perdidas.map((z, i) => fila(z, i, 'delta-pierde')).join('');
+  const ganancias = r.ganancias.map((z, i) => fila(z, i, 'delta-gana')).join('');
+  const total = r.delta_total_s != null ? fmtDelta(r.delta_total_s, 's', 3) : '–';
+  cont.innerHTML = aviso + `<table class="tabla-delta tabla-ranking">
+    <thead><tr><th>#</th><th>Zona</th><th title="Tiempo que pierde A en la zona">Pérdida</th>
+      <th title="Parte de la suma de todas las pérdidas">% pérdidas</th><th>Tramo</th><th>Causa probable</th></tr></thead>
+    <tbody>
+      ${perdidas || '<tr><td colspan="6"><em>A no pierde tiempo en ninguna zona.</em></td></tr>'}
+      ${ganancias ? '<tr class="sub-titulo"><td colspan="6">Donde A gana</td></tr>' + ganancias : ''}
+    </tbody></table>
+    <p class="delta-leyenda">Delta de la vuelta: ${total}. La suma de todas las zonas da ese delta. Las causas salen de reglas sobre frenada, pedales, balance y slip; son una pista, no una certeza.</p>`;
+  cont.querySelectorAll('tbody tr[data-s]').forEach((tr) => {
+    const ir = () => irA(Number(tr.dataset.s));
+    tr.addEventListener('click', ir);
+    tr.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ir(); } });
+  });
 }
 
 function vaciarComparacion(msg) {
   destroyCharts();
-  for (const id of ['chart-delta', 'chart-dvel', 'chart-dped']) {
+  for (const id of ['chart-delta', 'chart-dvel', 'chart-dped', 'chart-pendiente', 'ranking-perdidas']) {
     const el = $(id);
     if (el) el.innerHTML = `<p class="hint" style="margin:6px">${msg}</p>`;
   }

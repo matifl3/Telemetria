@@ -150,6 +150,17 @@ Comparación directa entre vueltas elegidas (usar la vuelta de referencia "REF")
 |---|---|---|---|---|
 | Mini-deltas por sector | Quién gana/pierde en cada tramo | dist, `velocidad_kmh` | 🔴 | Media |
 
+### 3.4 Análisis de ingeniero (spec/analisis-ingeniero)
+
+| Gráfico | Qué muestra | Datos | Estado | Prioridad |
+|---|---|---|---|---|
+| Pendiente del delta (Comparación, `chart-pendiente`) | s perdidos cada 100 m; zonas del ranking sombreadas | `pendiente_delta`, `ranking.perdidas` | 🔴 | Alta |
+| Dónde pierde tiempo A (Comparación, `ranking-perdidas`) | Tabla de zonas con pérdida, % y causa probable; click = ir a la zona | `ranking` | 🔴 | Alta |
+| Fases de curva (Curvas, `tabla-fases-curvas`) | Frenada, freno máx, trail, coasting y vértice→gas A / B, Δt por fase | `analisis[].fases`, `delta.fases` | 🔴 | Alta |
+| Balance y slip (Curvas, `tabla-balance-slip`) | Sub/sobreviraje por fase y bloqueos/patinamientos por curva | `analisis[].balance`, `analisis[].resumen_slip` | 🔴 | Media |
+| Consistencia por curva (Conjunto, `tabla-consistencia`) | Curvas de la más irregular a la más repetible y qué varía | `consistencia.curvas` | 🔴 | Media |
+| Dispersión de velocidad (Conjunto, `chart-desvio-vel`) | Desvío estándar de la velocidad entre vueltas por metro | `consistencia.desvio_velocidad` | 🔴 | Media |
+
 ---
 
 

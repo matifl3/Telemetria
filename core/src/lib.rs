@@ -6,19 +6,25 @@
 pub mod acreplay;
 pub mod agregados;
 pub mod alineado;
+pub mod balance;
 pub mod clasificacion;
 pub mod comparacion;
+pub mod consistencia;
 pub mod curvas;
 pub mod dto;
 pub mod error;
+pub mod fases;
 pub mod grilla;
 pub mod lector;
 pub mod mapa;
 pub mod modelo;
 pub mod pista;
 pub mod proyeccion;
+pub mod ranking;
 pub mod sectores;
+pub mod senales;
 pub mod sesion;
+pub mod slip;
 pub mod vuelta;
 
 pub use error::{ErrorFormato, Motivo, Resultado};

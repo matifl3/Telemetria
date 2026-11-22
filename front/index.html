@@ -235,6 +235,14 @@
             </div>
           </div>
           <div class="grafico-card">
+            <div class="grafico-titulo">Consistencia por curva <span class="unidad">de la más irregular a la más repetible</span></div>
+            <div id="tabla-consistencia" class="tabla-delta-wrap"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Dispersión de velocidad <span class="unidad">desvío estándar entre vueltas · km/h</span></div>
+            <div id="chart-desvio-vel" class="plot"></div>
+          </div>
+          <div class="grafico-card">
             <div class="grafico-titulo">Resumen por vuelta</div>
             <div id="tabla-resumen"></div>
           </div>
@@ -254,6 +262,14 @@
           <div class="grafico-card">
             <div class="grafico-titulo">Delta A − B <span class="unidad">s (positivo = A más lento)</span></div>
             <div id="chart-delta" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Pendiente del delta <span class="unidad">s cada 100 m · sombreado = zonas del ranking</span></div>
+            <div id="chart-pendiente" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Dónde pierde tiempo A <span class="unidad">frente a B · tocá una fila para ir a la zona</span></div>
+            <div id="ranking-perdidas" class="tabla-delta-wrap" aria-live="polite"></div>
           </div>
           <div class="grafico-card">
             <div class="grafico-titulo">Diferencia de velocidad <span class="unidad">km/h</span></div>
@@ -298,6 +314,14 @@
             <div class="grafico-titulo">Delta por curva <span class="unidad">A − B · ventana = arco</span></div>
             <canvas id="ch-delta-curvas"></canvas>
             <div id="tabla-curva-delta" class="tabla-delta-wrap"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Fases de curva <span class="unidad">frenada · trail braking · coasting · gas a fondo · A vs B</span></div>
+            <div id="tabla-fases-curvas" class="tabla-delta-wrap"></div>
+          </div>
+          <div class="grafico-card">
+            <div class="grafico-titulo">Balance y slip <span class="unidad">sub/sobreviraje por fase · bloqueos y patinamiento</span></div>
+            <div id="tabla-balance-slip" class="tabla-delta-wrap"></div>
           </div>
         </div>
       </section>

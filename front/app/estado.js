@@ -5,9 +5,6 @@
 const PALETA = ['#38bdf8', '#f472b6', '#4ade80', '#facc15', '#a78bfa', '#fb923c', '#22d3ee', '#f87171', '#c084fc', '#fde047'];
 const G = 9.80665;
 const N_SECTORES = 3;
-const SLIP_SPIN = 0.15;
-const SLIP_LOCK = -0.3;
-const SLIP_VEL_MIN = 30;
 
 const state = {
   resumen: null,          // último DtoResumen (cargo/selector/avisos)

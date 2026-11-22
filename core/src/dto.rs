@@ -6,15 +6,20 @@
 use serde::Serialize;
 
 use crate::agregados::{self, BINS_VELOCIDAD};
-use crate::alineado::alinear_vuelta;
+use crate::alineado::{alinear_vuelta, VueltaAlineada};
+use crate::balance::{self, BalanceCurva, Diagnostico};
 use crate::comparacion;
-use crate::curvas::{self, CanalesAlineados};
+use crate::consistencia::{self, VueltaConsistencia};
+use crate::curvas::{self, CanalesAlineados, CurvaPista};
+use crate::fases::{self, DeltaFasesCurva, Fase, FasesCurva};
 use crate::grilla::{grilla_de_pista, Grilla};
 use crate::mapa::{self, Bounds, Proyeccion};
 use crate::modelo::INDICE_JUGADOR;
 use crate::pista::Pista;
+use crate::ranking::{self, DatosVuelta, Segmento};
 use crate::sectores::{sectores_de_vuelta, vuelta_teorica, N_SECTORES};
 use crate::sesion::{CodigoAviso, Sesion};
+use crate::slip::{self, EventoSlip, RUEDAS};
 use crate::vuelta::{MotivoVuelta, Vuelta, VueltaId};
 
 const G: f64 = 9.806_65;
@@ -155,6 +160,8 @@ pub struct DtoVueltaCanales {
     pub carga: DtoCargaRuedas,
     pub slip_ratio_delantera_izquierda: Vec<Option<f64>>,
     pub slip_ratio_delantera_derecha: Vec<Option<f64>>,
+    pub slip_ratio_trasera_izquierda: Vec<Option<f64>>,
+    pub slip_ratio_trasera_derecha: Vec<Option<f64>>,
     pub x: Vec<Option<f64>>,
     pub y: Vec<Option<f64>>,
     pub z: Vec<Option<f64>>,
@@ -410,6 +417,8 @@ pub struct DtoConjunto {
     pub tabla: Vec<DtoFilaResumen>,
     pub teorica: DtoVueltaTeorica,
     pub mapa: DtoMapa,
+    /// Consistencia entre vueltas del auto de la REF (ING40).
+    pub consistencia: DtoConsistencia,
 }
 
 /// Cabecera de una vuelta comparada.
@@ -439,6 +448,12 @@ pub struct DtoComparacion {
     pub delta_velocidad_kmh: Vec<Option<f64>>,
     pub delta_pedales: DtoDeltaPedales,
     pub delta_sectores: Vec<Option<f64>>,
+    /// Pendiente del delta acumulado (s cada 100 m) (ING34).
+    pub pendiente_delta: Vec<Option<f64>>,
+    /// Ranking de zonas de pérdida de A frente a B (ING34).
+    pub ranking: Option<DtoRanking>,
+    /// `true` si A y B son el mismo modelo de auto.
+    pub mismo_auto: Option<bool>,
 }
 
 /// Métricas de una vuelta dentro de una curva.
@@ -481,6 +496,10 @@ pub struct DtoDeltaCurvas {
     pub a: DtoCabeceraVuelta,
     pub b: DtoCabeceraVuelta,
     pub curvas: Vec<DtoDeltaCurva>,
+    /// Delta A − B por fase de cada curva (ING17).
+    pub fases: Vec<DtoDeltaFasesCurva>,
+    /// `true` si A y B son el mismo modelo de auto.
+    pub mismo_auto: bool,
 }
 
 /// Datos de la pestaña Curvas (T94).
@@ -490,6 +509,10 @@ pub struct DtoCurvas {
     pub vueltas: Vec<DtoCurvasVuelta>,
     pub delta: Option<DtoDeltaCurvas>,
     pub mapa: DtoMapa,
+    /// Fases, balance y slip por vuelta visible (ING17, ING22, ING27).
+    pub analisis: Vec<DtoAnalisisVuelta>,
+    /// Umbrales de slip que usa `core`, para marcar puntos en la UI (ING18).
+    pub umbrales_slip: DtoUmbralesSlip,
 }
 
 /// Construye el resumen de la sesión.
@@ -717,6 +740,7 @@ pub fn conjunto(sesion: &Sesion) -> DtoConjunto {
             potencial_s: numero(teorica.potencial_s),
         },
         mapa: mapa_de_vueltas(Some(pista), &vueltas, Proyeccion::default()),
+        consistencia: dto_consistencia(&vueltas, pista.curvas(), &grilla),
     }
 }
 
@@ -751,6 +775,28 @@ pub fn comparacion(sesion: &Sesion) -> DtoComparacion {
         .into_iter()
         .map(numero)
         .collect();
+
+    let curvas = pista.curvas();
+    let alineada_a = alinear_vuelta(a, &grilla);
+    let alineada_b = alinear_vuelta(b, &grilla);
+    let analisis_a = analizar(&alineada_a, curvas);
+    let analisis_b = analizar(&alineada_b, curvas);
+    let deltas = fases::delta_fases(&analisis_a.fases, &analisis_b.fases, grilla.longitud_m);
+    let resultado = ranking::ranking(
+        &dto.delta_tiempo,
+        &analisis_a.datos(&alineada_a),
+        &analisis_b.datos(&alineada_b),
+        &deltas,
+    );
+    dto.pendiente_delta = f64s(&ranking::pendiente_delta(&dto.delta_tiempo, &grilla.s));
+    dto.ranking = Some(DtoRanking {
+        delta_total_s: numero(resultado.delta_total_s),
+        suma_perdidas_s: numero(resultado.suma_perdidas_s),
+        perdidas: resultado.perdidas.iter().map(dto_segmento).collect(),
+        ganancias: resultado.ganancias.iter().map(dto_segmento).collect(),
+        segmentos: resultado.segmentos.iter().map(dto_segmento).collect(),
+    });
+    dto.mismo_auto = Some(mismo_auto(sesion, a, b));
     dto
 }
 
@@ -815,7 +861,15 @@ pub fn curvas(sesion: &Sesion) -> DtoCurvas {
             gas: &alineada_b.gas,
             tiempo: &alineada_b.tiempo,
         };
+        let fases_a = fases::fases_de_vuelta(&alineada_a, curvas);
+        let fases_b = fases::fases_de_vuelta(&alineada_b, curvas);
+        let delta_fases = fases::delta_fases(&fases_a, &fases_b, grilla.longitud_m)
+            .iter()
+            .map(dto_delta_fases)
+            .collect();
         DtoDeltaCurvas {
+            fases: delta_fases,
+            mismo_auto: mismo_auto(sesion, a, b),
             a: cabecera(sesion, a),
             b: cabecera(sesion, b),
             curvas: curvas::delta_curvas(curvas, &canales_a, &canales_b)
@@ -833,11 +887,38 @@ pub fn curvas(sesion: &Sesion) -> DtoCurvas {
         }
     });
 
+    let analisis = visibles
+        .iter()
+        .map(|vuelta| {
+            let alineada = alinear_vuelta(vuelta, &grilla);
+            let resultado = analizar(&alineada, curvas);
+            DtoAnalisisVuelta {
+                id: vuelta.id.into(),
+                etiqueta: vuelta.etiqueta.clone(),
+                fases: resultado.fases.iter().map(dto_fases).collect(),
+                balance: resultado.balance_curvas.iter().map(dto_balance).collect(),
+                calibracion_neutra: resultado.calibracion_neutra,
+                eventos_slip: resultado.eventos.iter().map(dto_evento).collect(),
+                resumen_slip: slip::resumen_por_curva(&resultado.eventos)
+                    .into_iter()
+                    .map(|r| DtoResumenSlip {
+                        n: r.n,
+                        bloqueos: r.bloqueos,
+                        patinamientos: r.patinamientos,
+                        rueda_principal: r.rueda_principal.map(|rueda| RUEDAS[rueda].to_string()),
+                    })
+                    .collect(),
+            }
+        })
+        .collect();
+
     DtoCurvas {
         curvas: curvas.iter().map(Into::into).collect(),
         vueltas,
         delta,
         mapa: mapa_de_vueltas(Some(pista), &visibles, Proyeccion::default()),
+        analisis,
+        umbrales_slip: DtoUmbralesSlip::default(),
     }
 }
 
@@ -870,6 +951,7 @@ fn conjunto_vacio(auto: Option<usize>, grilla: Option<Grilla>) -> DtoConjunto {
             bounds: DtoBounds::default(),
             curvas: Vec::new(),
         },
+        consistencia: DtoConsistencia::default(),
     }
 }
 
@@ -902,6 +984,8 @@ fn canales(vuelta: &Vuelta, grilla: &Grilla) -> DtoVueltaCanales {
         },
         slip_ratio_delantera_izquierda: f32s(&alineada.slip_ratio[0]),
         slip_ratio_delantera_derecha: f32s(&alineada.slip_ratio[1]),
+        slip_ratio_trasera_izquierda: f32s(&alineada.slip_ratio[2]),
+        slip_ratio_trasera_derecha: f32s(&alineada.slip_ratio[3]),
         x: f32s(&alineada.x),
         y: f32s(&alineada.y),
         z: f32s(&alineada.z),
@@ -1095,4 +1179,355 @@ fn punto(x: f64, y: f64) -> Option<[f64; 2]> {
 
 fn numero(valor: f64) -> Option<f64> {
     valor.is_finite().then_some(valor)
+}
+
+// ---------------------------------------------------------------------------
+// Análisis de ingeniero (spec/analisis-ingeniero/tareas.md)
+// ---------------------------------------------------------------------------
+
+/// Umbrales de slip de `core` (ING18).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct DtoUmbralesSlip {
+    pub bloqueo: f64,
+    pub patinamiento: f64,
+    pub velocidad_min_kmh: f64,
+}
+
+impl Default for DtoUmbralesSlip {
+    fn default() -> Self {
+        Self {
+            bloqueo: slip::SLIP_BLOQUEO as f64,
+            patinamiento: slip::SLIP_PATINA as f64,
+            velocidad_min_kmh: slip::SLIP_VEL_MIN as f64,
+        }
+    }
+}
+
+/// Fases y métricas de una vuelta en una curva (ING17).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct DtoFasesCurva {
+    pub n: usize,
+    pub nombre: String,
+    pub con_frenada: bool,
+    pub s_inicio_frenada: Option<f64>,
+    pub s_turn_in: Option<f64>,
+    pub s_vertice: Option<f64>,
+    pub s_gas_fondo: Option<f64>,
+    /// Fin de la salida (gas a fondo o final del arco), en `[0, L]`.
+    pub s_fin: Option<f64>,
+    pub v_min: Option<f64>,
+    pub freno_max: Option<f64>,
+    pub freno_medio: Option<f64>,
+    pub freno_en_turn_in: Option<f64>,
+    pub trail_m: Option<f64>,
+    pub coasting_m: Option<f64>,
+    pub coasting_s: Option<f64>,
+    pub vertice_a_gas_m: Option<f64>,
+    pub vertice_a_gas_s: Option<f64>,
+    pub t_frenada: Option<f64>,
+    pub t_entrada: Option<f64>,
+    pub t_vertice: Option<f64>,
+    pub t_salida: Option<f64>,
+}
+
+/// Delta A − B por fase de una curva (ING17).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct DtoDeltaFasesCurva {
+    pub n: usize,
+    pub nombre: String,
+    pub d_inicio_frenada_m: Option<f64>,
+    pub d_turn_in_m: Option<f64>,
+    pub d_gas_fondo_m: Option<f64>,
+    pub d_v_min: Option<f64>,
+    pub d_freno_max: Option<f64>,
+    pub d_trail_m: Option<f64>,
+    pub d_coasting_m: Option<f64>,
+    pub d_vertice_a_gas_m: Option<f64>,
+    pub d_t_frenada: Option<f64>,
+    pub d_t_entrada: Option<f64>,
+    pub d_t_vertice: Option<f64>,
+    pub d_t_salida: Option<f64>,
+}
+
+/// Balance medio por fase de una curva (ING27).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct DtoBalanceCurva {
+    pub n: usize,
+    pub entrada: Option<f64>,
+    pub vertice: Option<f64>,
+    pub salida: Option<f64>,
+    /// "subvira", "neutro" o "sobrevira"; `null` si no hay datos.
+    pub diagnostico_entrada: Option<String>,
+    pub diagnostico_vertice: Option<String>,
+    pub diagnostico_salida: Option<String>,
+    pub deriva_max_grados: Option<f64>,
+}
+
+/// Evento de bloqueo o patinamiento (ING22).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct DtoEventoSlip {
+    /// "DI", "DD", "TI" o "TD".
+    pub rueda: String,
+    /// "bloqueo" o "patinamiento".
+    pub tipo: String,
+    pub s_ini: Option<f64>,
+    pub s_fin: Option<f64>,
+    pub pico: Option<f64>,
+    pub largo_m: Option<f64>,
+    pub curva: Option<usize>,
+    pub fase: String,
+}
+
+/// Resumen de slip de una curva (ING21).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct DtoResumenSlip {
+    pub n: usize,
+    pub bloqueos: usize,
+    pub patinamientos: usize,
+    pub rueda_principal: Option<String>,
+}
+
+/// Análisis de una vuelta visible para la pestaña Curvas.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct DtoAnalisisVuelta {
+    pub id: DtoIdVuelta,
+    pub etiqueta: String,
+    pub fases: Vec<DtoFasesCurva>,
+    pub balance: Vec<DtoBalanceCurva>,
+    /// `false` si el balance se calibró sin suficientes puntos neutros.
+    pub calibracion_neutra: bool,
+    pub eventos_slip: Vec<DtoEventoSlip>,
+    pub resumen_slip: Vec<DtoResumenSlip>,
+}
+
+/// Zona del ranking (ING34).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct DtoSegmento {
+    pub nombre: String,
+    pub curva: Option<usize>,
+    pub fase: String,
+    pub s_ini: Option<f64>,
+    pub s_fin: Option<f64>,
+    pub largo_m: Option<f64>,
+    pub perdida_s: Option<f64>,
+    pub porcentaje: Option<f64>,
+    pub s_pendiente_max: Option<f64>,
+    pub pendiente_max: Option<f64>,
+    pub causas: Vec<String>,
+}
+
+/// Ranking de zonas de pérdida (ING34).
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+pub struct DtoRanking {
+    pub delta_total_s: Option<f64>,
+    pub suma_perdidas_s: Option<f64>,
+    pub perdidas: Vec<DtoSegmento>,
+    pub ganancias: Vec<DtoSegmento>,
+    pub segmentos: Vec<DtoSegmento>,
+}
+
+/// Consistencia de una curva (ING40).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct DtoConsistenciaCurva {
+    pub n: usize,
+    pub nombre: String,
+    pub desvio_t_curva_s: Option<f64>,
+    pub desvio_inicio_frenada_m: Option<f64>,
+    pub rango_inicio_frenada_m: Option<f64>,
+    pub desvio_v_min_kmh: Option<f64>,
+    pub rango_v_min_kmh: Option<f64>,
+    pub desvio_gas_fondo_m: Option<f64>,
+    pub rango_gas_fondo_m: Option<f64>,
+    pub explicacion: String,
+}
+
+/// Consistencia entre vueltas (ING40).
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+pub struct DtoConsistencia {
+    pub vueltas_usadas: usize,
+    pub vueltas_excluidas: usize,
+    pub aviso: Option<String>,
+    pub curvas: Vec<DtoConsistenciaCurva>,
+    pub desvio_velocidad: Vec<Option<f64>>,
+}
+
+/// Resultado del análisis de una vuelta alineada.
+struct Analisis {
+    fases: Vec<FasesCurva>,
+    eventos: Vec<EventoSlip>,
+    balance_curvas: Vec<BalanceCurva>,
+    calibracion_neutra: bool,
+}
+
+impl Analisis {
+    fn datos<'a>(&'a self, alineada: &'a VueltaAlineada) -> DatosVuelta<'a> {
+        DatosVuelta {
+            alineada,
+            fases: &self.fases,
+            eventos: &self.eventos,
+            balance: &self.balance_curvas,
+        }
+    }
+}
+
+fn analizar(alineada: &VueltaAlineada, curvas: &[CurvaPista]) -> Analisis {
+    let longitud = alineada.s.last().copied().unwrap_or(0.0);
+    let fases = fases::fases_de_vuelta(alineada, curvas);
+    let mut eventos = slip::eventos_slip(alineada);
+    slip::ubicar_eventos(&mut eventos, &fases, longitud);
+    let balance = balance::balance_vuelta(alineada);
+    let balance_curvas = balance::balance_por_curva(alineada, &balance, &fases);
+    Analisis {
+        fases,
+        eventos,
+        balance_curvas,
+        calibracion_neutra: balance.calibracion_neutra,
+    }
+}
+
+fn mismo_auto(sesion: &Sesion, a: &Vuelta, b: &Vuelta) -> bool {
+    let Some(replay) = sesion.replay() else {
+        return true;
+    };
+    match (replay.autos.get(a.id.auto), replay.autos.get(b.id.auto)) {
+        (Some(x), Some(y)) => x.car_id == y.car_id,
+        _ => true,
+    }
+}
+
+fn dto_fases(f: &FasesCurva) -> DtoFasesCurva {
+    DtoFasesCurva {
+        n: f.n,
+        nombre: f.nombre.clone(),
+        con_frenada: f.con_frenada,
+        s_inicio_frenada: numero(f.s_inicio_frenada),
+        s_turn_in: numero(f.s_turn_in),
+        s_vertice: numero(f.s_vertice),
+        s_gas_fondo: numero(f.s_gas_fondo),
+        s_fin: numero(f.s_fin),
+        v_min: numero(f.v_min),
+        freno_max: numero(f.freno_max),
+        freno_medio: numero(f.freno_medio),
+        freno_en_turn_in: numero(f.freno_en_turn_in),
+        trail_m: numero(f.trail_m),
+        coasting_m: numero(f.coasting_m),
+        coasting_s: numero(f.coasting_s),
+        vertice_a_gas_m: numero(f.vertice_a_gas_m),
+        vertice_a_gas_s: numero(f.vertice_a_gas_s),
+        t_frenada: numero(f.t_frenada),
+        t_entrada: numero(f.t_entrada),
+        t_vertice: numero(f.t_vertice),
+        t_salida: numero(f.t_salida),
+    }
+}
+
+fn dto_delta_fases(d: &DeltaFasesCurva) -> DtoDeltaFasesCurva {
+    DtoDeltaFasesCurva {
+        n: d.n,
+        nombre: d.nombre.clone(),
+        d_inicio_frenada_m: numero(d.d_inicio_frenada_m),
+        d_turn_in_m: numero(d.d_turn_in_m),
+        d_gas_fondo_m: numero(d.d_gas_fondo_m),
+        d_v_min: numero(d.d_v_min),
+        d_freno_max: numero(d.d_freno_max),
+        d_trail_m: numero(d.d_trail_m),
+        d_coasting_m: numero(d.d_coasting_m),
+        d_vertice_a_gas_m: numero(d.d_vertice_a_gas_m),
+        d_t_frenada: numero(d.d_t_frenada),
+        d_t_entrada: numero(d.d_t_entrada),
+        d_t_vertice: numero(d.d_t_vertice),
+        d_t_salida: numero(d.d_t_salida),
+    }
+}
+
+fn dto_balance(b: &BalanceCurva) -> DtoBalanceCurva {
+    let diagnostico = |fase: Fase| {
+        b.diagnostico(fase)
+            .map(|d: Diagnostico| d.etiqueta().to_string())
+    };
+    DtoBalanceCurva {
+        n: b.n,
+        entrada: numero(b.entrada),
+        vertice: numero(b.vertice),
+        salida: numero(b.salida),
+        diagnostico_entrada: diagnostico(Fase::Entrada),
+        diagnostico_vertice: diagnostico(Fase::Vertice),
+        diagnostico_salida: diagnostico(Fase::Salida),
+        deriva_max_grados: numero(b.deriva_max_grados),
+    }
+}
+
+fn dto_evento(e: &EventoSlip) -> DtoEventoSlip {
+    DtoEventoSlip {
+        rueda: RUEDAS[e.rueda].to_string(),
+        tipo: e.tipo.etiqueta().to_string(),
+        s_ini: numero(e.s_ini),
+        s_fin: numero(e.s_fin),
+        pico: numero(e.pico),
+        largo_m: numero(e.largo_m),
+        curva: e.curva,
+        fase: e.fase.etiqueta().to_string(),
+    }
+}
+
+fn dto_segmento(s: &Segmento) -> DtoSegmento {
+    DtoSegmento {
+        nombre: s.nombre.clone(),
+        curva: s.curva,
+        fase: s.fase.etiqueta().to_string(),
+        s_ini: numero(s.s_ini),
+        s_fin: numero(s.s_fin),
+        largo_m: numero(s.largo_m),
+        perdida_s: numero(s.perdida_s),
+        porcentaje: numero(s.porcentaje),
+        s_pendiente_max: numero(s.s_pendiente_max),
+        pendiente_max: numero(s.pendiente_max),
+        causas: s.causas.clone(),
+    }
+}
+
+fn dto_consistencia(
+    vueltas: &[&Vuelta],
+    curvas: &[CurvaPista],
+    grilla: &Grilla,
+) -> DtoConsistencia {
+    let alineadas: Vec<VueltaAlineada> =
+        vueltas.iter().map(|v| alinear_vuelta(v, grilla)).collect();
+    let fases: Vec<Vec<FasesCurva>> = alineadas
+        .iter()
+        .map(|a| fases::fases_de_vuelta(a, curvas))
+        .collect();
+    let entradas: Vec<VueltaConsistencia<'_>> = vueltas
+        .iter()
+        .zip(&alineadas)
+        .zip(&fases)
+        .map(|((vuelta, alineada), fases)| VueltaConsistencia {
+            tiempo_s: vuelta.tiempo_s,
+            alineada,
+            fases,
+        })
+        .collect();
+    let resultado = consistencia::consistencia(&entradas, curvas);
+    DtoConsistencia {
+        vueltas_usadas: resultado.vueltas_usadas,
+        vueltas_excluidas: resultado.vueltas_excluidas,
+        aviso: resultado.aviso,
+        curvas: resultado
+            .curvas
+            .iter()
+            .map(|c| DtoConsistenciaCurva {
+                n: c.n,
+                nombre: c.nombre.clone(),
+                desvio_t_curva_s: numero(c.desvio_t_curva_s),
+                desvio_inicio_frenada_m: numero(c.desvio_inicio_frenada_m),
+                rango_inicio_frenada_m: numero(c.rango_inicio_frenada_m),
+                desvio_v_min_kmh: numero(c.desvio_v_min_kmh),
+                rango_v_min_kmh: numero(c.rango_v_min_kmh),
+                desvio_gas_fondo_m: numero(c.desvio_gas_fondo_m),
+                rango_gas_fondo_m: numero(c.rango_gas_fondo_m),
+                explicacion: c.explicacion.clone(),
+            })
+            .collect(),
+        desvio_velocidad: f64s(&resultado.desvio_velocidad),
+    }
 }
