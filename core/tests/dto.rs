@@ -47,10 +47,10 @@ fn auto_valido(car_id: &str, piloto: &str) -> AutoFixture {
     auto(car_id, piloto, &[(1, PUNTOS, 33), (2, PUNTOS, 33)])
 }
 
-fn cargar(sesion: &mut Sesion, autos: Vec<AutoFixture>, indice_jugador: u32) {
+fn cargar(sesion: &mut Sesion, autos: Vec<AutoFixture>, indice_grabacion: u32) {
     let replay = ConstructorReplay {
         autos,
-        indice_jugador,
+        indice_grabacion,
         ..ConstructorReplay::default()
     }
     .bytes();
@@ -99,23 +99,23 @@ fn t89_resumen_incluye_autos_vueltas_avisos_y_seleccion() {
     assert!(dto.autos[0].es_referencia);
     assert_eq!(dto.vueltas.len(), 4);
     assert_eq!(dto.seleccion.visibles.len(), 2);
-    assert_eq!(dto.indice_jugador, None);
-    assert!(dto
-        .avisos
-        .iter()
-        .any(|aviso| aviso.mensaje.contains("Piloto 0")));
+    assert_eq!(dto.indice_jugador, Some(0));
+    assert!(
+        dto.avisos.is_empty(),
+        "el jugador tiene vueltas: no hay fallback"
+    );
 
     let valor = json(&dto);
     assert!(valor["autos"].is_array());
     assert!(valor["vueltas"][0]["tiempo_s"].is_f64());
     assert_eq!(valor["seleccion"]["referencia"]["auto"], 0);
-    assert_eq!(valor["avisos"][0]["codigo"], "referencia_fallback");
-    assert!(valor["indice_jugador"].is_null());
+    assert_eq!(valor["indice_jugador"], 0);
     assert!(valor["pista"]["curvas"].as_u64().unwrap() > 0);
 }
 
 #[test]
 fn t96_resumen_expone_el_indice_del_jugador() {
+    // El jugador es el auto 0 aunque `current_recording_index` apunte a otro.
     let mut sesion = Sesion::nueva();
     cargar(
         &mut sesion,
@@ -125,11 +125,26 @@ fn t96_resumen_expone_el_indice_del_jugador() {
         ],
         1,
     );
-
     let dto = dto::resumen(&sesion);
-    assert_eq!(dto.indice_jugador, Some(1));
+    assert_eq!(dto.indice_jugador, Some(0));
+    assert!(dto.autos[0].es_referencia);
+    assert_eq!(json(&dto)["indice_jugador"], 0);
+
+    // Jugador sin vueltas: sigue siendo el auto 0, pero la REF cae en otro.
+    let mut sesion = Sesion::nueva();
+    cargar(
+        &mut sesion,
+        vec![
+            auto("auto_0", "Piloto 0", &[]),
+            auto_valido("auto_1", "Piloto 1"),
+        ],
+        0,
+    );
+    let dto = dto::resumen(&sesion);
+    assert_eq!(dto.indice_jugador, Some(0));
     assert!(dto.autos[1].es_referencia);
-    assert_eq!(json(&dto)["indice_jugador"], 1);
+    let valor = json(&dto);
+    assert_eq!(valor["avisos"][0]["codigo"], "referencia_fallback");
 }
 
 #[test]
@@ -307,4 +322,39 @@ fn t95_los_huecos_viajan_como_null_y_nunca_como_nan() {
     ] {
         sin_no_finitos(&valor);
     }
+}
+
+#[test]
+fn ing_dto_expone_el_analisis_de_ingeniero() {
+    let sesion = sesion_dos_autos();
+
+    let comparacion = json(&dto::comparacion(&sesion));
+    assert!(comparacion["pendiente_delta"].is_array());
+    assert!(comparacion["ranking"]["segmentos"].is_array());
+    assert!(comparacion["ranking"]["perdidas"].is_array());
+    assert!(comparacion["mismo_auto"].is_boolean());
+
+    let curvas = json(&dto::curvas(&sesion));
+    assert!(curvas["analisis"].is_array());
+    assert!(curvas["umbrales_slip"]["bloqueo"].is_number());
+    if let Some(delta) = curvas["delta"].as_object() {
+        assert!(delta["fases"].is_array());
+        assert!(delta["mismo_auto"].is_boolean());
+    }
+
+    let conjunto = json(&dto::conjunto(&sesion));
+    assert!(conjunto["consistencia"]["vueltas_usadas"].is_number());
+
+    let vuelta = json(&dto::vuelta(&sesion));
+    let texto = vuelta.to_string();
+    assert!(texto.contains("slip_ratio_trasera_izquierda"));
+    assert!(texto.contains("slip_ratio_trasera_derecha"));
+}
+
+#[test]
+fn ing_comparacion_sin_b_no_tiene_ranking() {
+    let dto = DtoComparacion::default();
+    let valor = json(&dto);
+    assert!(valor["ranking"].is_null());
+    assert!(valor["pendiente_delta"].as_array().unwrap().is_empty());
 }

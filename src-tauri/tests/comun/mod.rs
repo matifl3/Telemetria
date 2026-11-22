@@ -58,10 +58,10 @@ pub fn auto_valido(car_id: &str, piloto: &str) -> AutoFixture {
     auto(car_id, piloto, &[(1, PUNTOS, 33), (2, PUNTOS, 33)])
 }
 
-pub fn replay_bytes(autos: Vec<AutoFixture>, indice_jugador: u32) -> Vec<u8> {
+pub fn replay_bytes(autos: Vec<AutoFixture>, indice_grabacion: u32) -> Vec<u8> {
     ConstructorReplay {
         autos,
-        indice_jugador,
+        indice_grabacion,
         ..ConstructorReplay::default()
     }
     .bytes()

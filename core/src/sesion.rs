@@ -6,9 +6,9 @@
 //! lote entero es válido (D-08 del plan).
 
 use crate::acreplay::parsear_replay;
-use crate::clasificacion::clasificar_vueltas;
+use crate::clasificacion::{clasificar_vueltas, descartar_cortas_por_pista};
 use crate::error::{ErrorFormato, Motivo, Resultado};
-use crate::modelo::{Auto, Replay};
+use crate::modelo::{Auto, Replay, INDICE_JUGADOR};
 use crate::pista::{parsear_pista, Pista};
 use crate::proyeccion::{ajustar_vuelta, proyectar_auto};
 use crate::vuelta::{construir_vueltas, Vuelta, VueltaId};
@@ -431,21 +431,37 @@ struct Analisis {
 /// Proyecta, segmenta y clasifica todos los autos; elige la REF con fallback.
 fn analizar(mut replay: Replay, pista: Pista, archivo_replay: &str) -> Resultado<Analisis> {
     let mut avisos = Vec::new();
+    // Vueltas con proyección deficiente: se informan en un único aviso.
+    let mut deficientes = 0usize;
+    let mut autos_deficientes = 0usize;
 
     for auto in &mut replay.autos {
         let proyeccion = proyectar_auto(&pista, auto);
         let mut vueltas = construir_vueltas(auto, &proyeccion.s);
 
+        let mut deficientes_auto = 0usize;
         for vuelta in &mut vueltas {
-            if let Some(error) = ajustar_vuelta(&pista, vuelta, archivo_replay) {
-                avisos.push(Aviso::de_error(&error));
+            if ajustar_vuelta(&pista, vuelta, archivo_replay).is_some() {
+                deficientes_auto += 1;
             }
         }
+        deficientes += deficientes_auto;
+        autos_deficientes += usize::from(deficientes_auto > 0);
+
         clasificar_vueltas(&mut vueltas);
+        descartar_cortas_por_pista(&mut vueltas, pista.longitud_m);
         auto.vueltas = vueltas;
     }
 
-    let indice_jugador = replay.meta.indice_jugador as usize;
+    if deficientes > 0 {
+        avisos.push(Aviso::nuevo(
+            CodigoAviso::ProyeccionDeficiente,
+            Some(archivo_replay.to_string()),
+            mensaje_proyeccion_deficiente(deficientes, autos_deficientes),
+        ));
+    }
+
+    let indice_jugador = INDICE_JUGADOR;
     let elegido = if replay
         .autos
         .get(indice_jugador)
@@ -480,25 +496,48 @@ fn analizar(mut replay: Replay, pista: Pista, archivo_replay: &str) -> Resultado
     })
 }
 
+/// Resumen de las vueltas descartadas por quedar fuera de la pista.
+fn mensaje_proyeccion_deficiente(vueltas: usize, autos: usize) -> String {
+    let vueltas_txt = if vueltas == 1 { "1 vuelta".to_string() } else { format!("{vueltas} vueltas") };
+    let autos_txt = if autos == 1 { "1 auto".to_string() } else { format!("{autos} autos") };
+    format!("proyección deficiente: se descartaron {vueltas_txt} de {autos_txt} por muestras fuera de pista")
+}
+
 fn tiene_vueltas_validas(auto: &Auto) -> bool {
     auto.vueltas
         .iter()
         .any(|vuelta| vuelta.valida && vuelta.seleccionable)
 }
 
-/// Al cargar quedan visibles solo las vueltas válidas del auto de referencia.
+/// Vueltas visibles al cargar (RF-013).
+pub const VUELTAS_POR_DEFECTO: usize = 2;
+
+/// Al cargar quedan visibles solo las [`VUELTAS_POR_DEFECTO`] vueltas válidas
+/// más rápidas del auto de referencia: REF la más rápida y B la segunda.
+/// Empates y tiempos no finitos se ordenan de forma estable por vuelta.
 fn seleccion_por_defecto(auto: &Auto) -> Seleccion {
-    let visibles: Vec<VueltaId> = auto
+    let mut validas: Vec<&Vuelta> = auto
         .vueltas
         .iter()
         .filter(|vuelta| vuelta.valida && vuelta.seleccionable)
+        .collect();
+    validas.sort_by(|a, b| {
+        let ta = if a.tiempo_s.is_finite() { a.tiempo_s } else { f64::INFINITY };
+        let tb = if b.tiempo_s.is_finite() { b.tiempo_s } else { f64::INFINITY };
+        ta.total_cmp(&tb)
+            .then(a.id.numero_local.cmp(&b.id.numero_local))
+    });
+    let rapidas: Vec<VueltaId> = validas
+        .iter()
+        .take(VUELTAS_POR_DEFECTO)
         .map(|vuelta| vuelta.id)
         .collect();
-    let ref_id = visibles.first().copied();
-    let b_id = visibles
-        .iter()
-        .copied()
-        .find(|id| Some(*id) != ref_id);
+    let ref_id = rapidas.first().copied();
+    let b_id = rapidas.get(1).copied();
+
+    // `visibles` sigue el orden de recorrido, como el resto de la selección.
+    let mut visibles = rapidas;
+    visibles.sort_by_key(|id| id.numero_local);
 
     Seleccion {
         visibles,

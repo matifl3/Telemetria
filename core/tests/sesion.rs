@@ -61,10 +61,10 @@ fn auto_sin_vueltas() -> AutoFixture {
     auto("auto_0", "Jugador", &[])
 }
 
-fn replay_bytes(autos: Vec<AutoFixture>, indice_jugador: u32) -> Vec<u8> {
+fn replay_bytes(autos: Vec<AutoFixture>, indice_grabacion: u32) -> Vec<u8> {
     ConstructorReplay {
         autos,
-        indice_jugador,
+        indice_grabacion,
         ..ConstructorReplay::default()
     }
     .bytes()
@@ -73,9 +73,9 @@ fn replay_bytes(autos: Vec<AutoFixture>, indice_jugador: u32) -> Vec<u8> {
 fn cargar(
     sesion: &mut Sesion,
     autos: Vec<AutoFixture>,
-    indice_jugador: u32,
+    indice_grabacion: u32,
 ) -> acreplay_core::Resultado<()> {
-    let replay = replay_bytes(autos, indice_jugador);
+    let replay = replay_bytes(autos, indice_grabacion);
     sesion.cargar_lote(
         &replay,
         "replay.acreplay",
@@ -134,21 +134,25 @@ fn t81_carga_candidata_atomica_conserva_la_sesion_anterior() {
 }
 
 #[test]
-fn t82_fallback_por_indice_invalido_y_jugador_sin_vueltas() {
-    let mut por_indice = Sesion::nueva();
-    cargar(
-        &mut por_indice,
-        vec![auto_valido("auto_0", "Piloto 0"), auto_valido("auto_1", "Piloto 1")],
-        99,
-    )
-    .expect("hay autos con vueltas");
-    assert_eq!(por_indice.auto_referencia(), Some(0));
-    assert_eq!(por_indice.referencia().unwrap().id.auto, 0);
-    assert!(por_indice
-        .avisos()
-        .iter()
-        .any(|aviso| aviso.codigo == CodigoAviso::ReferenciaFallback));
-    assert_invariantes(&por_indice);
+fn t82_jugador_es_el_auto_0_y_fallback_si_no_tiene_vueltas() {
+    // `current_recording_index` es un frame: no decide el jugador ni dispara
+    // el fallback.
+    for indice_grabacion in [1, 99] {
+        let mut por_indice = Sesion::nueva();
+        cargar(
+            &mut por_indice,
+            vec![auto_valido("auto_0", "Piloto 0"), auto_valido("auto_1", "Piloto 1")],
+            indice_grabacion,
+        )
+        .expect("hay autos con vueltas");
+        assert_eq!(por_indice.auto_referencia(), Some(0));
+        assert_eq!(por_indice.referencia().unwrap().id.auto, 0);
+        assert!(!por_indice
+            .avisos()
+            .iter()
+            .any(|aviso| aviso.codigo == CodigoAviso::ReferenciaFallback));
+        assert_invariantes(&por_indice);
+    }
 
     let mut por_jugador = Sesion::nueva();
     cargar(
@@ -235,6 +239,75 @@ fn t84_seleccion_por_defecto_solo_validas_del_auto_referencia() {
         .iter()
         .filter(|vuelta| vuelta.id.auto == 1)
         .all(|vuelta| !sesion.seleccion().es_visible(vuelta.id)));
+    assert_invariantes(&sesion);
+}
+
+#[test]
+fn t84b_seleccion_por_defecto_son_las_dos_mas_rapidas() {
+    // Salida lenta + cuatro válidas con ritmos distintos (ms por frame).
+    let jugador = auto(
+        "auto_0",
+        "Jugador",
+        &[(1, PUNTOS, 100), (2, PUNTOS, 40), (3, PUNTOS, 33), (4, PUNTOS, 36), (5, PUNTOS, 34)],
+    );
+    let mut sesion = Sesion::nueva();
+    cargar(&mut sesion, vec![jugador, auto_valido("auto_1", "Otro")], 0).expect("carga válida");
+
+    let id = |numero_local| VueltaId { auto: 0, numero_local };
+    // REF = la más rápida (V3, ritmo 33); B = la segunda (V5, ritmo 34).
+    assert_eq!(sesion.seleccion().ref_id, Some(id(2)));
+    assert_eq!(sesion.seleccion().b_id, Some(id(4)));
+    assert_eq!(sesion.seleccion().visibles, vec![id(2), id(4)]);
+    assert_invariantes(&sesion);
+}
+
+#[test]
+fn t84c_con_una_sola_valida_queda_solo_la_ref() {
+    let jugador = auto(
+        "auto_0",
+        "Jugador",
+        &[(1, PUNTOS, 100), (2, PUNTOS, 33), (3, PUNTOS, 100)],
+    );
+    let mut sesion = Sesion::nueva();
+    cargar(&mut sesion, vec![jugador], 0).expect("carga válida");
+
+    let unica = VueltaId { auto: 0, numero_local: 1 };
+    assert_eq!(sesion.seleccion().visibles, vec![unica]);
+    assert_eq!(sesion.seleccion().ref_id, Some(unica));
+    assert_eq!(sesion.seleccion().b_id, None);
+    assert_invariantes(&sesion);
+}
+
+#[test]
+fn proyeccion_deficiente_genera_un_solo_aviso() {
+    // Un auto en boxes: tres tramos lejos de la pista (reloj reiniciado en cada uno).
+    let mut boxes = AutoFixture::nuevo("auto_1", "En boxes", 0);
+    boxes.frames = (0..3)
+        .flat_map(|_| {
+            (0..PUNTOS).map(|indice| FrameFixture {
+                x: RADIO * 5.0,
+                z: indice as f32,
+                vuelta: 0,
+                tiempo_vuelta_ms: 5_000 + indice as u32 * 100,
+                ..FrameFixture::default()
+            })
+        })
+        .collect();
+
+    let mut sesion = Sesion::nueva();
+    cargar(&mut sesion, vec![auto_valido("auto_0", "Jugador"), boxes], 0).expect("carga válida");
+
+    let avisos: Vec<_> = sesion
+        .avisos()
+        .iter()
+        .filter(|aviso| aviso.codigo == CodigoAviso::ProyeccionDeficiente)
+        .collect();
+    assert_eq!(avisos.len(), 1, "{avisos:?}");
+    assert!(
+        avisos[0].mensaje.contains("3 vueltas de 1 auto"),
+        "{}",
+        avisos[0].mensaje
+    );
     assert_invariantes(&sesion);
 }
 
@@ -332,7 +405,7 @@ fn t86_limpiar_deja_todo_vacio() {
 }
 
 #[test]
-fn t87_flujo_integrado_carga_fallback_alterna_y_resume() {
+fn t87_flujo_integrado_carga_alterna_y_resume() {
     let mut sesion = Sesion::nueva();
     cargar(
         &mut sesion,
@@ -342,13 +415,10 @@ fn t87_flujo_integrado_carga_fallback_alterna_y_resume() {
         ],
         99,
     )
-    .expect("carga válida con fallback");
+    .expect("carga válida");
 
     assert_eq!(sesion.auto_referencia(), Some(0));
-    assert!(sesion
-        .avisos()
-        .iter()
-        .any(|aviso| aviso.codigo == CodigoAviso::ReferenciaFallback));
+    assert!(sesion.avisos().is_empty());
 
     let resumen = sesion.resumen();
     assert_eq!(resumen.autos, 2);

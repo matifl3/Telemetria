@@ -6,11 +6,11 @@ Migrar el visualizador actual (`visualizador/`) a una aplicación de escritorio 
 Además, la v2 permite comparar vueltas de cualquier auto presente en el replay con las del auto del jugador, sin salir de la misma sesión de análisis.
 
 ## 2. Alcance
-- **Paridad total:** Las 5 pestañas existentes: `Vuelta`, `Mapa`, `Conjunto`, `Comparación` y `Curvas`. Se deben mantener los ~30 gráficos implementados hoy.
+- **Paridad total:** Las 5 pestañas existentes: `Telemetría` (antes «Vuelta»), `Mapa`, `Conjunto`, `Comparación` y `Curvas`. Se deben mantener los ~30 gráficos implementados hoy.
 - **Parser:** Únicamente `.acreplay` **versión 16**.
 - **Pista:** Uso obligatorio de `fast_lane.ai` para entrar al análisis.
 - **Carga de archivos:** Diálogo nativo de Tauri + arrastrar y soltar.
-- **Multi-auto:** Se parsean todos los autos del replay. El auto del jugador (`current_recording_index`) es la referencia por defecto; sus vueltas se muestran seleccionadas al cargar. El usuario puede activar vueltas de otros autos y compararlas entre sí o contra las propias en `Vuelta`, `Mapa`, `Comparación` y `Curvas`. La pestaña `Conjunto` agrega solo las vueltas válidas del auto dueño de la REF.
+- **Multi-auto:** Se parsean todos los autos del replay. El auto del jugador (siempre el primer auto del archivo) es la referencia por defecto; sus 2 vueltas válidas más rápidas se muestran seleccionadas al cargar. El usuario puede activar vueltas de otros autos y compararlas entre sí o contra las propias en `Telemetría`, `Mapa`, `Comparación` y `Curvas`. La pestaña `Conjunto` agrega solo las vueltas válidas del auto dueño de la REF.
 - **Lógica separada:** Parseo, clasificación de vueltas, detección de curvas y cálculos en crate `core` sin dependencia de Tauri. La UI solo recibe datos ya calculados.
 - **Sin persistencia:** Todo vive únicamente en memoria durante la sesión. Nada se guarda en disco.
 
@@ -20,14 +20,14 @@ Además, la v2 permite comparar vueltas de cualquier auto presente en el replay 
 - **RF-001** *When* el usuario carga un archivo `.acreplay`, *the system shall* validar que `version == 16`. *If* `version != 16`, *the system shall* rechazar el archivo mostrando en español el nombre del archivo y el motivo, sin modificar el estado cargado previamente.  
   **Por qué:** Solo se soporta la versión 16 tal como está especificado en `doc/FormatoTelemetria.md` y en el comportamiento actual.
 
-- **RF-002** *When* se parsea el encabezado de un `.acreplay` válido, *the system shall* leer todos los autos del archivo. *The system shall* determinar el auto del jugador usando `current_recording_index`; *if* ese índice es inválido o el auto no produce vueltas analizables, *the system shall* usar el primer auto con vueltas analizables como auto de referencia por defecto.  
-  **Por qué:** El jugador sigue siendo la referencia natural, pero ya no es el único auto analizable.
+- **RF-002** *When* se parsea el encabezado de un `.acreplay` válido, *the system shall* leer todos los autos del archivo. *The system shall* tomar como auto del jugador el primer auto del archivo (índice 0); *if* ese auto no produce vueltas analizables, *the system shall* usar el primer auto con vueltas analizables como auto de referencia por defecto. `current_recording_index` *shall not* usarse para identificar autos.  
+  **Por qué:** El jugador sigue siendo la referencia natural, pero ya no es el único auto analizable. En replays reales `current_recording_index` es un frame de reproducción (suele valer `num_frames`), no un auto; AC graba siempre al jugador primero.
 
 - **RF-003** *If* ningún auto del replay produce vueltas analizables (0 frames utilizables o todas descartadas por `clasificarVueltas`), *the system shall* mostrar el mensaje en español `"El replay no contiene vueltas analizables"`, no permitir entrar al análisis y conservar el estado cargado previamente. *If* solo el auto del jugador no tiene vueltas pero otro auto sí, *the system shall* cargar el replay, usar el primer auto con vueltas como referencia y avisar en español qué auto se usó.  
   **Por qué:** El replay sigue siendo útil si otro auto tiene datos; solo se rechaza cuando no hay nada que analizar.
 
-- **RF-004** *When* se extraen las vueltas de cada auto, *the system shall* aplicar la clasificación de v1 (salida/largada, entrada a *pits*, recorrido < 90% de la distancia mediana) de forma independiente por auto, calculando medianas y bordes solo con las vueltas de ese auto.  
-  **Por qué:** Mezclar autos en la mediana y en los bordes produce falsos salida/entrada/cortada.
+- **RF-004** *When* se extraen las vueltas de cada auto, *the system shall* aplicar la clasificación de v1 (salida/largada, entrada a *pits*, recorrido < 90% de la distancia mediana) de forma independiente por auto, calculando medianas y bordes solo con las vueltas de ese auto. Además, *the system shall* invalidar toda vuelta que recorra menos del 90% del largo de la pista (`fast_lane.ai`) y todo auto con un único tramo (nunca cruzó la meta dos veces). Las vueltas se cortan por `current_lap` cuando el auto lo trae; *if* no lo trae (otros autos en replays online), *the system shall* cortarlas donde `current_lap_time` se reinicia. El tiempo de vuelta *shall* ser el `last_lap_time` oficial publicado al empezar la vuelta siguiente; sin él, el `current_lap_time` del último frame de la vuelta.  
+  **Por qué:** Mezclar autos en la mediana y en los bordes produce falsos salida/entrada/cortada. Los autos ajenos solo traen `current_lap_time` (sin `current_lap` ni `last_lap_time`); usar un único tramo daba tiempos negativos o enormes, y un auto con todas sus vueltas parciales no se detecta con su propia mediana.
 
 - **RF-005** *When* el replay contiene varios autos, *the system shall* disponer de las vueltas de todos ellos. Cada vuelta *shall* llevar la etiqueta visible `piloto · car_id · V{nVuelta}`. Las vueltas no válidas *shall* mostrarse con su motivo y no ser seleccionables.  
   **Por qué:** Identifica el origen de cada vuelta y evita comparar contra datos que la propia app descartó.
@@ -56,10 +56,10 @@ Además, la v2 permite comparar vueltas de cualquier auto presente en el replay 
   **Por qué:** Principios 2 y 3 de `doc/constitucion.md`.
 
 ### Comparación entre autos
-- **RF-013** *When* termina la carga de un replay, *the system shall* seleccionar por defecto solo las vueltas válidas del auto de referencia (jugador o *fallback*). Las vueltas de otros autos *shall* quedar listadas pero desmarcadas.  
-  **Por qué:** Evita saturar los gráficos y mapas al abrir replays con muchos autos.
+- **RF-013** *When* termina la carga de un replay, *the system shall* seleccionar por defecto solo las 2 vueltas válidas más rápidas del auto de referencia (jugador o *fallback*): REF = la más rápida y B = la segunda. Con una sola vuelta válida, queda solo la REF. Las demás vueltas, de ese auto y de los otros, *shall* quedar listadas pero desmarcadas.  
+  **Por qué:** Evita saturar los gráficos y mapas al abrir replays con muchos autos, y deja lista la comparación más útil (mejor vuelta contra la segunda mejor).
 
-- **RF-014** *The system shall* permitir activar y desactivar vueltas de cualquier auto desde el selector de vueltas. Las vueltas activas de distintos autos *shall* poder convivir en `Vuelta`, `Mapa`, `Comparación` y `Curvas`. La pestaña `Conjunto` *shall* agregar solo las vueltas válidas del auto dueño de la REF, sin mezclar autos.  
+- **RF-014** *The system shall* permitir activar y desactivar vueltas de cualquier auto desde el selector de vueltas. Las vueltas activas de distintos autos *shall* poder convivir en `Telemetría`, `Mapa`, `Comparación` y `Curvas`. La pestaña `Conjunto` *shall* agregar solo las vueltas válidas del auto dueño de la REF, sin mezclar autos.  
   **Por qué:** Es el mecanismo concreto para comparar lo propio con otro auto; las estadísticas de consistencia, fuel y vuelta teórica solo tienen sentido dentro de un mismo auto.
 
 - **RF-015** *When* el usuario elige las vueltas A y B, *the system shall* permitir que A y B pertenezcan a autos distintos. El delta acumulado, el delta por curva y los gráficos comparativos *shall* alinearse por **arco de pista** (`s` sobre la línea central de `fast_lane.ai`), no por distancia recorrida por cada vuelta.  
@@ -82,12 +82,12 @@ Además, la v2 permite comparar vueltas de cualquier auto presente en el replay 
 
 ## 5. Criterios de finalización
 - [x] **Arquitectura:** `core` compila y es testeable sin Tauri. Frontend HTML/JS plano con Tauri bindings mínimos.
-- [x] **Parser v16:** Cumple RF-001/RF-002/RF-004/RF-005 usando `doc/FormatoTelemetria.md` como fuente, incluyendo todos los autos y la selección de referencia con `current_recording_index` y *fallback*.
+- [x] **Parser v16:** Cumple RF-001/RF-002/RF-004/RF-005 usando `doc/FormatoTelemetria.md` como fuente, incluyendo todos los autos y la selección de referencia (jugador = auto 0) con *fallback*.
 - [x] **Vueltas inválidas:** RF-003 implementado (rechazo solo si ningún auto tiene vueltas; si el jugador no tiene, se usa el primer auto con vueltas y se avisa).
 - [x] **Pista:** RF-006/RF-007 obligatorios (rechazo con mensaje, bloqueo sin pista válida).
 - [x] **Carga:** RF-008/RF-009 con diálogo nativo + *drag & drop* y política "rechazar y conservar lo anterior".
-- [x] **Multi-auto:** RF-013/RF-014/RF-015/RF-016 implementados: vueltas de otros autos listadas, activables y comparables en `Vuelta`, `Mapa`, `Comparación` y `Curvas` (`Conjunto` solo con el auto de la REF), con A/B de autos distintos.
+- [x] **Multi-auto:** RF-013/RF-014/RF-015/RF-016 implementados: vueltas de otros autos listadas, activables y comparables en `Telemetría`, `Mapa`, `Comparación` y `Curvas` (`Conjunto` solo con el auto de la REF), con A/B de autos distintos.
 - [x] **Sin persistencia:** Verificado RF-010 (sin escrituras a disco) con comparación antes/después en runtime (T126).
-- [ ] **Paridad:** Las 5 pestañas (`Vuelta`, `Mapa`, `Conjunto`, `Comparación`, `Curvas`) y funcionalidades críticas (detección de curvas, *slip*, delta A/B) presentes. Queda el checklist visual manual T123.
-- [x] **Tests:** `cargo test` en verde con tests de regresión para fixes de lógica (principio 4). Al menos cubiertos: rechazo v!=16, selección por `current_recording_index` con *fallback*, jugador sin vueltas pero otro auto con vueltas, clasificación independiente por auto, A/B de autos distintos, auto sin vueltas válidas no seleccionable, pista inválida/faltante.
+- [ ] **Paridad:** Las 5 pestañas (`Telemetría`, `Mapa`, `Conjunto`, `Comparación`, `Curvas`) y funcionalidades críticas (detección de curvas, *slip*, delta A/B) presentes. Queda el checklist visual manual T123.
+- [x] **Tests:** `cargo test` en verde con tests de regresión para fixes de lógica (principio 4). Al menos cubiertos: rechazo v!=16, jugador = auto 0 con *fallback*, selección por defecto de las 2 más rápidas, tiempos por `last_lap_time`/reinicio del reloj, jugador sin vueltas pero otro auto con vueltas, clasificación independiente por auto, A/B de autos distintos, auto sin vueltas válidas no seleccionable, pista inválida/faltante.
 - [x] **Calidad:** Sin escrituras a disco, sin dependencias injustificadas, todo en español, sin persistencia entre ejecuciones.

@@ -1,65 +1,70 @@
 # MEMORY.md — AC Telemetry Lab
 Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aporte.
 ## Estado actual
-- Datos solo por sesión (en memoria): al refrescar se pierde todo.
-- Constitución en `doc/constitucion.md` (6 principios) para la v2 Rust + Tauri.
-- v2 completa (fases 0–13): `core` parsea replay v16/`fast_lane.ai` y calcula
-  el análisis; ~130 tests (`cargo test --workspace`) y fase 12 verificada por CDP.
-- Curvas calibradas en Monza, Imola, Spa y Mugello; cero escrituras en runtime.
+- v2 Tauri + Rust completa (fases 0–13): `core` parsea replay v16/`fast_lane.ai` y
+  calcula el análisis; 160 tests en `core` (`cargo test -p core`). `visualizador/` es legado.
+- Datos solo en memoria por sesión; cero escrituras en runtime (T126).
+- Curvas calibradas en Monza, Imola, Spa y Mugello.
 ## Decisiones (y por qué)
-- Sin persistencia: datos en memoria; Tauri no escribe datos ni ajustes.
 - La constitución rige sobre `AGENTS.md`; `doc/FormatoTelemetria.md` manda sobre el parser.
-- Plan v2: alineación por arco `s`, curvas cacheadas, parser multi-auto y carga
-  atómica; análisis con replay/pista válidos y "Conjunto" solo para REF.
-- Eje X v2: "Distancia de pista (m)" (cambio visible vs v1, aprobado).
-- Pista inválida: cortado → `ArchivoTruncado`; `n`/coordenadas malas → `PistaInvalida`.
-- Fase 9: sesión atómica; REF = jugador válido o primer fallback; REF/B válidas y distintas.
-- Fase 10: `dto` arma por pestaña; números no finitos viajan como `None`/`null`.
-- Fase 12: el front dibuja DTOs y cachea por `state.version`; Tauri embebe `front/`.
-- Fase 13: umbrales sin cambios; conteos coherentes en 4 pistas (chicanes partidas,
-  dobles ápices ≤10 m unidos).
-- La carga ofrece botones separados para replay y pista en cualquier orden; drag-and-drop acepta lotes, y el análisis exige ambos.
-- Pestaña Vueltas (TV01–TV08): jugador por `indice_jugador`; otros autos por
-  `tiempo_s` ascendente. Solo válidas; REF/B y visibilidad por fila.
-- Tiempos en `m:ss.mmm`; lista Vueltas muestra tiempo junto al nombre.
-- Avisos de sesión se acumulan sin duplicados en el menú del encabezado; se limpian al resetear sesión o desde el panel.
-- CSS (2026-11-21): colores/fuentes en variables de `:root`, `@media` juntos al final;
-  canvas propios necesitan alto por CSS o su alto depende del ancho.
-- Pestañas: flechas/Inicio/Fin (`iniciarTabs`); zona de carga resaltada al arrastrar (`.encima`).
-- `PRODUCT.md` (2026-11-22, Impeccable init): usuarios piloto + coach/ingeniero,
-  escritorio en sesiones largas; base para futuras tareas de diseño.
-- `DESIGN.md` + `.impeccable/design.json` (2026-11-22): sistema "El muro de boxes";
-  cian = único acento, resplandores del fondo son identidad (no extender), capas tonales
-  + sombra suave. Pendiente: textos de ayuda a 11 px violan su propio mínimo de 12 px.
-- Auditoría front (2026-11-22, 14/20) y arreglos aplicados el mismo día: overlay de zoom
-  con foco/trampa Tab/Escape (`mostrarOverlayZoom`), tarjetas de tracción `role=button`,
-  lectura ≥12 px, targets ≥24 px (32 con `pointer: coarse`), `touch-action: none` en mapas,
-  títulos de tarjeta `<h2>`, colores de canvas vía `COLOR.*` (utils.js, lee `:root`).
-- Ruedas FL/FR/RL/RR mantienen hex propios (categóricos, no semánticos): no pasarlos a `COLOR`.
-- Overlay de zoom compartido (teórica/tracción): cada apertura fija su título, y `activo`
-  solo lo pone `mostrarOverlayZoom` (si no, no guarda el foco previo).
-- Esta PC ya no tiene MSVC (sin Visual Studio/Build Tools): `cargo build` no linkea.
+- v2: alineación por arco `s`, carga atómica, "Conjunto" solo REF; eje X = distancia;
+  no finitos viajan como `null`.
+- Jugador = auto 0 (`INDICE_JUGADOR`): `current_recording_index` es un frame
+  (≈`num_frames`), no un auto (verificado en 8 replays; `meta.indice_grabacion`).
+- Tiempos: jugador por `last_lap_time` oficial de la vuelta siguiente; otros autos
+  (sin `current_lap`/`last_lap_time`) se cortan por reinicio de `current_lap_time`
+  y su tiempo es el reloj antes del reinicio.
+- Inválidas: auto con un solo tramo, o vuelta < 90 % del largo del `fast_lane.ai`.
+- Selección al cargar (RF-013): 2 válidas más rápidas; REF = 1.ª, B = 2.ª.
+- Proyección deficiente: un único aviso total por replay. Avisos sin duplicados.
+- Vueltas: jugador primero, otros por tiempo; el botón global deja siempre la REF.
+- Pestaña "Vuelta" se muestra "Telemetría" (ids internos `vuelta` sin cambiar).
+- Telemetría: sin marcas C1..Cn en los uPlot; las curvas se ven en una "regla de
+  curvas" fija arriba (`dibujarReglaCurvas`, alineada a `u.over`) + lectura `ro-curva`.
+- Mapa de Curvas: la etiqueta la pone solo `dibujarArcosCurvas` (como v1).
+- Mapa: posición en vivo en una capa `capa-vivo` (solo se repinta esa capa al
+  reproducir); solo en la pestaña Mapa, por decisión del usuario.
+- "Carga por rueda en vivo" = auto desde arriba + punto de balance con estela
+  (`dibujarAutoCarga`; escala por vuelta REF en `escalaCarga`).
+- Interfaz (tanda 1): lecturas con etiqueta arriba y unidad; pestañas fijas bajo la
+  barra (`--alto-tabs`, no en ≤640 px); bloque "Sesión" en el lateral (rutas en
+  `state.archivos`, solo para mostrar). Pendiente tanda 2: celular (barra de
+  reproductor abajo, encabezado compacto), botones de carga y confirmar "Limpiar".
+- Análisis de ingeniero (`spec/analisis-ingeniero/`): integrado en Comparación
+  (ranking), Curvas (fases, balance, slip) y Conjunto (consistencia), sin pestaña
+  nueva. Umbrales de slip ahora en `core/src/slip.rs` (el front los recibe en el DTO).
+- Comparación "Delta por sector": barras como v1 (paridad) + delta final. Canvas 240 px.
+- Diseño (2026-11-22, Impeccable): `PRODUCT.md` (piloto + coach, escritorio, sesiones
+  largas) y `DESIGN.md` + `.impeccable/design.json` ("El muro de boxes": cian único acento,
+  resplandores de fondo = identidad, capas tonales + sombra suave). Respetarlos en UI nueva.
+- Accesibilidad (auditoría 14/20 → arreglos): overlay de zoom con foco/Tab/Escape
+  (`mostrarOverlayZoom` es el único que pone `activo`; cada apertura fija su título),
+  tracción `role=button`, lectura ≥12 px, targets ≥24 px (32 con `pointer: coarse`),
+  `touch-action: none` en mapas, títulos de tarjeta `<h2>`, pestañas con tabindex itinerante.
+- Colores de canvas/uPlot vía `COLOR.*` (utils.js, lee `:root`); las ruedas FL/FR/RL/RR
+  conservan hex propios (categóricos).
 ## Aprendizajes y errores a evitar
-- En esta PC, `link.exe` de Git tapa al de MSVC: `cargo test` falla con `extra operand`.
-- No crear `docs/`: las docs viven en `doc/`.
-- `doc/PLAN_CURVAS.md` menciona scripts smoke inexistentes — no buscarlos.
-- `detectarCurvas` se duplicó en v1 y `claseDelta` en v2; eliminar duplicados.
-- Tras editar `front/`, correr `cargo build -p ac-telemetry-lab`; recargar WebView no alcanza.
-- Verificación del front por CDP:
-  `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9333`.
-- Cero escrituras (T126): snapshot antes/después y cerrar con `CloseMainWindow()`.
-- Los tests de `core/tests/` comparten `soporte/`; por eso lleva `#![allow(dead_code)]`.
+- `link.exe` de Git tapa al de MSVC (`extra operand`); el 2026-11-22 tampoco se encontró
+  MSVC instalado, así que `cargo build` no linkeó en esa sesión.
+- Tras editar `front/`, `cargo build -p ac-telemetry-lab`: el front va embebido.
+- Verificación visual por CDP: lanzar con
+  `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9333`, cargar con
+  `cargaArchivos.cargarDesdeRutas([replay, fast_lane])` y `Page.captureScreenshot`.
+- uPlot aplica tamaño/escala un instante después de crear o `setSize`: lo que lea
+  `valToPos` justo después (regla de curvas) va en `requestAnimationFrame`.
+- uPlot: el 1.er gráfico nace más ancho (antes de la barra de scroll); igualar
+  anchos tras crearlos. Canvas en panel oculto mide 0: redibujar con `ResizeObserver`.
+- Si se renombra un id en `index.html`, revisar `estilos.css` (pasó con
+  `#ch-minidelta`; canvas sin altura toma proporción 2:1 y queda gigante).
+- Círculos de tracción: filtrar con la grilla de `datosVuelta`, no con `mapa.trazas`.
 - Tauri convierte args snake_case a camelCase (`numero_local` → `numeroLocal`).
-- Círculos de tracción: filtrar canales alineados usando la grilla de
-  `datosVuelta`; no reutilizar índices de muestras crudas de `mapa.trazas`.
-- Mapa de mejores sectores: usar centro y banda de `fast_lane.ai` de base;
-  las mejores trazadas del replay van superpuestas por sector.
-- El aviso `referencia_fallback` se guarda en el historial del encabezado, no se descarta.
-- README y `AGENTS.md` describen la v2 Tauri + Rust; `visualizador/` es legado. Bundle NSIS activado, instalación manual vía GitHub Releases.
-- Tarea `spec/distribucion/tareas.md`: primer release Windows en NSIS/GitHub Releases; updater queda para después.
-- En Vueltas, el control global muestra todas las válidas o deja solo REF visible;
-  mantener REF evita perder el acceso al análisis.
+- `core/tests/` comparten `soporte/` (`#![allow(dead_code)]`).
+- No crear `docs/` (docs en `doc/`); `doc/PLAN_CURVAS.md` cita smoke scripts inexistentes.
+- Release v0.3.0 (2026-11-21): instalador NSIS `AC Telemetry Lab_0.3.0_x64-setup.exe`.
+  `gh` no está instalado en esta PC; sin él, la release se publica desde la web.
 ## Próximos pasos
-- Tareas manuales pendientes: TV06 (flujo Vueltas multi-auto), T123 (paridad de
-  los 32 paneles), DIST02/DIST03 (build reproducible e instalación).
+- Replays de prueba (locales, no commitear): `Downloads/temp (1)-20261107T021753Z-1-001/temp (1)`
+  (Misano) y `Downloads/temp-20261108T163338Z-1-001/temp` (7 de Monza).
+- Pendientes manuales: TV06, T123 (paridad de 32 paneles), DIST02/DIST03;
+  ING02–ING04, ING28, ING35, ING47 (validar signos y calibración con replay real).
 - `spec/modificacion de pista/`: 14 tareas sin empezar.

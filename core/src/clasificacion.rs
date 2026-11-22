@@ -37,16 +37,53 @@ pub fn clasificar_vueltas(vueltas: &mut [Vuelta]) {
     }
 }
 
+/// Invalida las vueltas que recorren menos de [`COBERTURA_MINIMA_REL`] del
+/// largo de la pista.
+///
+/// Complementa a [`clasificar_vueltas`]: la mediana del auto no detecta cortes
+/// cuando **todas** sus vueltas son parciales (autos que entran o salen de la
+/// sesión). La primera y la última de cada auto quedan `Incompleta`; las del
+/// medio, `Cortada`.
+pub fn descartar_cortas_por_pista(vueltas: &mut [Vuelta], longitud_m: f64) {
+    if !longitud_m.is_finite() || longitud_m <= 0.0 {
+        return;
+    }
+    let minimo = COBERTURA_MINIMA_REL * longitud_m;
+
+    for indice in 0..vueltas.len() {
+        let vuelta = &vueltas[indice];
+        let corta = vuelta.cobertura_s_m.is_finite() && vuelta.cobertura_s_m < minimo;
+        if !vuelta.valida || !corta {
+            continue;
+        }
+        let auto = vuelta.id.auto;
+        let primera = !vueltas[..indice].iter().any(|v| v.id.auto == auto);
+        let ultima = !vueltas[indice + 1..].iter().any(|v| v.id.auto == auto);
+        let motivo = if primera || ultima {
+            MotivoVuelta::Incompleta
+        } else {
+            MotivoVuelta::Cortada
+        };
+        marcar(vueltas, indice, false, motivo);
+    }
+}
+
 /// Clasifica un grupo de vueltas de un mismo auto.
 ///
 /// Una vuelta con proyección deficiente (fase 4) queda no analizable aunque su
 /// cobertura alcance la mediana: esa decisión no se revierte acá.
+///
+/// Un auto con un único tramo nunca cruzó la meta dos veces: no tiene ninguna
+/// vuelta completa y su tramo queda `Incompleta`.
 fn clasificar_grupo(vueltas: &mut [Vuelta], indices: &[usize]) {
     if indices.len() < 2 {
         for &indice in indices {
-            let deficiente = proyeccion_deficiente(&vueltas[indice]);
-            let motivo = vueltas[indice].motivo;
-            marcar(vueltas, indice, !deficiente, motivo);
+            let motivo = if proyeccion_deficiente(&vueltas[indice]) {
+                vueltas[indice].motivo
+            } else {
+                MotivoVuelta::Incompleta
+            };
+            marcar(vueltas, indice, false, motivo);
         }
         return;
     }

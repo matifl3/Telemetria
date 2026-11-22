@@ -58,6 +58,7 @@ fn crear_vuelta_con_s(auto: usize, local: usize, s: Vec<f64>, tiempos: Vec<f64>)
         motivo: MotivoVuelta::Ninguno,
         seleccionable: true,
         tiempo_s,
+        tiempo_juego_s: None,
         cobertura_s_m,
         vel_media_mps,
         muestras: Series {

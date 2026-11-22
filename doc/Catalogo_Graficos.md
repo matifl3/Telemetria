@@ -49,13 +49,14 @@ pruebas (offset a confirmar).
 | Marcha | Escalones de cambio | `marcha` | 🟢 | Alta |
 | Volante | Ángulo de dirección (correcciones) | `steer_angle` | 🟢 | Alta |
 | Aceleración total | Módulo de aceleración (frenada/arranque) | `acc_total` | 🟢 | Media |
+| Regla de curvas | Franja fija sobre los gráficos de Telemetría: un tramo por curva (`C1..Cn`, colores del mapa de Curvas), alineada al eje X; resalta la curva del cursor. La lectura "curva" muestra `Cn` o `recta` | curvas de `fast_lane.ai` (`s_ini`, `s_fin`), distancia | ✅ | — |
 
 
 ### 1.2 Mapas del trazado
 
 | Gráfico | Qué muestra | Datos | Estado | Prioridad |
 |---|---|---|---|---|
-| Mapa de pista | Trazada x/z con marcador + reproductor | `pos_x`, `pos_z` | ✅ | — |
+| Mapa de pista | Trazada x/z con marcador + reproductor. La posición actual de cada vuelta va en una capa transparente (`capa-vivo`) que se redibuja sola al reproducir; sigue zoom/pan/3D | `pos_x`, `pos_z`, `s` | ✅ | — |
 | Mapa coloreado por canal | La línea pintada según velocidad/gas/freno/marcha | `pos_x/z` + canal | 🟡 | Alta |
 | Mapa 3D | x/z + elevación (`pos_y`) coloreado | `pos_x/y/z` | 🟡 | Media |
 | Marcadores de frenada | Puntos donde se frena fuerte | `freno`, `pos_x/z` | 🟢 | Media |
@@ -74,6 +75,7 @@ pruebas (offset a confirmar).
 | Círculo de tracción | `acc_lat` vs `acc_long` (g usado) | `acc_x/y/z` | 🟢 | Alta |
 | Rumbo / yaw | `rot_y` vs distancia (giro real del auto) | `rot_y` | 🟢 | Media |
 | Carga por rueda | Fuerza vertical sobre cada neumático | `carga_*` | 🟢 | Media |
+| Carga por rueda en vivo | Auto visto desde arriba: ruedas coloreadas por carga (N y %) y, al centro, punto de balance de pesos (del/tras, izq/der) con estela de 1,5 s | `carga_*`, tiempo | ✅ | — |
 
 
 
@@ -147,6 +149,17 @@ Comparación directa entre vueltas elegidas (usar la vuelta de referencia "REF")
 | Gráfico | Qué muestra | Datos | Estado | Prioridad |
 |---|---|---|---|---|
 | Mini-deltas por sector | Quién gana/pierde en cada tramo | dist, `velocidad_kmh` | 🔴 | Media |
+
+### 3.4 Análisis de ingeniero (spec/analisis-ingeniero)
+
+| Gráfico | Qué muestra | Datos | Estado | Prioridad |
+|---|---|---|---|---|
+| Pendiente del delta (Comparación, `chart-pendiente`) | s perdidos cada 100 m; zonas del ranking sombreadas | `pendiente_delta`, `ranking.perdidas` | 🔴 | Alta |
+| Dónde pierde tiempo A (Comparación, `ranking-perdidas`) | Tabla de zonas con pérdida, % y causa probable; click = ir a la zona | `ranking` | 🔴 | Alta |
+| Fases de curva (Curvas, `tabla-fases-curvas`) | Frenada, freno máx, trail, coasting y vértice→gas A / B, Δt por fase | `analisis[].fases`, `delta.fases` | 🔴 | Alta |
+| Balance y slip (Curvas, `tabla-balance-slip`) | Sub/sobreviraje por fase y bloqueos/patinamientos por curva | `analisis[].balance`, `analisis[].resumen_slip` | 🔴 | Media |
+| Consistencia por curva (Conjunto, `tabla-consistencia`) | Curvas de la más irregular a la más repetible y qué varía | `consistencia.curvas` | 🔴 | Media |
+| Dispersión de velocidad (Conjunto, `chart-desvio-vel`) | Desvío estándar de la velocidad entre vueltas por metro | `consistencia.desvio_velocidad` | 🔴 | Media |
 
 ---
 

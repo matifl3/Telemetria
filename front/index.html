@@ -82,11 +82,14 @@
 
         <div class="panel-titulo">Lectura actual</div>
         <div id="readouts" class="readouts"></div>
+
+        <div class="panel-titulo">Sesión</div>
+        <div id="sesion-info" class="sesion-info" aria-live="polite"></div>
       </aside>
 
       <section class="contenido">
         <nav class="tabs" role="tablist" aria-label="Vistas de análisis">
-          <button class="tab activo" type="button" role="tab" id="tab-vuelta" aria-selected="true" aria-controls="panel-vuelta" data-tab="vuelta">Vuelta</button>
+          <button class="tab activo" type="button" role="tab" id="tab-vuelta" aria-selected="true" aria-controls="panel-vuelta" data-tab="vuelta">Telemetría</button>
           <button class="tab" type="button" role="tab" tabindex="-1" id="tab-vueltas" aria-selected="false" aria-controls="panel-vueltas" data-tab="vueltas">Vueltas</button>
           <button class="tab" type="button" role="tab" tabindex="-1" id="tab-mapa" aria-selected="false" aria-controls="panel-mapa" data-tab="mapa">Mapa</button>
           <button class="tab" type="button" role="tab" tabindex="-1" id="tab-conjunto" aria-selected="false" aria-controls="panel-conjunto" data-tab="conjunto">Conjunto</button>
@@ -95,6 +98,9 @@
         </nav>
 
         <div id="panel-vuelta" class="tab-panel activo" role="tabpanel" aria-labelledby="tab-vuelta">
+          <div class="regla-curvas">
+            <canvas id="ch-regla-curvas" role="img" aria-label="Regla de curvas: cada tramo de color es una curva de la pista sobre el eje de distancia"></canvas>
+          </div>
           <div class="grafico-card">
             <h2 class="grafico-titulo">Velocidad <span class="unidad">km/h · distancia de pista</span></h2>
             <div id="chart-speed" class="plot"></div>
@@ -171,12 +177,12 @@
               <label>Rotación <input id="mapa-rot" type="range" min="-180" max="180" value="0" step="1" /></label>
               <label>Elevación <input id="mapa-alt" type="range" min="0" max="15" value="3" step="0.5" /></label>
             </div>
-            <div id="mapa-canvas"><canvas id="mapa" role="img" aria-label="Mapa de pista"></canvas></div>
+            <div id="mapa-canvas"><canvas id="mapa" role="img" aria-label="Mapa de pista"></canvas><canvas id="mapa-vivo" class="capa-vivo" aria-hidden="true"></canvas></div>
             <div id="mapa-trazadas"></div>
           </div>
           <div class="grafico-card">
-            <h2 class="grafico-titulo">Carga por rueda en vivo <span class="unidad">vuelta REF · seguí el scrub/play</span></h2>
-            <canvas id="chart-carga-vivo" role="img" aria-label="Carga por rueda en vivo"></canvas>
+            <h2 class="grafico-titulo">Carga por rueda en vivo <span class="unidad">vuelta REF · auto visto desde arriba · punto = balance de pesos</span></h2>
+            <canvas id="chart-carga-vivo" role="img" aria-label="Auto visto desde arriba con la carga de cada rueda y el balance de pesos en el instante actual"></canvas>
           </div>
         </div>
 
@@ -229,6 +235,14 @@
             </div>
           </div>
           <div class="grafico-card">
+            <h2 class="grafico-titulo">Consistencia por curva <span class="unidad">de la más irregular a la más repetible</span></h2>
+            <div id="tabla-consistencia" class="tabla-delta-wrap"></div>
+          </div>
+          <div class="grafico-card">
+            <h2 class="grafico-titulo">Dispersión de velocidad <span class="unidad">desvío estándar entre vueltas · km/h</span></h2>
+            <div id="chart-desvio-vel" class="plot"></div>
+          </div>
+          <div class="grafico-card">
             <h2 class="grafico-titulo">Resumen por vuelta</h2>
             <div id="tabla-resumen"></div>
           </div>
@@ -248,6 +262,14 @@
           <div class="grafico-card">
             <h2 class="grafico-titulo">Delta A − B <span class="unidad">s (positivo = A más lento)</span></h2>
             <div id="chart-delta" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <h2 class="grafico-titulo">Pendiente del delta <span class="unidad">s cada 100 m · sombreado = zonas del ranking</span></h2>
+            <div id="chart-pendiente" class="plot"></div>
+          </div>
+          <div class="grafico-card">
+            <h2 class="grafico-titulo">Dónde pierde tiempo A <span class="unidad">frente a B · tocá una fila para ir a la zona</span></h2>
+            <div id="ranking-perdidas" class="tabla-delta-wrap" aria-live="polite"></div>
           </div>
           <div class="grafico-card">
             <h2 class="grafico-titulo">Diferencia de velocidad <span class="unidad">km/h</span></h2>
@@ -292,6 +314,14 @@
             <h2 class="grafico-titulo">Delta por curva <span class="unidad">A − B · ventana = arco</span></h2>
             <canvas id="ch-delta-curvas" role="img" aria-label="Delta por curva"></canvas>
             <div id="tabla-curva-delta" class="tabla-delta-wrap"></div>
+          </div>
+          <div class="grafico-card">
+            <h2 class="grafico-titulo">Fases de curva <span class="unidad">frenada · trail braking · coasting · gas a fondo · A vs B</span></h2>
+            <div id="tabla-fases-curvas" class="tabla-delta-wrap"></div>
+          </div>
+          <div class="grafico-card">
+            <h2 class="grafico-titulo">Balance y slip <span class="unidad">sub/sobreviraje por fase · bloqueos y patinamiento</span></h2>
+            <div id="tabla-balance-slip" class="tabla-delta-wrap"></div>
           </div>
         </div>
       </section>

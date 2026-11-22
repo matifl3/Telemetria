@@ -5,9 +5,6 @@
 const PALETA = ['#38bdf8', '#f472b6', '#4ade80', '#facc15', '#a78bfa', '#fb923c', '#22d3ee', '#f87171', '#c084fc', '#fde047'];
 const G = 9.80665;
 const N_SECTORES = 3;
-const SLIP_SPIN = 0.15;
-const SLIP_LOCK = -0.3;
-const SLIP_VEL_MIN = 30;
 
 const state = {
   resumen: null,          // último DtoResumen (cargo/selector/avisos)
@@ -16,8 +13,8 @@ const state = {
   version: 0,             // invalida el caché de datos de pestaña
   cacheDatos: new Map(),  // pestaña → { version, rot, alt, datos }
   tab: 'vuelta',
+  archivos: { replay: null, pista: null }, // rutas cargadas (solo para mostrar)
   datosVuelta: null,      // DtoVuelta base (grilla + canales de vueltas visibles)
-  pistasCurvas: [],       // curvas del DTO activo p/ marcas en uPlot y lecturas
   colorPorId: new Map(),  // id "auto NumeroLocal" → color de paleta
   grilla: [],             // s de pista (eje X común)
   paso: 1,                // paso de la grilla (m) p/ índices de arcos
@@ -30,7 +27,6 @@ const state = {
   raf: null,
   lastTs: 0,
   ultVms: 0,
-  _tick: 0,
   charts: { lines: [], inputs: [] },
   mapa: { visual: 'canal', canal: 'velocidad_kmh', bordes: true, frenada: true, cambios: false, tresD: false, rot: 0, alt: 3, zoom: 1, panX: 0, panY: 0, resetView: true },
   mapaSectores: { tresD: false, rot: 0, alt: 3 },

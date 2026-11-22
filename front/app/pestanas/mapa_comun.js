@@ -273,6 +273,24 @@ function indiceDeS(traza, sApex) {
   return mejor;
 }
 
+/* Posición actual de cada traza (punto con `s` más cercano a la distancia del
+   reproductor). La REF va encima, en blanco con borde de su color (como v1). */
+function dibujarPosicionVivo(ctx, tf, trazas, refId) {
+  const orden = [...trazas].sort((a, b) => (mismaId(a.id, refId) ? 1 : 0) - (mismaId(b.id, refId) ? 1 : 0));
+  for (const traza of orden) {
+    const i = indiceDeS(traza, state.dis);
+    if (i < 0) continue;
+    const [x, y] = tf(traza.puntos[i][0], traza.puntos[i][1]);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    const color = colorDeVuelta(traza.id);
+    const esRef = refId && mismaId(traza.id, refId);
+    ctx.beginPath(); ctx.arc(x, y, esRef ? 7 : 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = esRef ? COLOR.blanco : hexA(color, 0.95); ctx.fill();
+    ctx.lineWidth = esRef ? 3 : 1.5;
+    ctx.strokeStyle = esRef ? color : 'rgba(13,18,26,0.9)'; ctx.stroke();
+  }
+}
+
 /* Numerales C1..Cn sobre el eje del apex (sobre una traza de referencia). */
 function dibujarNumeralesCurvas(ctx, tf, traza, curvas) {
   if (!curvas || !curvas.length || !traza) return;

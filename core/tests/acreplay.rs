@@ -187,18 +187,22 @@ fn t12_truncado_en_cualquier_seccion_da_error() {
     }
 }
 
+/// `current_recording_index` es un frame (en replays reales vale `num_frames`):
+/// el jugador es siempre el primer auto, valga lo que valga ese campo.
 #[test]
-fn indice_jugador_valido_marca_auto_de_referencia() {
-    let mut constructor = ConstructorReplay::con_autos(3, 1);
-    constructor.indice_jugador = 2;
-    let replay = parsear_replay(&constructor.bytes(), "jugador.acreplay").unwrap();
-    assert_eq!(replay.auto_referencia, Some(2));
+fn el_jugador_es_siempre_el_primer_auto() {
+    for indice_grabacion in [0, 2, 9, 13_068] {
+        let mut constructor = ConstructorReplay::con_autos(3, 1);
+        constructor.indice_grabacion = indice_grabacion;
+        let replay = parsear_replay(&constructor.bytes(), "jugador.acreplay").unwrap();
+        assert_eq!(replay.auto_referencia, Some(0), "indice_grabacion = {indice_grabacion}");
+        assert_eq!(replay.meta.indice_grabacion, indice_grabacion);
+    }
 }
 
 #[test]
-fn indice_jugador_fuera_de_rango_no_marca_referencia() {
-    let mut constructor = ConstructorReplay::con_autos(2, 1);
-    constructor.indice_jugador = 9;
-    let replay = parsear_replay(&constructor.bytes(), "jugador.acreplay").unwrap();
+fn replay_sin_autos_no_marca_referencia() {
+    let constructor = ConstructorReplay::con_autos(0, 1);
+    let replay = parsear_replay(&constructor.bytes(), "vacio.acreplay").unwrap();
     assert_eq!(replay.auto_referencia, None);
 }

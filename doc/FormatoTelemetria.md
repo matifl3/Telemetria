@@ -70,6 +70,10 @@ auto: encabezado + frames. Puede terminar con un bloque opcional de **CSP**
 `(4 + 12 × num_track_objects) × num_frames` bytes (2 ángulos de sol de 2 bytes +
 12 bytes por objeto de pista, por frame).
 
+> `current_recording_index` **no es un índice de auto**: es el frame de
+> reproducción al guardar el replay (en replays reales suele valer `num_frames`).
+> El jugador (dueño del replay) es siempre el **primer auto** del archivo.
+
 ### 2.3 Encabezado por auto
 
 | Orden | Campo | Tipo |
@@ -159,6 +163,11 @@ Orden de ruedas: **FL, FR, RL, RR** (delantera izq./der., trasera izq./der.).
 `gas`, `brake`, `steer_angle`, `current_lap`, `current_lap_time`,
 `last_lap_time`, `best_lap_time`, `fuel`, `boost`, y por rueda
 `slip_angle`, `slip_ratio`, `nd_slip`, `load`, `dirt`.
+
+> Solo el auto del jugador trae `current_lap`, `last_lap_time` y
+> `best_lap_time`. En los demás autos (replays online) esos campos valen 0 en
+> todos los frames; solo `current_lap_time` es útil: vuelve a cero al cruzar la
+> meta, y su valor justo antes del reinicio es el tiempo de esa vuelta.
 
 > Limitación: **no hay temperatura ni presión de neumáticos** en `.acreplay`.
 > Esas señales solo existen en shared memory / UDP en vivo.

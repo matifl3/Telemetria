@@ -7,6 +7,10 @@
 
 use crate::vuelta::Vuelta;
 
+/// Índice del auto del jugador (dueño del replay): AC siempre lo graba
+/// primero. Es el único auto con `current_lap` y `last_lap_time`.
+pub const INDICE_JUGADOR: usize = 0;
+
 /// Metadatos del encabezado del `.acreplay`.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct MetaReplay {
@@ -17,8 +21,9 @@ pub struct MetaReplay {
     pub clima: String,
     pub pista: String,
     pub config_pista: String,
-    /// `current_recording_index`: índice del auto del jugador.
-    pub indice_jugador: u32,
+    /// `current_recording_index`: frame de reproducción al guardar el replay.
+    /// No identifica un auto; el jugador es [`INDICE_JUGADOR`].
+    pub indice_grabacion: u32,
     /// `num_frames` del encabezado global.
     pub frames_globales: u32,
     /// `num_track_objects`: objetos de pista por frame.
@@ -30,7 +35,7 @@ pub struct MetaReplay {
 pub struct Replay {
     pub meta: MetaReplay,
     pub autos: Vec<Auto>,
-    /// Auto de referencia sugerido por `current_recording_index` (si es válido).
+    /// Auto de referencia: el del jugador (primer auto) si el replay tiene autos.
     /// El fallback por vueltas analizables se resuelve al clasificar (fase 3).
     pub auto_referencia: Option<usize>,
 }
@@ -152,7 +157,7 @@ mod pruebas {
             clima: "3_clear".to_string(),
             pista: "monza".to_string(),
             config_pista: String::new(),
-            indice_jugador: 1,
+            indice_grabacion: 1,
             frames_globales: 2,
             objetos_pista: 0,
         };
