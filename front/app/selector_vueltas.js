@@ -316,29 +316,26 @@ const selectorVueltas = (() => {
     return null;
   }
 
-  /* Selectores "vs B" de Comparación y Curvas: lista de visibles ≠ REF. */
-  function poblarSelB() {
+  /* Selector de B (panel lateral): vueltas visibles distintas de la REF. Sin B
+     elegida, la primera opción lo dice. */
+  function poblarSelB(sel) {
     const resumen = state.resumen;
     const refId = resumen && resumen.seleccion && resumen.seleccion.referencia;
     const bId = resumen && resumen.seleccion && resumen.seleccion.b;
-    const opciones = state.resumen.vueltas
-      .filter((v) => v.visible && !mismaId(v.id, refId))
-      .map((v) => `<option value="${idVuelta(v.id)}"${bId && mismaId(v.id, bId) ? ' selected' : ''}>${v.etiqueta}</option>`)
-      .join('');
-    for (const idSel of ['sel-lap-b', 'sel-lap-b-curvas']) {
-      const s = $(idSel);
-      if (!s) continue;
-      s.innerHTML = opciones;
+    sel.innerHTML = '';
+    if (!bId) {
+      const nada = document.createElement('option');
+      nada.value = '';
+      nada.textContent = 'sin elegir';
+      sel.appendChild(nada);
     }
-    for (const idA of ['vs-a', 'vs-a-curvas']) {
-      const el = $(idA);
-      if (el) el.textContent = refId ? vueltaParaTexto(refId) : '–';
+    for (const v of resumen.vueltas.filter((x) => x.visible && !mismaId(x.id, refId))) {
+      const op = document.createElement('option');
+      op.value = idVuelta(v.id);
+      op.textContent = v.etiqueta;
+      if (bId && mismaId(v.id, bId)) op.selected = true;
+      sel.appendChild(op);
     }
-  }
-
-  function vueltaParaTexto(dtoId) {
-    const v = state.resumen.vueltas.find((x) => mismaId(x.id, dtoId));
-    return v ? v.etiqueta : '–';
   }
 
   async function fijarBDesdeSelect(sel, pestanaRender) {

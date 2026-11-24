@@ -71,6 +71,13 @@ function colorDeVuelta(dtoId) {
   return state.colorPorId.get(key);
 }
 
+/* Etiqueta corta para leyendas de tarjetas: `piloto · car_id · Vn` → `piloto · Vn`
+   (el color ya distingue cada vuelta; la etiqueta completa está en Sesión y Vueltas). */
+function etiquetaCorta(etiqueta) {
+  const partes = String(etiqueta || '').split(' · ');
+  return partes.length >= 3 ? `${partes[0]} · ${partes[partes.length - 1]}` : String(etiqueta || '');
+}
+
 /* Valor en el índice i de una serie que puede ser null/undefined. */
 function valorSerie(serie, i) {
   if (!serie || !serie.length) return null;

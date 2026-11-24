@@ -34,37 +34,15 @@ function opcionesGrafico(cont, height, yRango, yLabel, zoomX = false) {
   };
 }
 
-/* Gráfico de líneas sobre la grilla común: la primera serie es el eje X. */
-function lineChart(cont, height, yRango, yLabel, data, series) {
-  if (!cont) return null;
-  // El contenedor es del gráfico: descarta mensajes de "vacío" de un render anterior.
-  cont.innerHTML = '';
-  const o = opcionesGrafico(cont, height, yRango, yLabel);
-  o.series = series;
-  const u = new uPlot(o, data, cont);
-  state.charts.lines.push({ u, cont, height });
-  return u;
-}
-
-function graficoMinusculo(cont, height, yRango, yLabel, data, series) {
-  const o = opcionesGrafico(cont, height, yRango, yLabel);
-  o.series = series;
-  const u = new uPlot(o, data, cont);
-  state.charts.inputs.push(u);
-  return u;
-}
-
-function destroyCharts() {
-  for (const r of state.charts.lines) r.u.destroy();
-  state.charts.lines = [];
-  for (const u of state.charts.inputs) u.destroy();
-  state.charts.inputs = [];
-  _ultimoCursorPx = -1; // el gráfico guía nuevo todavía no tiene cursor
-}
-
+/* Hover sobre un gráfico: mueve el reproductor a esa distancia. Se convierte por
+   valor (no por índice) porque no todos los gráficos usan la grilla de la vuelta
+   (la envolvente de Conjunto tiene su propio eje). */
 function alCursor(u) {
-  const idx = u.cursor.idx;
-  if (idx == null || idx < 0 || idx >= state.grilla.length) return;
+  const i = u.cursor.idx;
+  if (i == null || i < 0 || !state.grilla.length) return;
+  const s = u.data[0][i];
+  if (s == null || !Number.isFinite(s)) return;
+  const idx = clamp(Math.round((s - state.grilla[0]) / (state.paso || 1)), 0, state.grilla.length - 1);
   if (idx === state.idx) return; // cursor programático del play/scrub: no realimentar
   if (zoomAmpliadoEnCurso()) return; // reajuste interno de uPlot al cambiar el zoom
   state.idx = idx;
@@ -72,16 +50,25 @@ function alCursor(u) {
   actualizarPorIdx({ moverCursor: false });
 }
 
-/* Gráfico que guía la regla de curvas y el cursor: el primero de la pestaña. */
+/* Destruye un uPlot del tablero y lo saca de los registros de gráficos. */
+function quitarUplot(u) {
+  if (!u) return;
+  state.charts.lines = state.charts.lines.filter((r) => r.u !== u);
+  u.destroy();
+}
+
+/* Gráfico que guía el cursor: el primero registrado (uPlot sincroniza el resto). */
 function graficoGuia() {
-  if (state.charts.lines.length) return state.charts.lines[0].u;
-  return state.charts.inputs[0] || null;
+  return state.charts.lines.length ? state.charts.lines[0].u : null;
 }
 
 let _ultimoCursorPx = -1;
+let _ultimaGuia = null;
 function moverCursor() {
   const u = graficoGuia();
   if (!u) return;
+  // Si cambió el gráfico guía (se quitó una tarjeta), su cursor todavía no está puesto.
+  if (u !== _ultimaGuia) { _ultimaGuia = u; _ultimoCursorPx = -1; }
   const left = u.valToPos(state.dis, 'x');
   if (!Number.isFinite(left)) return;
   if (Math.abs(left - _ultimoCursorPx) < 1) return;

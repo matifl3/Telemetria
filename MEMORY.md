@@ -1,81 +1,48 @@
 # MEMORY.md — AC Telemetry Lab
 Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aporte.
 ## Estado actual
-- v2 Tauri + Rust completa (fases 0–13): `core` parsea replay v16/`fast_lane.ai` y
-  calcula el análisis; 160 tests en `core` (`cargo test -p core`). `visualizador/` es legado.
-- Datos solo en memoria por sesión; cero escrituras en runtime (T126).
-- Curvas calibradas en Monza, Imola, Spa y Mugello.
+- v2 Tauri + Rust: `core` parsea replay v16/`fast_lane.ai` y calcula el análisis
+  (`cargo test --workspace` en verde). `visualizador/` es legado.
+- Front = **tablero** (rama `tablero/playground`, `spec/tablero/`, TB01–TB18 hechas):
+  pestañas Tablero y Vueltas; 37 gráficos en un catálogo; Gridstack 14.1.1 vendorizado.
+- Datos solo en memoria; única excepción: diseño del tablero en `localStorage`
+  (`ac-telemetry-lab.tablero.v1`, constitución §5 enmendada; test `t88_*`).
 ## Decisiones (y por qué)
 - La constitución rige sobre `AGENTS.md`; `doc/FormatoTelemetria.md` manda sobre el parser.
-- v2: alineación por arco `s`, carga atómica, "Conjunto" solo REF; eje X = distancia;
-  no finitos viajan como `null`.
-- Jugador = auto 0 (`INDICE_JUGADOR`): `current_recording_index` es un frame
-  (≈`num_frames`), no un auto (verificado en 8 replays; `meta.indice_grabacion`).
-- Tiempos: jugador por `last_lap_time` oficial de la vuelta siguiente; otros autos
-  (sin `current_lap`/`last_lap_time`) se cortan por reinicio de `current_lap_time`
-  y su tiempo es el reloj antes del reinicio.
-- Inválidas: auto con un solo tramo, o vuelta < 90 % del largo del `fast_lane.ai`.
-- Selección al cargar (RF-013): 2 válidas más rápidas; REF = 1.ª, B = 2.ª.
-- Proyección deficiente: un único aviso total por replay. Avisos sin duplicados.
-- Vueltas: jugador primero, otros por tiempo; el botón global deja siempre la REF.
-- Pestaña "Vuelta" se muestra "Telemetría" (ids internos `vuelta` sin cambiar).
-- Telemetría: sin marcas C1..Cn en los uPlot; las curvas se ven en una "regla de
-  curvas" fija arriba (`dibujarReglaCurvas`, alineada a `u.over`) + lectura `ro-curva`.
-- Mapa de Curvas: la etiqueta la pone solo `dibujarArcosCurvas` (como v1).
-- Mapa: posición en vivo en una capa `capa-vivo` (solo se repinta esa capa al
-  reproducir); solo en la pestaña Mapa, por decisión del usuario.
-- "Carga por rueda en vivo" = auto desde arriba + punto de balance con estela
-  (`dibujarAutoCarga`; escala por vuelta REF en `escalaCarga`).
-- Interfaz (tanda 1): lecturas con etiqueta arriba y unidad; pestañas fijas bajo la
-  barra (`--alto-tabs`, no en ≤640 px); bloque "Sesión" en el lateral (rutas en
-  `state.archivos`, solo para mostrar). Pendiente tanda 2: celular (barra de
-  reproductor abajo, encabezado compacto), botones de carga y confirmar "Limpiar".
-- Análisis de ingeniero (`spec/analisis-ingeniero/`): integrado en Comparación
-  (ranking), Curvas (fases, balance, slip) y Conjunto (consistencia), sin pestaña
-  nueva. Umbrales de slip ahora en `core/src/slip.rs` (el front los recibe en el DTO).
-- Comparación "Delta por sector": barras como v1 (paridad) + delta final. Canvas 240 px.
-- Diseño (2026-11-22, Impeccable): `PRODUCT.md` (piloto + coach, escritorio, sesiones
-  largas) y `DESIGN.md` + `.impeccable/design.json` ("El muro de boxes": cian único acento,
-  resplandores de fondo = identidad, capas tonales + sombra suave). Respetarlos en UI nueva.
-- Accesibilidad (auditoría 14/20 → arreglos): overlay de zoom con foco/Tab/Escape
-  (`mostrarOverlayZoom` es el único que pone `activo`; cada apertura fija su título),
-  tracción `role=button`, lectura ≥12 px, targets ≥24 px (32 con `pointer: coarse`),
-  `touch-action: none` en mapas, títulos de tarjeta `<h2>`, pestañas con tabindex itinerante.
-- Colores de canvas/uPlot vía `COLOR.*` (utils.js, lee `:root`); las ruedas FL/FR/RL/RR
-  conservan hex propios (categóricos).
-- Telemetría: `GRAFICOS_TELEMETRIA` (vuelta.js) alimenta el render y "Ver en grande"
-  (`graficos/ampliado.js`, zoom X con rueda/arrastre solo en el overlay; bloquea el scroll de la página). Los chips para elegir gráficos se
-  hicieron y se retiraron a pedido del usuario (2026-11-24).
+- v2: alineación por arco `s`, "Conjunto" solo autos de la REF; eje X = distancia; no finitos = `null`.
+- Jugador = auto 0 (`INDICE_JUGADOR`): `current_recording_index` es un frame, no un auto.
+- Tiempos: jugador por `last_lap_time` de la vuelta siguiente; otros autos por reinicio
+  de `current_lap_time`. Inválidas: un solo tramo o < 90 % del largo de la pista.
+- Selección al cargar: 2 válidas más rápidas (REF = 1.ª, B = 2.ª). Vueltas: jugador primero.
+- Tablero: cada gráfico se registra con `registrarGrafico` (`tablero/catalogo.js`):
+  `uplot(datos)` → plots (regla de curvas + «Ver en grande» genéricos) o `montar(cuerpo…)`.
+  El `id` es estable (se guarda). Datos por fuente con `puente.pedirPestana` (caché por
+  versión + rot/alt, pedidos en paralelo compartidos). Sin chips: el usuario arma el tablero
+  (los chips de la versión anterior se retiraron a pedido del usuario).
+- B se elige en el bloque «Sesión» del lateral (`sel-b-global`) o en Vueltas.
+- Leyendas de tarjetas con `etiquetaCorta` (`piloto · Vn`): el `car_id` no entra en tarjetas chicas.
+- En 1 columna (≤ 640 px) no se guardan posiciones: se conserva el diseño de escritorio.
+- Diseño: respetar `DESIGN.md` / `.impeccable/design.json` (cian único acento) y la
+  accesibilidad ya aplicada (diálogos con foco/Tab/Esc, targets ≥24 px, 32 en táctil).
+- Colores de canvas/uPlot vía `COLOR.*` (utils.js); ruedas FL/FR/RL/RR con hex propios.
 ## Aprendizajes y errores a evitar
-- Compilar: `cmd /c "call <vcvars64.bat> && cargo build -p ac-telemetry-lab"` (vcvars evita el
-  `link.exe` de Git). vcvars en `D:\BuildTools\VC\Auxiliary\Build\` (si D: está conectado) o en
-  `C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\`
-  (2026-11-24: C: con 55 GB libres, se compiló en `target\` del repo).
-- uPlot aplica `setScale` diferido: no leer `u.scales` justo después; al cambiar la escala
-  recalcula el cursor con el píxel viejo (dispara `setCursor`): ignorarlo o mueve el reproductor.
-- Tras editar `front/`, `cargo build -p ac-telemetry-lab`: el front va embebido.
-- Verificación visual por CDP: lanzar con
-  `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9333`, cargar con
-  `cargaArchivos.cargarDesdeRutas([replay, fast_lane])` y `Page.captureScreenshot`.
-- uPlot aplica tamaño/escala un instante después de crear o `setSize`: lo que lea
-  `valToPos` justo después (regla de curvas) va en `requestAnimationFrame`.
-- uPlot: el 1.er gráfico nace más ancho (antes de la barra de scroll); igualar
-  anchos tras crearlos. Canvas en panel oculto mide 0: redibujar con `ResizeObserver`.
-- Si se renombra un id en `index.html`, revisar `estilos.css` (pasó con
-  `#ch-minidelta`; canvas sin altura toma proporción 2:1 y queda gigante).
+- Compilar: `cmd /c "call <vcvars64.bat> && cargo build -p ac-telemetry-lab"` (evita el
+  `link.exe` de Git). vcvars en `D:\BuildTools\VC\Auxiliary\Build\` (si D: está) o en
+  `C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\`.
+- Tras editar `front/`, recompilar: el front va embebido. No correr `cargo fmt` (repo sin formatear).
+- Verificación por CDP: lanzar con `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9333`,
+  cargar con `cargaArchivos.cargarDesdeRutas([replay, fast_lane])` y `Page.captureScreenshot`.
+- uPlot: `setScale` y `setSize` se aplican diferidos (leer posiciones en `requestAnimationFrame`);
+  al cambiar la escala recalcula el cursor con el píxel viejo: ignorarlo (`zoomAmpliadoEnCurso`).
+- Tarjetas: cada una redibuja con su `ResizeObserver`; un canvas en panel oculto mide 0.
+- `[hidden]` no oculta si el CSS pone `display`: agregar `[hidden] { display: none }`.
 - Círculos de tracción: filtrar con la grilla de `datosVuelta`, no con `mapa.trazas`.
 - Tauri convierte args snake_case a camelCase (`numero_local` → `numeroLocal`).
-- `core/tests/` comparten `soporte/` (`#![allow(dead_code)]`).
-- No crear `docs/` (docs en `doc/`); `doc/PLAN_CURVAS.md` cita smoke scripts inexistentes.
-- Release v0.3.0 (2026-11-21): instalador NSIS `AC Telemetry Lab_0.3.0_x64-setup.exe`.
-  `gh` no está instalado en esta PC; sin él, la release se publica desde la web.
+- `core/tests/` comparten `soporte/`. No crear `docs/` (docs en `doc/`).
+- `gh` no está instalado: las releases se publican desde la web.
 ## Próximos pasos
-- Replays de prueba (locales, no commitear): `Downloads/temp (1)-20261107T021753Z-1-001/temp (1)`
-  (Misano) y `Downloads/temp-20261108T163338Z-1-001/temp` (7 de Monza).
-- Pendientes manuales: TV06, T123 (paridad de 32 paneles), DIST02/DIST03;
-  ING02–ING04, ING28, ING35, ING47 (validar signos y calibración con replay real).
-- `spec/modificacion de pista/`: 14 tareas sin empezar.
-- Tablero (rama `tablero/playground`, `spec/tablero/`): plan TB01–TB18 sin implementar. Decidido: Gridstack
-  vendorizado, guardar solo el diseño en `localStorage` (enmendar principio 5), tablero vacío,
-  reemplazar pestañas, copias permitidas. Pendiente: §12 del plan.
-- Hay cambios en `main` posteriores a v0.3.0 sin release.
+- Replays de prueba (locales, no commitear): `Downloads/temp-20261108T163338Z-1-001/temp`
+  (7 de Monza) y `Downloads/temp (1)-20261107T021753Z-1-001/temp (1)` (Misano).
+- Tablero: falta PR a `main`; probar a mano Comparación sin B y con varios autos.
+- Pendientes manuales: TV06, T123, DIST02/DIST03; ING02–ING04, ING28, ING35, ING47.
+- `spec/modificacion de pista/`: 14 tareas sin empezar. Cambios en `main` sin release (v0.3.0).

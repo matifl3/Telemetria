@@ -10,6 +10,13 @@ Ideas de gráficos para la app de análisis (`front/`), clasificadas por
 > Este documento es de **diseño**: describe qué gráficos se pueden hacer, con qué
 > datos y el esfuerzo estimado. No implica que ya estén implementados.
 
+> **Tablero (desde 2026-11-24).** Los gráficos ya no se agrupan en pestañas: cada
+> gráfico implementado (✅) es una entrada del catálogo del tablero
+> (`registrarGrafico` en `front/app/graficos/*.js`) que el usuario agrega desde
+> «+ Agregar gráfico», mueve y redimensiona. Las categorías del menú son Una
+> vuelta, Mapas, Conjunto, Comparación A/B y Curvas. Un gráfico nuevo se registra
+> ahí con su `id` estable (se guarda en el diseño del tablero) y se anota acá.
+
 ## Leyenda de estado
 
 | Símbolo | Significado |
@@ -49,8 +56,8 @@ pruebas (offset a confirmar).
 | Marcha | Escalones de cambio | `marcha` | 🟢 | Alta |
 | Volante | Ángulo de dirección (correcciones) | `steer_angle` | 🟢 | Alta |
 | Aceleración total | Módulo de aceleración (frenada/arranque) | `acc_total` | 🟢 | Media |
-| Regla de curvas | Franja fija sobre los gráficos de Telemetría: un tramo por curva (`C1..Cn`, colores del mapa de Curvas), alineada al eje X; resalta la curva del cursor. La lectura "curva" muestra `Cn` o `recta` | curvas de `fast_lane.ai` (`s_ini`, `s_fin`), distancia | ✅ | — |
-| Ver en grande (Telemetría) | Botón ⤢ en cada gráfico: lo abre en un diálogo con su regla de curvas y **zoom en X** (rueda del mouse alrededor del puntero, arrastrar para acercar, doble clic o "Vuelta completa" para volver, `+`/`−` centrados en el cursor, mínimo 50 m). Cursor sincronizado con el reproductor; el zoom no afecta a la pestaña. Pedales: un mini-gráfico por vuelta, todos con el mismo zoom | mismos canales que cada gráfico | ✅ | — |
+| Regla de curvas | Franja sobre cada gráfico de líneas del tablero: un tramo por curva (`C1..Cn`, colores del mapa de Curvas), alineada al eje X; resalta la curva del cursor. La lectura "curva" muestra `Cn` o `recta` | curvas de `fast_lane.ai` (`s_ini`, `s_fin`), distancia | ✅ | — |
+| Ver en grande | Botón ⤢ en cada gráfico de líneas del tablero: lo abre en un diálogo con su regla de curvas y **zoom en X** (rueda del mouse alrededor del puntero, arrastrar para acercar, doble clic o "Vuelta completa" para volver, `+`/`−` centrados en el cursor, mínimo 50 m). Cursor sincronizado con el reproductor; el zoom no afecta al tablero. Pedales: un mini-gráfico por vuelta, todos con el mismo zoom | mismos canales que cada gráfico | ✅ | — |
 
 
 ### 1.2 Mapas del trazado

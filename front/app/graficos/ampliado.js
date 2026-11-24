@@ -1,31 +1,30 @@
 'use strict';
 
-/* "Ver en grande" de la pestaña Telemetría: un gráfico en un diálogo, con su
-   regla de curvas y zoom en el eje X (arrastrar, doble clic, + / − y "Vuelta
-   completa"). Comparte la clave de sincronía, así que el cursor sigue al
-   reproductor y a los demás gráficos. El zoom no se propaga a la pestaña. */
+/* "Ver en grande" de las tarjetas uPlot del tablero: el gráfico en un diálogo,
+   con su regla de curvas y zoom en el eje X (rueda, arrastrar, doble clic, + / −
+   y "Vuelta completa"). Comparte la clave de sincronía, así que el cursor sigue
+   al reproductor y a los demás gráficos. El zoom no se propaga al tablero. */
 
 const ZOOM_ANCHO_MIN = 50;   // m visibles como mínimo
 const ZOOM_FACTOR = 1.5;     // cuánto acerca o aleja cada botón
 const ZOOM_RUEDA = 1.25;     // cuánto acerca o aleja cada paso de la rueda del mouse
+const ALTO_MIN_AMPLIADO = 120;
 
+// `fuente`: { titulo, plots } de la tarjeta abierta (ver montarUplotTarjeta).
 // `rango`: tramo X visible. Se guarda aparte porque uPlot aplica setScale de
 // forma diferida y varios clics seguidos leerían un rango viejo.
 // `ajustando`: hay un cambio de zoom en curso. Al aplicar la escala, uPlot
 // recalcula el cursor con el píxel viejo; esos eventos no deben mover el reproductor.
-const ampliado = { clave: null, graficos: [], origen: null, rango: null, ajustando: false };
+const ampliado = { fuente: null, graficos: [], divs: [], origen: null, rango: null, ajustando: false };
 
-const ampliadoAbierto = () => ampliado.clave !== null;
+const ampliadoAbierto = () => ampliado.fuente !== null;
 const zoomAmpliadoEnCurso = () => ampliado.ajustando;
 
-function abrirGraficoAmpliado(clave, origen) {
-  const def = definicionGrafico(clave);
-  const tarjeta = tarjetaGrafico(clave);
-  if (!def || !state.datosVuelta) return;
+function abrirGraficoAmpliado(fuente, origen) {
+  if (!fuente || !fuente.plots || !fuente.plots.length) return;
   if (!ampliadoAbierto()) ampliado.origen = origen || document.activeElement;
-  ampliado.clave = clave;
-  const titulo = tarjeta && tarjeta.querySelector('.grafico-titulo-texto');
-  $('ampliado-titulo').textContent = titulo ? titulo.textContent : def.nombre;
+  ampliado.fuente = fuente;
+  $('ampliado-titulo').textContent = fuente.titulo;
   const ov = $('grafico-ampliado');
   ov.classList.remove('oculto');
   document.body.classList.add('sin-scroll'); // la rueda no debe mover la página de fondo
@@ -39,7 +38,7 @@ function abrirGraficoAmpliado(clave, origen) {
 function cerrarGraficoAmpliado() {
   if (!ampliadoAbierto()) return;
   destruirAmpliado();
-  ampliado.clave = null;
+  ampliado.fuente = null;
   const ov = $('grafico-ampliado');
   ov.classList.add('oculto');
   document.body.classList.remove('sin-scroll');
@@ -52,6 +51,7 @@ function cerrarGraficoAmpliado() {
 function destruirAmpliado() {
   for (const u of ampliado.graficos) u.destroy();
   ampliado.graficos = [];
+  ampliado.divs = [];
   const cont = $('plot-ampliado');
   if (cont) cont.innerHTML = '';
 }
@@ -76,36 +76,20 @@ function trasZoomAmpliado() {
 /* Crea los uPlot del overlay. `rango` conserva el zoom al reconstruir (resize). */
 function construirAmpliado(rango) {
   if (!ampliadoAbierto()) return;
-  const def = definicionGrafico(ampliado.clave);
-  const datos = state.datosVuelta;
   destruirAmpliado();
   ampliado.rango = null;
   const cont = $('plot-ampliado');
-  if (!def || !datos || !datos.grilla.length || !cont) return;
-  const alto = Math.max(240, cont.clientHeight - 48);
-
-  if (def.clave === 'pedales') {
-    const altoMini = altoMiniPedales(cont.clientHeight - 12, datos.vueltas.length);
-    for (const p of cajasPedales(cont, datos, altoMini)) {
-      ampliado.graficos.push(crearUplotAmpliado(p.div, altoMini, def, p.data, p.series));
-    }
-  } else {
-    const d = datosGrafico(def, datos);
-    if (!d) { cont.innerHTML = '<p class="hint vacio">Sin vuelta REF: no hay carga por rueda para mostrar.</p>'; return; }
-    const div = document.createElement('div');
-    cont.appendChild(div);
-    ampliado.graficos.push(crearUplotAmpliado(div, alto, def, d.data, d.series));
-  }
-
+  if (!cont || !state.grilla.length) return;
+  const plots = ampliado.fuente.plots;
+  ampliado.divs = cajasDePlots(cont, plots);
+  ampliado.graficos = crearUplots(ampliado.divs, plots, {
+    zoomX: true,
+    registrar: false,
+    hooks: { setScale: [(u, clave) => { if (clave === 'x') alCambiarZoom(u); }] },
+  });
+  ajustarUplots(ampliado.graficos, ampliado.divs, cont.clientHeight - 8, ALTO_MIN_AMPLIADO);
   if (rango) fijarRangoAmpliado(rango.min, rango.max);
   trasZoomAmpliado();
-}
-
-function crearUplotAmpliado(div, alto, def, data, series) {
-  const o = opcionesGrafico(div, alto, def.yRango, def.yLabel, true);
-  o.series = series;
-  o.hooks.setScale = [(u, clave) => { if (clave === 'x') alCambiarZoom(u); }];
-  return new uPlot(o, data, div);
 }
 
 /* Aplica el mínimo de ancho y replica el zoom en los demás gráficos del overlay
@@ -170,7 +154,7 @@ function moverCursorAmpliado() {
 
 function dibujarReglaAmpliada() {
   if (!ampliadoAbierto()) return;
-  dibujarReglaCurvas('ch-regla-ampliado', ampliado.graficos[0] || null);
+  dibujarReglaCurvas($('ch-regla-ampliado'), ampliado.graficos[0] || null);
 }
 
 /* Resize de ventana: mismo gráfico, mismo zoom, nuevo tamaño. */
