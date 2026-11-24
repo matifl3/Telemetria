@@ -1,4 +1,6 @@
 :root {
+  /* Tema oscuro también para lo nativo: barras de scroll, selects y checkboxes. */
+  color-scheme: dark;
   --bg: #0b0e13;
   --bg-2: #10141b;
   --panel: #151a23;
@@ -15,6 +17,10 @@
   --amarillo: #facc15;
   --blanco: #fff;
   --borde-control: #606c80;
+  --subviraje: #7dd3fc;
+  --subviraje-fondo: rgba(56, 189, 248, 0.18);
+  --sobreviraje: #fca5a5;
+  --sobreviraje-fondo: rgba(248, 113, 113, 0.18);
   --error-texto: #fecaca;
   --fuente-mono: "Cascadia Code", "Consolas", ui-monospace, monospace;
   --sombra: 0 8px 30px rgba(0, 0, 0, 0.35);
@@ -352,7 +358,7 @@ html, body {
   border-radius: 10px;
   padding: 8px 10px;
 }
-.ro .ro-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+.ro .ro-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
 .ro .ro-dato { display: flex; align-items: baseline; gap: 4px; min-width: 0; }
 .ro .ro-valor { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .ro .ro-unidad { font-size: 11px; color: var(--muted); }
@@ -361,7 +367,7 @@ html, body {
 /* Sesión: qué está cargado y qué se compara (en fila; baja de línea si no entra) */
 .sesion-info { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 18px; font-size: 12px; }
 .sesion-fila { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 170px; }
-.sesion-etiqueta { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+.sesion-etiqueta { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
 .sesion-valor {
   display: flex;
   align-items: center;
@@ -370,7 +376,7 @@ html, body {
   color: var(--texto);
 }
 .sesion-texto { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sesion-detalle { color: var(--muted); font-size: 11px; }
+.sesion-detalle { color: var(--muted); font-size: 12px; }
 .sesion-tiempo { flex: 0 0 auto; color: var(--acento); font-variant-numeric: tabular-nums; }
 .sesion-color { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 3px; }
 .sesion-info .btn { align-self: flex-end; min-height: 34px; padding: 6px 12px; font-size: 12px; }
@@ -559,14 +565,14 @@ html, body {
 
 /* Análisis de ingeniero: ranking, fases, balance y consistencia */
 .tabla-ranking tbody tr { cursor: pointer; }
-.tabla-ranking tbody tr:focus-visible td { outline: 2px solid var(--acento, #38bdf8); outline-offset: -2px; }
+.tabla-ranking tbody tr:focus-visible td { outline: 2px solid var(--acento); outline-offset: -2px; }
 .tabla-ranking td.causas { white-space: normal; min-width: 220px; line-height: 1.45; }
 .tabla-ranking .pos { color: var(--muted); }
 .tabla-delta .sub-titulo td { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; border-bottom: none; padding-top: 12px; }
-.diag { display: inline-block; min-width: 46px; padding: 1px 6px; border-radius: 9px; font-size: 11px; text-align: center; background: var(--panel-2); color: var(--muted); }
-.diag-subvira { background: rgba(56, 189, 248, 0.18); color: #7dd3fc; }
-.diag-sobrevira { background: rgba(248, 113, 113, 0.18); color: #fca5a5; }
-.aviso-autos { font-size: 12px; color: #facc15; margin: 0 0 8px; }
+.diag { display: inline-block; min-width: 46px; padding: 1px 6px; border-radius: 9px; font-size: 12px; text-align: center; background: var(--panel-2); color: var(--muted); }
+.diag-subvira { background: var(--subviraje-fondo); color: var(--subviraje); }
+.diag-sobrevira { background: var(--sobreviraje-fondo); color: var(--sobreviraje); }
+.aviso-autos { font-size: 12px; color: var(--amarillo); margin: 0 0 8px; }
 
 /* Curvas: círculo de tracción por curva */
 .traction-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 14px; }

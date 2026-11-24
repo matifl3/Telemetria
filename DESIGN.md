@@ -21,6 +21,10 @@ colors:
   texto-sobre-rival: "#2a0716"
   error-texto: "#fecaca"
   amarillo-senal: "#facc15"
+  subviraje: "#7dd3fc"
+  subviraje-fondo: "rgba(56, 189, 248, 0.18)"
+  sobreviraje: "#fca5a5"
+  sobreviraje-fondo: "rgba(248, 113, 113, 0.18)"
 typography:
   titulo-carga:
     fontFamily: "Segoe UI, system-ui, -apple-system, sans-serif"
@@ -213,8 +217,14 @@ de colores de pista (gas, freno, rival) que siempre significan algo.
 - **Rojo Freno** (`rojo-freno`): freno, delta en contra (`delta-pierde`) y avisos de error,
   siempre como fondo translúcido (8–12 %) con borde al 28–40 % y texto **Rosa Error**
   (`error-texto`).
-- **Amarillo Señal** (`amarillo-senal`): marcas puntuales en mapas y curvas; también es parte
-  de la paleta de vueltas.
+- **Amarillo Señal** (`amarillo-senal`): marcas puntuales en mapas y curvas, y el aviso de
+  "autos distintos" en Comparación; también es parte de la paleta de vueltas.
+
+### Diagnóstico de balance
+- **Celeste Subviraje** (`subviraje` sobre `subviraje-fondo`) y **Rojo Sobreviraje**
+  (`sobreviraje` sobre `sobreviraje-fondo`): solo en los chips de diagnóstico de fases de
+  curva. Siguen la convención de pista (azul = subvira, rojo = sobrevira), siempre con la
+  palabra escrita en el chip, y no se usan para nada más.
 
 ### Neutral
 - **Asfalto Nocturno** (`fondo`): fondo de la aplicación, debajo de los resplandores.
@@ -256,7 +266,7 @@ alineación de cifras importa.
 - **Display** (600, 20px): título de la zona de carga, la única pantalla sin datos.
 - **Título de modal** (600, 16px): encabezado del overlay de zoom.
 - **Headline** (600, 18px, 0.4px de tracking): nombre de la app en la barra superior. Las
-  lecturas del panel lateral usan el mismo tamaño en 700.
+  lecturas del reproductor (franja «Lectura actual») usan el mismo tamaño en 700.
 - **Énfasis** (700, 15px): valor destacado de la vuelta teórica.
 - **Title** (700, 13px; 14px en el nombre de curva): títulos de tarjeta de gráfico (son
   `<h2>`), pestañas.
@@ -264,7 +274,8 @@ alineación de cifras importa.
 - **Ayuda** (400, 12px, interlineado 1.5–1.6): ayudas, leyendas, unidades, tablas y
   controles de mapa. Es el piso del texto de lectura.
 - **Label** (700, 11px, 1.2px de tracking, MAYÚSCULAS): títulos de sección del panel. Las
-  cabeceras de tabla y las etiquetas de lectura usan la misma forma a 10px.
+  etiquetas de lectura y de sesión (VELOCIDAD, REF, PISTA…) usan 11px en peso normal; las
+  cabeceras de tabla, 10px.
 - **Micro** (800, 9–10px): insignias REF/B, botones de rol y etiquetas de estadística de
   curva.
 
