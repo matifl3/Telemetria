@@ -262,7 +262,7 @@ const tablero = (() => {
       float: false,
       animate: !sinMovimiento,
       handle: '.tarjeta-cab',
-      resizable: { handles: 'se' },
+      resizable: { handles: 'ne, se, sw, nw' },
       columnOpts: { breakpointForWindow: true, breakpoints: [{ w: 640, c: 1 }] },
     }, '#grilla-tablero');
     grid.on('change', (ev, nodos) => {

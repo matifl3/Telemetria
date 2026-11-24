@@ -195,7 +195,7 @@ REF o B redibuja todas las tarjetas desde el `DtoResumen`, como hoy.
 - **Regla de curvas propia** si `ejeDistancia`: el mismo dibujo de
   `dibujarReglaCurvas`, alineado al uPlot de la tarjeta.
 - **Cuerpo:** el gráfico, que ocupa todo el alto disponible.
-- **Manija de tamaño** de Gridstack en la esquina inferior derecha.
+- **Manija de tamaño** de Gridstack en las 4 esquinas (visibles al pasar el mouse).
 - Ajustes: un pequeño panel desplegable dentro de la tarjeta; al cambiar un valor,
   se vuelve a montar el gráfico y se guarda el diseño.
 - Los que hoy tienen interacción propia la conservan: ranking (tocar una fila →
