@@ -1,80 +1,106 @@
 'use strict';
 
-/* Pestaña Telemetría (id interno "vuelta", RF-011): regla de curvas, 7 gráficos
-   sincronizados y pedales por vuelta. */
+/* Pestaña Telemetría (id interno "vuelta", RF-011): regla de curvas, gráficos
+   sincronizados y pedales por vuelta, cada uno con su "Ver en grande". */
 
-function renderPestanaVuelta(datos) {
-  destroyCharts();
-  if (!datos || !datos.grilla.length) return;
-  const grilla = datos.grilla;
-  const vueltas = datos.vueltas;
+/* Gráficos de la pestaña. La misma definición la usan el render y "Ver en
+   grande". `alto` es el alto en la pestaña (px). */
+const GRAFICOS_TELEMETRIA = [
+  { clave: 'velocidad', nombre: 'Velocidad', contenedor: 'chart-speed', alto: 250, yLabel: 'km/h', canal: 'velocidad_kmh' },
+  { clave: 'rpm', nombre: 'RPM', contenedor: 'chart-rpm', alto: 170, yLabel: 'rpm', canal: 'rpm' },
+  { clave: 'marcha', nombre: 'Marcha', contenedor: 'chart-gear', alto: 140, yLabel: 'marcha', canal: 'marcha', escalonado: true },
+  { clave: 'volante', nombre: 'Volante', contenedor: 'chart-steer', alto: 150, yLabel: 'volante (rad)', canal: 'volante' },
+  { clave: 'acel', nombre: 'Acel.', contenedor: 'chart-acc', alto: 150, yRango: [0, null], yLabel: 'g', canal: 'acc_total_g' },
+  { clave: 'rumbo', nombre: 'Rumbo', contenedor: 'chart-yaw', alto: 140, yLabel: 'rumbo (°)', canal: 'rumbo_grados' },
+  { clave: 'carga', nombre: 'Carga', contenedor: 'chart-load', alto: 170, yRango: [0, null], yLabel: 'carga (N)' },
+  { clave: 'pedales', nombre: 'Pedales', contenedor: 'chart-inputs', alto: 140, yRango: [0, 1.05], yLabel: '0–1' },
+];
 
-  const velocidadSeries = vueltas.map((v) => ({
-    label: v.etiqueta, stroke: colorDeVuelta(v.id), width: 2, points: { show: false }, spanGaps: true,
-  }));
-  lineChart($('chart-speed'), 250, null, 'km/h',
-    [grilla, ...vueltas.map((v) => v.velocidad_kmh)],
-    [serieX(), ...velocidadSeries]);
+const ALTO_MAX_MINI = 520;       // tope de cada mini-gráfico de pedales en grande (px)
+const EXTRA_MINI = 85;           // título, leyenda, relleno y separación de cada mini-gráfico (px)
 
-  lineChart($('chart-rpm'), 170, null, 'rpm',
-    [grilla, ...vueltas.map((v) => v.rpm)],
-    [serieX(), ...vueltas.map((v) => ({ label: v.etiqueta, stroke: colorDeVuelta(v.id), width: 2, points: { show: false }, spanGaps: true }))]);
+const definicionGrafico = (clave) => GRAFICOS_TELEMETRIA.find((g) => g.clave === clave) || null;
+const tarjetaGrafico = (clave) => document.querySelector(`.grafico-card[data-grafico="${clave}"]`);
 
-  lineChart($('chart-gear'), 140, null, 'marcha',
-    [grilla, ...vueltas.map((v) => v.marcha)],
-    [serieX(), ...vueltas.map((v) => ({
-      label: v.etiqueta, stroke: colorDeVuelta(v.id), width: 2, spanGaps: true,
-      points: { show: false }, paths: uPlot.paths.stepped({ align: 1 }),
-    }))]);
+function serieVuelta(v, extra = {}) {
+  return { label: v.etiqueta, stroke: colorDeVuelta(v.id), width: 2, points: { show: false }, spanGaps: true, ...extra };
+}
 
-  lineChart($('chart-steer'), 150, null, 'volante (rad)',
-    [grilla, ...vueltas.map((v) => v.volante)],
-    [serieX(), ...vueltas.map((v) => ({ label: v.etiqueta, stroke: colorDeVuelta(v.id), width: 2, points: { show: false }, spanGaps: true }))]);
-
-  lineChart($('chart-acc'), 150, [0, null], 'g',
-    [grilla, ...vueltas.map((v) => v.acc_total_g)],
-    [serieX(), ...vueltas.map((v) => ({ label: v.etiqueta, stroke: colorDeVuelta(v.id), width: 2, points: { show: false }, spanGaps: true }))]);
-
-  lineChart($('chart-yaw'), 140, null, 'rumbo (°)',
-    [grilla, ...vueltas.map((v) => v.rumbo_grados)],
-    [serieX(), ...vueltas.map((v) => ({ label: v.etiqueta, stroke: colorDeVuelta(v.id), width: 2, points: { show: false }, spanGaps: true }))]);
-
-  const referencia = datos.referencia;
-  if (referencia) {
-    const refVuelta = vueltas.find((v) => mismaId(v.id, referencia.id));
-    if (refVuelta) {
-      const carga = refVuelta.carga;
-    lineChart($('chart-load'), 170, [0, null], 'carga (N)',
-      [grilla, carga.delantera_izquierda, carga.delantera_derecha, carga.trasera_izquierda, carga.trasera_derecha],
-      [
-        serieX(),
-        { label: 'FL', stroke: '#38bdf8', width: 2, points: { show: false }, spanGaps: true },
-        { label: 'FR', stroke: '#f472b6', width: 2, points: { show: false }, spanGaps: true },
-        { label: 'RL', stroke: '#4ade80', width: 2, points: { show: false }, spanGaps: true },
-        { label: 'RR', stroke: '#facc15', width: 2, points: { show: false }, spanGaps: true },
-      ]);
-    }
+/* Datos y series uPlot de un gráfico de líneas, o null si no hay qué dibujar
+   (Carga sin vuelta REF). */
+function datosGrafico(def, datos) {
+  const { grilla, vueltas } = datos;
+  if (def.clave === 'carga') {
+    const ref = datos.referencia && vueltas.find((v) => mismaId(v.id, datos.referencia.id));
+    if (!ref) return null;
+    const c = ref.carga;
+    const rueda = (label, stroke) => ({ label, stroke, width: 2, points: { show: false }, spanGaps: true });
+    return {
+      data: [grilla, c.delantera_izquierda, c.delantera_derecha, c.trasera_izquierda, c.trasera_derecha],
+      series: [serieX(), rueda('FL', '#38bdf8'), rueda('FR', '#f472b6'), rueda('RL', '#4ade80'), rueda('RR', '#facc15')],
+    };
   }
+  const extra = def.escalonado ? { paths: uPlot.paths.stepped({ align: 1 }) } : {};
+  return {
+    data: [grilla, ...vueltas.map((v) => v[def.canal])],
+    series: [serieX(), ...vueltas.map((v) => serieVuelta(v, extra))],
+  };
+}
 
-  // Acelerador / Freno por vuelta (mini-gráfico por vuelta)
-  const cIn = $('chart-inputs');
-  cIn.innerHTML = '';
-  vueltas.forEach((v) => {
+/* Pedales: un mini-gráfico por vuelta. Crea las cajas en `cont` y devuelve, por
+   vuelta, el div del gráfico con sus datos y series. */
+function cajasPedales(cont, datos, altoMini) {
+  cont.innerHTML = '';
+  return datos.vueltas.map((v) => {
     const color = colorDeVuelta(v.id);
     const caja = document.createElement('div');
     caja.className = 'mini-grafico';
     caja.innerHTML = `<div class="mini-titulo" style="color:${color}">${v.etiqueta}</div>`;
     const div = document.createElement('div');
-    div.className = 'plot'; div.style.height = '140px';
-    caja.appendChild(div); cIn.appendChild(caja);
-    graficoMinusculo(div, 140, [0, 1.05], '0–1',
-      [grilla, v.acelerador, v.freno],
-      [
+    div.className = 'plot'; div.style.height = `${altoMini}px`;
+    caja.appendChild(div); cont.appendChild(caja);
+    return {
+      div,
+      data: [datos.grilla, v.acelerador, v.freno],
+      series: [
         serieX(),
         { label: 'gas', stroke: COLOR.gas, width: 2, points: { show: false }, spanGaps: true },
         { label: 'freno', stroke: COLOR.freno, width: 2, dash: [6, 4], points: { show: false }, spanGaps: true },
-      ]);
+      ],
+    };
   });
+}
+
+/* Alto de cada mini-gráfico de pedales cuando la tarjeta dispone de `total` px. */
+function altoMiniPedales(total, nVueltas) {
+  const n = Math.max(1, nVueltas);
+  return Math.max(140, Math.min(ALTO_MAX_MINI, Math.floor(total / n) - EXTRA_MINI));
+}
+
+function renderPestanaVuelta(datos) {
+  destroyCharts();
+  if (!datos || !datos.grilla.length) return;
+
+  for (const def of GRAFICOS_TELEMETRIA) {
+    const tarjeta = tarjetaGrafico(def.clave);
+    const cont = $(def.contenedor);
+    if (!cont) continue;
+    cont.innerHTML = '';
+    const boton = tarjeta && tarjeta.querySelector('[data-ampliar]');
+
+    if (def.clave === 'pedales') {
+      for (const p of cajasPedales(cont, datos, def.alto)) {
+        graficoMinusculo(p.div, def.alto, def.yRango, def.yLabel, p.data, p.series);
+      }
+      if (boton) boton.disabled = !datos.vueltas.length;
+      continue;
+    }
+
+    const d = datosGrafico(def, datos);
+    if (boton) boton.disabled = !d;
+    if (!d) { cont.innerHTML = '<p class="hint vacio">Sin vuelta REF: no hay carga por rueda para mostrar.</p>'; continue; }
+    lineChart(cont, def.alto, def.yRango, def.yLabel, d.data, d.series);
+  }
 
   // El primer gráfico se crea antes de que aparezca la barra de desplazamiento y
   // queda más ancho: se igualan todos al ancho final para que el eje X (y la
@@ -93,6 +119,14 @@ function renderPestanaVuelta(datos) {
   // uPlot aplica tamaño y escalas un instante después de crear/redimensionar:
   // dibujada ahora, la regla daría posiciones inválidas y quedaría vacía.
   requestAnimationFrame(() => { if (state.tab === 'vuelta') dibujarReglaCurvas(); });
+}
+
+/* Un solo listener para los ⤢ de todas las tarjetas. */
+function iniciarGraficosTelemetria() {
+  $('panel-vuelta').addEventListener('click', (ev) => {
+    const boton = ev.target.closest('[data-ampliar]');
+    if (boton && !boton.disabled) abrirGraficoAmpliado(boton.dataset.ampliar, boton);
+  });
 }
 
 /* La regla se dibuja cuando el canvas toma tamaño: al primer render el panel
@@ -121,12 +155,11 @@ function curvaEn(curvas, s) {
 
 /* Regla de curvas: una franja alineada con el eje X de los gráficos. Cada curva
    es un tramo del color que tiene en el mapa de Curvas; la del cursor se resalta. */
-function dibujarReglaCurvas() {
-  const c = prepCanvas('ch-regla-curvas', 34);
+function dibujarReglaCurvas(canvasId = 'ch-regla-curvas', u = graficoGuia()) {
+  const c = prepCanvas(canvasId, 34);
   if (!c) return;
   const { ctx, w, h, cv } = c;
   const curvas = state.datosVuelta ? state.datosVuelta.curvas || [] : [];
-  const u = state.charts.lines[0] && state.charts.lines[0].u;
   ctx.font = '11px "Segoe UI", sans-serif';
   ctx.textBaseline = 'middle';
   if (!u || !curvas.length) {
@@ -155,7 +188,10 @@ function dibujarReglaCurvas() {
     const esActual = curva === actual;
     const tramos = tramosDeCurva(curva, largo)
       .map(([a, b]) => [xDe(a), xDe(b)])
-      .filter(([x1, x2]) => Number.isFinite(x1) && Number.isFinite(x2));
+      .filter(([x1, x2]) => Number.isFinite(x1) && Number.isFinite(x2))
+      // Con zoom, solo la parte visible: así el nombre se centra en lo que se ve.
+      .map(([x1, x2]) => [Math.max(x1, izq), Math.min(x2, der)])
+      .filter(([x1, x2]) => x2 >= x1);
     if (!tramos.length) return;
 
     ctx.globalAlpha = actual && !esActual ? 0.55 : 1;

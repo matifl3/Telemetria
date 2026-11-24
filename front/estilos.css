@@ -454,6 +454,7 @@ html, body {
 #chart-inputs { display: flex; flex-direction: column; gap: 12px; }
 .mini-grafico { padding: 10px; background: var(--bg-2); border: 1px solid var(--borde); border-radius: 10px; }
 .mini-titulo { font-size: 12px; margin: 0 4px 6px; font-weight: 600; letter-spacing: 0.3px; }
+#panel-vuelta .grafico-titulo { align-items: center; gap: 10px; }
 
 /* Pestañas */
 .tabs {
@@ -763,6 +764,12 @@ html, body {
   touch-action: none;
 }
 #ch-mapa-zoom:active { cursor: grabbing; }
+/* "Ver en grande" de Telemetría: regla + gráfico(s) con zoom en X */
+.regla-ampliada { flex: none; border: 1px solid var(--borde); border-radius: 10px; padding: 2px 0; }
+#ch-regla-ampliado { width: 100%; height: 34px; display: block; }
+.plot-ampliado { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 12px; }
+body.sin-scroll { overflow: hidden; }
+.plot-ampliado:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; border-radius: 6px; }
 .grafico-card .btn-ampliar { font-size: 12px; padding: 2px 8px; cursor: pointer; align-self: center; }
 #ch-mapa-teorico { cursor: zoom-in; }
 
@@ -852,6 +859,11 @@ html, body {
   #mapa { height: 320px; }
   #chart-carga-vivo { height: 300px; }
   .trazada-canvas { height: 220px; }
+  /* "Ver en grande" a pantalla completa. */
+  #panel-vuelta .grafico-titulo { flex-wrap: wrap; }
+  #grafico-ampliado { padding: 0; }
+  #grafico-ampliado .zoom-panel { width: 100vw; height: 100dvh; border-radius: 0; }
+  #grafico-ampliado .zoom-cab { flex-wrap: wrap; }
 }
 
 /* Transiciones de hover solo en dispositivos con puntero fino (evita falsos positivos en touch) */

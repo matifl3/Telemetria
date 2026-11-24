@@ -101,36 +101,60 @@
           <div class="regla-curvas">
             <canvas id="ch-regla-curvas" role="img" aria-label="Regla de curvas: cada tramo de color es una curva de la pista sobre el eje de distancia"></canvas>
           </div>
-          <div class="grafico-card">
-            <h2 class="grafico-titulo">Velocidad <span class="unidad">km/h · distancia de pista</span></h2>
+          <div class="grafico-card" data-grafico="velocidad">
+            <div class="grafico-titulo">
+              <h2 class="grafico-titulo-texto">Velocidad <span class="unidad">km/h · distancia de pista</span></h2>
+              <button class="btn fantasma btn-ampliar" type="button" data-ampliar="velocidad" aria-label="Ver en grande: Velocidad">⤢ Ver en grande</button>
+            </div>
             <div id="chart-speed" class="plot"></div>
           </div>
-          <div class="grafico-card">
-            <h2 class="grafico-titulo">RPM <span class="unidad">revoluciones</span></h2>
+          <div class="grafico-card" data-grafico="rpm">
+            <div class="grafico-titulo">
+              <h2 class="grafico-titulo-texto">RPM <span class="unidad">revoluciones</span></h2>
+              <button class="btn fantasma btn-ampliar" type="button" data-ampliar="rpm" aria-label="Ver en grande: RPM">⤢ Ver en grande</button>
+            </div>
             <div id="chart-rpm" class="plot"></div>
           </div>
-          <div class="grafico-card">
-            <h2 class="grafico-titulo">Marcha <span class="unidad">por distancia de pista</span></h2>
+          <div class="grafico-card" data-grafico="marcha">
+            <div class="grafico-titulo">
+              <h2 class="grafico-titulo-texto">Marcha <span class="unidad">por distancia de pista</span></h2>
+              <button class="btn fantasma btn-ampliar" type="button" data-ampliar="marcha" aria-label="Ver en grande: Marcha">⤢ Ver en grande</button>
+            </div>
             <div id="chart-gear" class="plot"></div>
           </div>
-          <div class="grafico-card">
-            <h2 class="grafico-titulo">Volante <span class="unidad">rad</span></h2>
+          <div class="grafico-card" data-grafico="volante">
+            <div class="grafico-titulo">
+              <h2 class="grafico-titulo-texto">Volante <span class="unidad">rad</span></h2>
+              <button class="btn fantasma btn-ampliar" type="button" data-ampliar="volante" aria-label="Ver en grande: Volante">⤢ Ver en grande</button>
+            </div>
             <div id="chart-steer" class="plot"></div>
           </div>
-          <div class="grafico-card">
-            <h2 class="grafico-titulo">Aceleración total <span class="unidad">g</span></h2>
+          <div class="grafico-card" data-grafico="acel">
+            <div class="grafico-titulo">
+              <h2 class="grafico-titulo-texto">Aceleración total <span class="unidad">g</span></h2>
+              <button class="btn fantasma btn-ampliar" type="button" data-ampliar="acel" aria-label="Ver en grande: Aceleración total">⤢ Ver en grande</button>
+            </div>
             <div id="chart-acc" class="plot"></div>
           </div>
-          <div class="grafico-card">
-            <h2 class="grafico-titulo">Rumbo <span class="unidad">grados</span></h2>
+          <div class="grafico-card" data-grafico="rumbo">
+            <div class="grafico-titulo">
+              <h2 class="grafico-titulo-texto">Rumbo <span class="unidad">grados</span></h2>
+              <button class="btn fantasma btn-ampliar" type="button" data-ampliar="rumbo" aria-label="Ver en grande: Rumbo">⤢ Ver en grande</button>
+            </div>
             <div id="chart-yaw" class="plot"></div>
           </div>
-          <div class="grafico-card">
-            <h2 class="grafico-titulo">Carga por rueda <span class="unidad">N · vuelta REF</span></h2>
+          <div class="grafico-card" data-grafico="carga">
+            <div class="grafico-titulo">
+              <h2 class="grafico-titulo-texto">Carga por rueda <span class="unidad">N · vuelta REF</span></h2>
+              <button class="btn fantasma btn-ampliar" type="button" data-ampliar="carga" aria-label="Ver en grande: Carga por rueda">⤢ Ver en grande</button>
+            </div>
             <div id="chart-load" class="plot"></div>
           </div>
-          <div class="grafico-card">
-            <h2 class="grafico-titulo">Acelerador / Freno por vuelta <span class="unidad">0–1</span></h2>
+          <div class="grafico-card" data-grafico="pedales">
+            <div class="grafico-titulo">
+              <h2 class="grafico-titulo-texto">Acelerador / Freno por vuelta <span class="unidad">0–1</span></h2>
+              <button class="btn fantasma btn-ampliar" type="button" data-ampliar="pedales" aria-label="Ver en grande: Acelerador / Freno">⤢ Ver en grande</button>
+            </div>
             <div id="chart-inputs" class="plot"></div>
           </div>
         </div>
@@ -345,6 +369,25 @@
     </div>
   </section>
 
+  <section id="grafico-ampliado" class="zoom-overlay oculto" role="dialog" aria-modal="true" aria-labelledby="ampliado-titulo" aria-hidden="true">
+    <div class="zoom-panel">
+      <div class="zoom-cab">
+        <h2 id="ampliado-titulo">Gráfico</h2>
+        <div class="zoom-acciones">
+          <button id="ampliado-alejar" class="btn fantasma" type="button" aria-label="Alejar">−</button>
+          <button id="ampliado-acercar" class="btn fantasma" type="button" aria-label="Acercar">+</button>
+          <button id="ampliado-completa" class="btn fantasma" type="button">Vuelta completa</button>
+          <button id="ampliado-cerrar" class="btn fantasma" type="button" aria-label="Cerrar">✕</button>
+        </div>
+      </div>
+      <div class="regla-ampliada">
+        <canvas id="ch-regla-ampliado" role="img" aria-label="Regla de curvas del tramo visible"></canvas>
+      </div>
+      <div id="plot-ampliado" class="plot-ampliado" tabindex="0" aria-label="Gráfico ampliado. Espacio reproduce o pausa; flechas mueven el cursor."></div>
+      <p class="hint centrado">Rueda del mouse o arrastrar para acercar un tramo · doble clic para ver la vuelta completa.</p>
+    </div>
+  </section>
+
   <script src="vendor/uPlot.iife.min.js"></script>
   <script src="app/estado.js"></script>
   <script src="app/utils.js"></script>
@@ -356,6 +399,7 @@
   <script src="app/selector_vueltas.js"></script>
   <script src="app/pestanas/mapa_comun.js"></script>
   <script src="app/pestanas/vuelta.js"></script>
+  <script src="app/graficos/ampliado.js"></script>
   <script src="app/pestanas/mapa.js"></script>
   <script src="app/pestanas/conjunto.js"></script>
   <script src="app/pestanas/comparacion.js"></script>

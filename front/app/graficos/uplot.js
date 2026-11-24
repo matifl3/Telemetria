@@ -8,13 +8,14 @@ function serieX() {
   return { label: 'distancia', value: (u, v) => (v == null ? '' : Math.round(v) + ' m') };
 }
 
-function opcionesGrafico(cont, height, yRango, yLabel) {
+/* `zoomX`: arrastrar sobre el gráfico acerca ese tramo (solo en "Ver en grande"). */
+function opcionesGrafico(cont, height, yRango, yLabel, zoomX = false) {
   const ancho = cont.clientWidth || (cont.parentElement && cont.parentElement.clientWidth) || 900;
   return {
     width: ancho,
     height,
     padding: [8, 14, 0, 8],
-    cursor: { sync: { key: SYNC_KEY }, drag: { x: true, y: false, setScale: false }, focus: { prox: 40 } },
+    cursor: { sync: { key: SYNC_KEY }, drag: { x: true, y: false, setScale: zoomX }, focus: { prox: 40 } },
     legend: { show: true, live: true },
     scales: { x: { time: false }, y: yRango ? { range: yRango } : { auto: true } },
     axes: [
@@ -58,20 +59,28 @@ function destroyCharts() {
   state.charts.lines = [];
   for (const u of state.charts.inputs) u.destroy();
   state.charts.inputs = [];
+  _ultimoCursorPx = -1; // el gráfico guía nuevo todavía no tiene cursor
 }
 
 function alCursor(u) {
   const idx = u.cursor.idx;
   if (idx == null || idx < 0 || idx >= state.grilla.length) return;
   if (idx === state.idx) return; // cursor programático del play/scrub: no realimentar
+  if (zoomAmpliadoEnCurso()) return; // reajuste interno de uPlot al cambiar el zoom
   state.idx = idx;
   state.dis = state.grilla[idx];
   actualizarPorIdx({ moverCursor: false });
 }
 
+/* Gráfico que guía la regla de curvas y el cursor: el primero de la pestaña. */
+function graficoGuia() {
+  if (state.charts.lines.length) return state.charts.lines[0].u;
+  return state.charts.inputs[0] || null;
+}
+
 let _ultimoCursorPx = -1;
 function moverCursor() {
-  const u = state.charts.lines[0] && state.charts.lines[0].u;
+  const u = graficoGuia();
   if (!u) return;
   const left = u.valToPos(state.dis, 'x');
   if (!Number.isFinite(left)) return;

@@ -100,6 +100,7 @@ const cargaArchivos = (() => {
       state.dis = 0;
       detenerReproduccion();
       destroyCharts();
+      cerrarGraficoAmpliado();
       const dash2 = $('dashboard');
       if (dash2) dash2.classList.add('oculto');
       const z2 = $('zona-carga');
