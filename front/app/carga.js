@@ -27,6 +27,7 @@ const cargaArchivos = (() => {
     try {
       const resumen = await puente.cargarArchivos(rutas);
       recordarRutas(rutas);
+      reiniciarGraficosTelemetria();
       await aplicarResumen(resumen);
     } catch (error) {
       // El backend descarta el lote inválido y conserva la sesión anterior (D-08).
@@ -46,6 +47,7 @@ const cargaArchivos = (() => {
         ? await puente.cargarArchivos([ruta])
         : await puente.cargarPista(ruta);
       recordarRutas([ruta]);
+      reiniciarGraficosTelemetria();
       await aplicarResumen(resumen);
     } catch (error) {
       mostrarError(mensajeComando(error));
@@ -72,6 +74,7 @@ const cargaArchivos = (() => {
       const resumen = await puente.limpiarSesion();
       state.archivos = { replay: null, pista: null };
       limpiarAvisosSesion();
+      reiniciarGraficosTelemetria();
       aplicarResumen(resumen);
     } catch (error) {
       mostrarError(mensajeComando(error));
@@ -100,6 +103,7 @@ const cargaArchivos = (() => {
       state.dis = 0;
       detenerReproduccion();
       destroyCharts();
+      cerrarGraficoAmpliado();
       const dash2 = $('dashboard');
       if (dash2) dash2.classList.add('oculto');
       const z2 = $('zona-carga');

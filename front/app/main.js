@@ -196,6 +196,7 @@ function iniciarResize() {
     clearTimeout(pendiente);
     pendiente = setTimeout(() => {
       if (state.resumen && state.resumen.puede_analizar) renderPestanaActiva();
+      redimensionarAmpliado();
     }, 150);
   });
 }
@@ -203,6 +204,8 @@ function iniciarResize() {
 function init() {
   crearReadouts();
   observarReglaCurvas();
+  iniciarChipsGraficos();
+  iniciarGraficoAmpliado();
   cargaArchivos.iniciar();
   iniciarTabs();
   iniciarControlesMapa();

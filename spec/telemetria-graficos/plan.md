@@ -54,7 +54,7 @@ Decisiones que ordenan el diseño:
 | `front/app/graficos/uplot.js` | `opcionesGrafico` con `drag.setScale: false` (no hay zoom); `lineChart` registra en `state.charts.lines`; `moverCursor` usa `lines[0]`. | Opción para habilitar el zoom en X; `lineChart` acepta alto variable. |
 | `front/app/reproductor.js` | `actualizarPorIdx` redibuja la regla y mueve el cursor; Espacio = play/pausa. | Redibujar también la regla del overlay si está abierto. |
 | `front/app/main.js` | `init` y `iniciarResize` (re-render con debounce al cambiar el tamaño de ventana). | Iniciar chips y overlay; redimensionar el overlay. |
-| `front/app/estado.js` | `state.charts = { lines, inputs }`. | Agregar `state.graficosActivos` y el uPlot del overlay. |
+| `front/app/estado.js` | `state.charts = { lines, inputs }`. | Agregar `state.graficosOcultos`. |
 | `front/estilos.css` | `.zoom-overlay`, `.zoom-panel`, `.btn-ampliar` ya existen (trazada teórica). | Reutilizar clases; estilos de chips y alto del overlay. |
 
 ---
@@ -108,7 +108,10 @@ Decisiones que ordenan el diseño:
 - Se construye un uPlot nuevo con la **misma definición** de la tabla
   (`GRAFICOS_TELEMETRIA[clave]`) y los datos actuales (`state.datosVuelta`).
 - No se registra en `state.charts.lines` (para que `destroyCharts` y la regla
-  principal no lo toquen); vive en `state.charts.ampliado`.
+  principal no lo toquen); vive en el objeto `ampliado` de `ampliado.js`.
+- uPlot aplica `setScale` de forma diferida: el rango visible se guarda aparte
+  (`ampliado.rango`) y, mientras se aplica un zoom, los eventos de cursor que
+  uPlot recalcula se ignoran para no mover el reproductor.
 - Usa `SYNC_KEY`: el cursor se sincroniza con el reproductor y la pestaña.
 - **Pedales** (mini-gráfico por vuelta): el overlay muestra los mini-gráficos de
   todas las vueltas visibles apilados, con más alto cada uno. Todos comparten
@@ -141,7 +144,8 @@ Decisiones que ordenan el diseño:
 
 - Al abrir: se guarda el foco previo, se muestra el diálogo, se crea el uPlot en
   `requestAnimationFrame` (uPlot necesita el contenedor ya medido) y el foco va
-  a `✕`.
+  al contenedor del gráfico (`tabindex="0"`): si fuera a `✕`, Espacio cerraría
+  el diálogo en lugar de reproducir.
 - Esc o `✕`: se destruye el uPlot del overlay, se oculta el diálogo y el foco
   vuelve al botón ⤢ que lo abrió.
 - Tab queda atrapado en el diálogo, como en `#zoom-teorico`.
@@ -172,8 +176,8 @@ Decisiones que ordenan el diseño:
 
 ### 4.2 Estado
 
-- `state.graficosActivos`: `Set` de claves. Por defecto **los 8 activos**
-  (comportamiento actual).
+- `state.graficosOcultos`: `Set` de claves ocultas (vacío = todos visibles). Por
+  defecto **los 8 activos** (comportamiento actual).
 - **No se puede desactivar el último**: su chip queda con `aria-disabled` y un
   `title` que lo explica. Evita una pestaña vacía.
 - La selección se conserva al cambiar de pestaña y de REF/B, y se reinicia con
@@ -201,7 +205,6 @@ Decisiones que ordenan el diseño:
   los 8 activos la pestaña se ve igual que ahora.
 - Pedales: el alto asignado se reparte entre sus mini-gráficos, con mínimo de
   140 px cada uno.
-- En ≤ 640 px el reparto usa mínimos un poco menores, pero nunca baja de 120 px.
 
 ---
 
@@ -215,8 +218,8 @@ Decisiones que ordenan el diseño:
 | `front/app/graficos/ampliado.js` *(nuevo, a confirmar)* | Abrir/cerrar el diálogo, crear el uPlot del overlay, botones de zoom, foco. | TG04, TG05 |
 | `front/app/reproductor.js` | En `actualizarPorIdx`, redibujar la regla del overlay si está abierto. | TG05 |
 | `front/app/main.js` | Iniciar chips y overlay; redimensionar el overlay en `resize`. | TG04, TG06 |
-| `front/app/estado.js` | `graficosActivos` y `charts.ampliado`. | TG02, TG06 |
-| `front/app/carga.js` | Reiniciar `graficosActivos` al limpiar o cargar otra sesión. | TG06 |
+| `front/app/estado.js` | `graficosOcultos`. | TG02, TG06 |
+| `front/app/carga.js` | Reiniciar `graficosOcultos` al limpiar o cargar otra sesión. | TG06 |
 | `front/estilos.css` | Chips (con scroll horizontal en móvil), alto del overlay, regla del overlay. | TG04, TG06, TG08 |
 | `doc/Catalogo_Graficos.md` | Registrar "Ver en grande" con zoom y la elección de canales. | TG09 |
 | `MEMORY.md` | Estado y decisiones al cerrar. | TG09 |

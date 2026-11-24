@@ -107,6 +107,7 @@ function actualizarPorIdx(opts = { moverCursor: true }) {
     roCurva.textContent = !curvas.length ? '–' : curva ? curva.nombre : 'recta';
   }
   if (state.tab === 'vuelta') dibujarReglaCurvas();
+  dibujarReglaAmpliada();
   if (opts.moverCursor) moverCursor();
   // Solo la capa en vivo y la figura de carga: el mapa base no se repinta.
   if (state.tab === 'mapa') dibujarMapaPestana({ soloVivo: true });

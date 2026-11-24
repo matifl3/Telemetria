@@ -22,47 +22,56 @@ Diseño completo en `spec/telemetria-graficos/plan.md`.
 
 ## Tareas
 
-- [ ] **TG01 · Disparador ⤢.** Botón `⤢ Ver en grande` en el título de las 8
+- [x] **TG01 · Disparador ⤢.** Botón `⤢ Ver en grande` en el título de las 8
   tarjetas de Telemetría, con `data-grafico` en cada tarjeta.
   *Hecho cuando:* cada gráfico activo muestra el botón con nombre accesible.
-- [ ] **TG02 · Tabla de gráficos.** `GRAFICOS_TELEMETRIA` con clave, título,
+- [x] **TG02 · Tabla de gráficos.** `GRAFICOS_TELEMETRIA` con clave, título,
   unidad, alto mínimo y construcción de datos/series; `renderPestanaVuelta` la
   recorre.
   *Hecho cuando:* la pestaña se ve exactamente igual que antes del cambio.
-- [ ] **TG03 · Regla y cursor desacoplados de Velocidad.**
+- [x] **TG03 · Regla y cursor desacoplados de Velocidad.**
   `dibujarReglaCurvas(canvasId, u)` y `moverCursor` usan el primer gráfico
   activo.
   *Hecho cuando:* ocultando Velocidad la regla y el cursor siguen alineados.
-- [ ] **TG04 · Diálogo "Ver en grande".** `#grafico-ampliado` con cabecera,
+- [x] **TG04 · Diálogo "Ver en grande".** `#grafico-ampliado` con cabecera,
   regla y uPlot propio (misma `SYNC_KEY`, fuera de `state.charts.lines`); foco,
   Tab atrapado, Esc y devolución del foco.
   *Hecho cuando:* cualquier gráfico se abre en grande y se cierra sin dejar
   rastros ni romper la pestaña.
-- [ ] **TG05 · Zoom en X del overlay.** Arrastrar para acercar, doble clic y
+- [x] **TG05 · Zoom en X del overlay.** Arrastrar para acercar, doble clic y
   "Vuelta completa" para volver, `+`/`−` centrados en el cursor, mínimo 50 m;
   regla redibujada al cambiar la escala y con el reproductor.
   *Hecho cuando:* se puede inspeccionar una curva en detalle con ratón y sin él.
-- [ ] **TG06 · Chips de canales.** Fila con 8 chips `aria-pressed` + "Todos";
-  `state.graficosActivos` (los 8 por defecto); no se puede desactivar el último;
+- [x] **TG06 · Chips de canales.** Fila con 8 chips `aria-pressed` + "Todos";
+  `state.graficosOcultos` (vacío = los 8 visibles); no se puede desactivar el último;
   se reinicia con "Limpiar" o una nueva sesión.
   *Hecho cuando:* activar/desactivar un chip muestra u oculta su gráfico sin
   pedir datos al backend.
-- [ ] **TG07 · Reparto del alto.** Cada gráfico activo recibe
+- [x] **TG07 · Reparto del alto.** Cada gráfico activo recibe
   `max(altoMinimo, disponible / n)` con tope ~520 px; Pedales reparte entre sus
   mini-gráficos.
   *Hecho cuando:* con 2 gráficos activos ocupan la ventana y con 8 se ve como
   antes.
-- [ ] **TG08 · Responsive y accesibilidad.** Diálogo a pantalla completa y chips
+- [x] **TG08 · Responsive y accesibilidad.** Diálogo a pantalla completa y chips
   con scroll horizontal en 360 px; targets táctiles; `prefers-reduced-motion`.
   *Hecho cuando:* todo se opera con teclado y en 360 px sin scroll horizontal de
   la página.
-- [ ] **TG09 · Verificación y documentación.** Checklist manual del plan (§8),
+- [x] **TG09 · Verificación y documentación.** Checklist manual del plan (§8),
   `node --check`, `cargo test --workspace`, `cargo build -p ac-telemetry-lab`;
   registrar en `doc/Catalogo_Graficos.md` y actualizar `MEMORY.md`.
   *Hecho cuando:* todo pasa y la documentación refleja lo implementado.
 
-## Decisiones pendientes
+## Decisiones
 
-Ver `plan.md` §9: archivo nuevo `front/app/graficos/ampliado.js`, gráficos
-activos al entrar, chip único de Pedales, zoom solo en el overlay, reproductor
-sin controles propios en el overlay y tope de alto.
+Aprobadas tal como se propusieron en `plan.md` §9 (archivo nuevo
+`front/app/graficos/ampliado.js`, los 8 gráficos activos al entrar, chip único
+de Pedales, zoom solo en el overlay, sin reproductor propio en el overlay y tope
+de 520 px).
+
+## Cierre
+
+Verificado en la app (CDP) con un replay de Monza: los 8 gráficos se ven igual
+que antes; chips, reparto del alto, regla guiada por el primer gráfico visible,
+overlay con zoom (+/−, doble clic, mínimo 50 m), Esc con devolución del foco,
+Pedales ampliado y 360 px sin scroll horizontal. `cargo test --workspace` en
+verde y `cargo build -p ac-telemetry-lab` correcto.

@@ -43,11 +43,16 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
   `touch-action: none` en mapas, títulos de tarjeta `<h2>`, pestañas con tabindex itinerante.
 - Colores de canvas/uPlot vía `COLOR.*` (utils.js, lee `:root`); las ruedas FL/FR/RL/RR
   conservan hex propios (categóricos).
+- Telemetría: `GRAFICOS_TELEMETRIA` (vuelta.js) alimenta render, chips y "Ver en grande"
+  (`graficos/ampliado.js`, zoom X solo en el overlay). Chips en `state.graficosOcultos`;
+  regla y cursor usan `graficoGuia()` (primer gráfico visible, no Velocidad fija).
 ## Aprendizajes y errores a evitar
-- Compilar en esta PC (2026-11-22): Build Tools MSVC mínimas en `D:\BuildTools`; usar
-  `cmd /c "call D:\BuildTools\VC\Auxiliary\Build\vcvars64.bat && cargo build -p ac-telemetry-lab
-  --target-dir D:\herramientas\telemetria-target-msvc"` (vcvars evita el `link.exe` de Git).
-  C: casi lleno: no compilar en `target\` del repo.
+- Compilar: `cmd /c "call <vcvars64.bat> && cargo build -p ac-telemetry-lab"` (vcvars evita el
+  `link.exe` de Git). vcvars en `D:\BuildTools\VC\Auxiliary\Build\` (si D: está conectado) o en
+  `C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\`
+  (2026-11-24: C: con 55 GB libres, se compiló en `target\` del repo).
+- uPlot aplica `setScale` diferido: no leer `u.scales` justo después; al cambiar la escala
+  recalcula el cursor con el píxel viejo (dispara `setCursor`): ignorarlo o mueve el reproductor.
 - Tras editar `front/`, `cargo build -p ac-telemetry-lab`: el front va embebido.
 - Verificación visual por CDP: lanzar con
   `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9333`, cargar con
@@ -70,7 +75,5 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - Pendientes manuales: TV06, T123 (paridad de 32 paneles), DIST02/DIST03;
   ING02–ING04, ING28, ING35, ING47 (validar signos y calibración con replay real).
 - `spec/modificacion de pista/`: 14 tareas sin empezar.
-- `spec/telemetria-graficos/` (rama `telemetria/ampliar-y-canales`): plan TG01–TG09 para
-  "Ver en grande" con zoom X + chips de canales en Telemetría. Sin implementar; decisiones
-  de §9 pendientes (sobre todo crear `front/app/graficos/ampliado.js`).
+- Rama `telemetria/ampliar-y-canales`: TG01–TG09 hechas (ver en grande + chips); falta PR a `main`.
 - Hay cambios en `main` posteriores a v0.3.0 sin release.

@@ -50,6 +50,8 @@ pruebas (offset a confirmar).
 | Volante | Ángulo de dirección (correcciones) | `steer_angle` | 🟢 | Alta |
 | Aceleración total | Módulo de aceleración (frenada/arranque) | `acc_total` | 🟢 | Media |
 | Regla de curvas | Franja fija sobre los gráficos de Telemetría: un tramo por curva (`C1..Cn`, colores del mapa de Curvas), alineada al eje X; resalta la curva del cursor. La lectura "curva" muestra `Cn` o `recta` | curvas de `fast_lane.ai` (`s_ini`, `s_fin`), distancia | ✅ | — |
+| Ver en grande (Telemetría) | Botón ⤢ en cada gráfico: lo abre en un diálogo con su regla de curvas y **zoom en X** (arrastrar para acercar, doble clic o "Vuelta completa" para volver, `+`/`−` centrados en el cursor, mínimo 50 m). Cursor sincronizado con el reproductor; el zoom no afecta a la pestaña. Pedales: un mini-gráfico por vuelta, todos con el mismo zoom | mismos canales que cada gráfico | ✅ | — |
+| Chips de canales (Telemetría) | Fila de chips para mostrar u ocultar cada gráfico; los visibles se reparten el alto de la ventana (tope 520 px). Siempre queda al menos uno. En memoria: se reinicia al cargar otra sesión o limpiar | — | ✅ | — |
 
 
 ### 1.2 Mapas del trazado

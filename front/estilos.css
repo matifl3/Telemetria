@@ -454,6 +454,31 @@ html, body {
 #chart-inputs { display: flex; flex-direction: column; gap: 12px; }
 .mini-grafico { padding: 10px; background: var(--bg-2); border: 1px solid var(--borde); border-radius: 10px; }
 .mini-titulo { font-size: 12px; margin: 0 4px 6px; font-weight: 600; letter-spacing: 0.3px; }
+/* Telemetría: chips para elegir qué gráficos se ven */
+.chips-graficos { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; min-width: 0; }
+.chips-etiqueta { flex: none; font-size: 12px; font-weight: 600; color: var(--muted); }
+.chips-lista { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.chip-grafico {
+  min-height: 24px;
+  padding: 4px 11px;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+.chip-grafico:hover:not([aria-disabled="true"]) { border-color: var(--acento); color: var(--texto); }
+.chip-grafico[aria-pressed="true"] { background: rgba(34, 211, 238, 0.14); border-color: var(--acento); color: var(--texto); }
+.chip-grafico[aria-pressed="true"]::before { content: '✓ '; color: var(--acento); }
+.chip-grafico[aria-disabled="true"] { cursor: not-allowed; }
+.chip-todos { flex: none; font-size: 12px; padding: 4px 10px; }
+.grafico-card[hidden] { display: none; }
+#panel-vuelta .grafico-titulo { align-items: center; gap: 10px; }
 
 /* Pestañas */
 .tabs {
@@ -763,6 +788,11 @@ html, body {
   touch-action: none;
 }
 #ch-mapa-zoom:active { cursor: grabbing; }
+/* "Ver en grande" de Telemetría: regla + gráfico(s) con zoom en X */
+.regla-ampliada { flex: none; border: 1px solid var(--borde); border-radius: 10px; padding: 2px 0; }
+#ch-regla-ampliado { width: 100%; height: 34px; display: block; }
+.plot-ampliado { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.plot-ampliado:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; border-radius: 6px; }
 .grafico-card .btn-ampliar { font-size: 12px; padding: 2px 8px; cursor: pointer; align-self: center; }
 #ch-mapa-teorico { cursor: zoom-in; }
 
@@ -852,6 +882,13 @@ html, body {
   #mapa { height: 320px; }
   #chart-carga-vivo { height: 300px; }
   .trazada-canvas { height: 220px; }
+  /* Chips en una sola fila desplazable; "Ver en grande" a pantalla completa. */
+  .chips-etiqueta { display: none; }
+  .chips-lista { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+  #panel-vuelta .grafico-titulo { flex-wrap: wrap; }
+  #grafico-ampliado { padding: 0; }
+  #grafico-ampliado .zoom-panel { width: 100vw; height: 100dvh; border-radius: 0; }
+  #grafico-ampliado .zoom-cab { flex-wrap: wrap; }
 }
 
 /* Transiciones de hover solo en dispositivos con puntero fino (evita falsos positivos en touch) */
@@ -868,11 +905,12 @@ html, body {
   .colapsar, .vuelta-eye { min-width: 32px; min-height: 32px; }
   .rol-btn { min-height: 32px; min-width: 40px; }
   .zoom-acciones .btn, .grafico-card .btn-ampliar { min-height: 32px; }
+  .chip-grafico, .chip-todos { min-height: 32px; }
   .velocidad-repro select, .mapa-controles select, .panel-vs select { min-height: 32px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .btn, .tab, .vuelta-item, .zona-carga, .topbar, .traction-curva { transition: none !important; }
+  .btn, .tab, .vuelta-item, .zona-carga, .topbar, .traction-curva, .chip-grafico { transition: none !important; }
   .btn:not(:disabled):active, .lista-vueltas .vuelta-item:active { transform: none; }
   .topbar { backdrop-filter: none; }
   .btn.cargando::after { animation-duration: 2s; }
