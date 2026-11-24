@@ -75,5 +75,7 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - Pendientes manuales: TV06, T123 (paridad de 32 paneles), DIST02/DIST03;
   ING02–ING04, ING28, ING35, ING47 (validar signos y calibración con replay real).
 - `spec/modificacion de pista/`: 14 tareas sin empezar.
-- Rama `telemetria/ampliar-y-canales`: "Ver en grande" hecho (chips retirados); falta PR a `main`.
+- Tablero (rama `tablero/playground`, `spec/tablero/`): plan TB01–TB18 sin implementar. Decidido: Gridstack
+  vendorizado, guardar solo el diseño en `localStorage` (enmendar principio 5), tablero vacío,
+  reemplazar pestañas, copias permitidas. Pendiente: §12 del plan.
 - Hay cambios en `main` posteriores a v0.3.0 sin release.
