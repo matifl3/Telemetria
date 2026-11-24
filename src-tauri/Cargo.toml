@@ -1,6 +1,6 @@
 [package]
 name = "ac-telemetry-lab"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 description = "AC Telemetry Lab: visualizador de replays de Assetto Corsa"
 
