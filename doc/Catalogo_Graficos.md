@@ -64,13 +64,14 @@ pruebas (offset a confirmar).
 
 | Gráfico | Qué muestra | Datos | Estado | Prioridad |
 |---|---|---|---|---|
-| Mapa de pista | Trazada x/z con marcador + reproductor. La posición actual de cada vuelta va en una capa transparente (`capa-vivo`) que se redibuja sola al reproducir; sigue zoom/pan/3D | `pos_x`, `pos_z`, `s` | ✅ | — |
+| Trazada por vuelta | Gráfico aparte del mapa de pista: al agregarlo se crea una tarjeta por cada vuelta visible (hasta 10), cada una con su trazada en su color sobre la pista. Cada tarjeta guarda qué vuelta muestra por posición («2.ª visible»), no por identidad, para no guardar datos del replay | `pos_x`, `pos_z`, `s` | ✅ | — |
+| Mapa de pista | Vueltas visibles superpuestas y coloreadas por canal (heatmap), con marcador + reproductor. La posición actual de cada vuelta va en una capa transparente (`capa-vivo`) que se redibuja sola al reproducir; sigue zoom/pan/3D | `pos_x`, `pos_z`, `s` | ✅ | — |
 | Mapa coloreado por canal | La línea pintada según velocidad/gas/freno/marcha | `pos_x/z` + canal | 🟡 | Alta |
 | Mapa 3D | x/z + elevación (`pos_y`) coloreado | `pos_x/y/z` | 🟡 | Media |
 | Marcadores de frenada | Puntos donde se frena fuerte | `freno`, `pos_x/z` | 🟢 | Media |
 | Marcadores de cambio | ↑↓ de marcha sobre el trazado | `marcha` | 🟢 | Baja |
 
-> **Trazada por vuelta**: cada vuelta se dibuja en su propio mini-mapa sobre una
+> **Trazada por vuelta**: cada vuelta se dibuja en su propia tarjeta sobre una
 > banda gris que es la **silueta de todas las vueltas visibles**. La banda se
 > centra en la **posición media** de las vueltas (no en la REF), así cada trazada
 > — incluida la de referencia — queda donde se condujo realmente y no forzada al

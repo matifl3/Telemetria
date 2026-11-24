@@ -88,6 +88,10 @@ function construirAmpliado(rango) {
     hooks: { setScale: [(u, clave) => { if (clave === 'x') alCambiarZoom(u); }] },
   });
   ajustarUplots(ampliado.graficos, ampliado.divs, cont.clientHeight - 8, ALTO_MIN_AMPLIADO);
+  // Segunda medición: la leyenda recién tiene su alto real en el cuadro siguiente.
+  requestAnimationFrame(() => {
+    if (ampliadoAbierto()) ajustarUplots(ampliado.graficos, ampliado.divs, cont.clientHeight - 8, ALTO_MIN_AMPLIADO);
+  });
   if (rango) fijarRangoAmpliado(rango.min, rango.max);
   trasZoomAmpliado();
 }

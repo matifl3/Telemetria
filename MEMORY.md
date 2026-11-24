@@ -20,6 +20,8 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
   versión + rot/alt, pedidos en paralelo compartidos). Sin chips: el usuario arma el tablero
   (los chips de la versión anterior se retiraron a pedido del usuario).
 - B se elige en el bloque «Sesión» del lateral (`sel-b-global`) o en Vueltas.
+- «Trazada por vuelta» es un gráfico aparte de «Mapa de pista» (`unaPorVuelta`): el menú
+  agrega una tarjeta por vuelta visible; cada una guarda su posición (`orden`), no la vuelta.
 - Leyendas de tarjetas con `etiquetaCorta` (`piloto · Vn`): el `car_id` no entra en tarjetas chicas.
 - En 1 columna (≤ 640 px) no se guardan posiciones: se conserva el diseño de escritorio.
 - Diseño: respetar `DESIGN.md` / `.impeccable/design.json` (cian único acento) y la
@@ -35,6 +37,8 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - uPlot: `setScale` y `setSize` se aplican diferidos (leer posiciones en `requestAnimationFrame`);
   al cambiar la escala recalcula el cursor con el píxel viejo: ignorarlo (`zoomAmpliadoEnCurso`).
 - Tarjetas: cada una redibuja con su `ResizeObserver`; un canvas en panel oculto mide 0.
+  La leyenda de uPlot toma su alto real un cuadro después: medir dos veces (si no, se aplasta).
+- Probar en la app con el diseño del usuario: guardarlo antes y restaurarlo al terminar.
 - `[hidden]` no oculta si el CSS pone `display`: agregar `[hidden] { display: none }`.
 - Círculos de tracción: filtrar con la grilla de `datosVuelta`, no con `mapa.trazas`.
 - Tauri convierte args snake_case a camelCase (`numero_local` → `numeroLocal`).

@@ -28,12 +28,15 @@ function crearTarjeta(uid, def, ajustes, acciones) {
   titulo.className = 'tarjeta-titulo';
   titulo.id = idTitulo;
   titulo.textContent = def.nombre + ' ';
-  if (def.unidad) {
-    const u = document.createElement('span');
-    u.className = 'unidad';
-    u.textContent = def.unidad;
-    titulo.appendChild(u);
-  }
+  const subtitulo = document.createElement('span');
+  subtitulo.className = 'unidad';
+  subtitulo.textContent = def.unidad || '';
+  titulo.appendChild(subtitulo);
+  // Subtítulo que depende de los datos (p. ej. la vuelta de una trazada), con su color.
+  t.fijarSubtitulo = (texto, color = '') => {
+    subtitulo.textContent = texto;
+    subtitulo.style.color = color;
+  };
   const botones = document.createElement('div');
   botones.className = 'tarjeta-acciones';
   const boton = (texto, etiqueta, alClic) => {
@@ -233,8 +236,13 @@ function montarUplotTarjeta(t, resultado) {
   const redimensionar = () => {
     if (!cuerpo.clientWidth) return;
     ajustarUplots(us, divs, cuerpo.clientHeight);
-    // uPlot aplica el tamaño un instante después: la regla se alinea en el cuadro siguiente.
-    requestAnimationFrame(dibujarRegla);
+    // uPlot aplica el tamaño un instante después y la leyenda puede reacomodarse
+    // (si no, el gráfico queda aplastado): se vuelve a medir en el cuadro siguiente
+    // y recién ahí se alinea la regla.
+    requestAnimationFrame(() => {
+      if (cuerpo.clientWidth) ajustarUplots(us, divs, cuerpo.clientHeight);
+      dibujarRegla();
+    });
   };
   redimensionar();
   return {

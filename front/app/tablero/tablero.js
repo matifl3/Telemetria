@@ -204,10 +204,26 @@ const tablero = (() => {
 
   // ===== Barra y arranque =====
 
+  /* Desde el menú. Los gráficos `unaPorVuelta` (trazada por vuelta) agregan una
+     tarjeta por cada vuelta visible, cada una con su posición en `orden`. */
   function agregarDesdeMenu(def) {
-    const t = agregar(def, {}, ajustesPorDefecto(def));
-    anunciar(`${def.nombre} agregado al tablero.`);
-    return t;
+    if (!def.unaPorVuelta) {
+      const t = agregar(def, {}, ajustesPorDefecto(def));
+      anunciar(`${def.nombre} agregado al tablero.`);
+      return t;
+    }
+    const visibles = (state.datosVuelta && state.datosVuelta.vueltas.length) || 1;
+    const n = clamp(visibles, 1, def.maxPorVuelta || visibles);
+    let ultima = null;
+    grid.batchUpdate(true);
+    for (let k = 1; k <= n; k++) {
+      ultima = agregar(def, {}, { ...ajustesPorDefecto(def), orden: String(k) });
+    }
+    grid.batchUpdate(false);
+    for (const t of tarjetas.values()) sincronizarPosicion(t);
+    guardar();
+    anunciar(n === 1 ? `${def.nombre} agregada al tablero.` : `${n} tarjetas de «${def.nombre}» agregadas, una por vuelta visible.`);
+    return ultima;
   }
 
   function vaciar() {

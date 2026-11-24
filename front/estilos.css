@@ -408,36 +408,6 @@ html, body {
 .lienzo-mapa { position: relative; }
 .capa-vivo { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 
-/* Grilla de trazadas por vuelta */
-.mapa-trazadas { display: flex; flex-wrap: wrap; gap: 16px; }
-.trazada-item {
-  flex: 1 1 340px;
-  min-width: min(100%, 300px);
-  background: var(--bg-2);
-  border: 1px solid var(--borde);
-  border-radius: 10px;
-  padding: 10px;
-}
-.trazada-titulo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--muted);
-  margin-bottom: 6px;
-}
-.trazada-dot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
-.trazada-nombre {
-  font-weight: 600;
-  color: var(--texto);
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.trazada-canvas { width: 100%; height: 300px; display: block; }
-
 /* uPlot dark tweaks */
 .uplot { font-family: inherit; }
 .u-legend { font-size: 12px; color: var(--muted); }
@@ -949,7 +919,6 @@ body.sin-scroll { overflow: hidden; }
   /* En el celular las pestañas ocupan dos filas: fijarlas taparía el contenido
      (se revisa en la tanda de mejoras para celular). */
   .tabs { position: static; }
-  .trazada-canvas { height: 220px; }
   /* "Ver en grande" y el menú de gráficos a pantalla completa. */
   #grafico-ampliado, #zoom-teorico { padding: 0; }
   #grafico-ampliado .zoom-panel, #zoom-teorico .zoom-panel { width: 100vw; height: 100dvh; border-radius: 0; }
