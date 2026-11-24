@@ -44,7 +44,7 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - Colores de canvas/uPlot vía `COLOR.*` (utils.js, lee `:root`); las ruedas FL/FR/RL/RR
   conservan hex propios (categóricos).
 - Telemetría: `GRAFICOS_TELEMETRIA` (vuelta.js) alimenta el render y "Ver en grande"
-  (`graficos/ampliado.js`, zoom X solo en el overlay). Los chips para elegir gráficos se
+  (`graficos/ampliado.js`, zoom X con rueda/arrastre solo en el overlay; bloquea el scroll de la página). Los chips para elegir gráficos se
   hicieron y se retiraron a pedido del usuario (2026-11-24).
 ## Aprendizajes y errores a evitar
 - Compilar: `cmd /c "call <vcvars64.bat> && cargo build -p ac-telemetry-lab"` (vcvars evita el

@@ -7,6 +7,7 @@
 
 const ZOOM_ANCHO_MIN = 50;   // m visibles como mínimo
 const ZOOM_FACTOR = 1.5;     // cuánto acerca o aleja cada botón
+const ZOOM_RUEDA = 1.25;     // cuánto acerca o aleja cada paso de la rueda del mouse
 
 // `rango`: tramo X visible. Se guarda aparte porque uPlot aplica setScale de
 // forma diferida y varios clics seguidos leerían un rango viejo.
@@ -27,6 +28,7 @@ function abrirGraficoAmpliado(clave, origen) {
   $('ampliado-titulo').textContent = titulo ? titulo.textContent : def.nombre;
   const ov = $('grafico-ampliado');
   ov.classList.remove('oculto');
+  document.body.classList.add('sin-scroll'); // la rueda no debe mover la página de fondo
   ov.setAttribute('aria-hidden', 'false');
   // El foco va al gráfico: así Espacio y las flechas siguen manejando el reproductor.
   $('plot-ampliado').focus();
@@ -40,10 +42,11 @@ function cerrarGraficoAmpliado() {
   ampliado.clave = null;
   const ov = $('grafico-ampliado');
   ov.classList.add('oculto');
+  document.body.classList.remove('sin-scroll');
   ov.setAttribute('aria-hidden', 'true');
   const origen = ampliado.origen;
   ampliado.origen = null;
-  if (origen && origen.isConnected && !origen.closest('[hidden]')) origen.focus();
+  if (origen && origen.isConnected) origen.focus({ preventScroll: true }); // sin mover la página
 }
 
 function destruirAmpliado() {
@@ -132,12 +135,15 @@ function fijarRangoAmpliado(min, max) {
   for (const u of ampliado.graficos) u.setScale('x', { min, max });
 }
 
-/* + / −: acerca o aleja centrado en el cursor (o en el centro si no está visible). */
-function zoomAmpliado(factor) {
+/* Acerca (factor < 1) o aleja alrededor de `centro`: por defecto el cursor del
+   reproductor (o el medio si no está visible); con la rueda, el punto del mouse. */
+function zoomAmpliado(factor, centro = null) {
   const r = rangoAmpliado();
   if (!r) return;
-  const cursor = state.grilla[state.idx] ?? state.dis;
-  const centro = cursor >= r.min && cursor <= r.max ? cursor : (r.min + r.max) / 2;
+  if (centro == null || centro < r.min || centro > r.max) {
+    const cursor = state.grilla[state.idx] ?? state.dis;
+    centro = cursor >= r.min && cursor <= r.max ? cursor : (r.min + r.max) / 2;
+  }
   const ancho = (r.max - r.min) * factor;
   const t = (centro - r.min) / (r.max - r.min); // conserva la posición relativa del centro
   fijarRangoAmpliado(centro - ancho * t, centro + ancho * (1 - t));
@@ -179,6 +185,14 @@ function iniciarGraficoAmpliado() {
   $('ampliado-acercar').addEventListener('click', () => zoomAmpliado(1 / ZOOM_FACTOR));
   $('ampliado-alejar').addEventListener('click', () => zoomAmpliado(ZOOM_FACTOR));
   $('ampliado-completa').addEventListener('click', vueltaCompletaAmpliado);
+  // Rueda sobre un gráfico: zoom en X alrededor del punto del mouse.
+  $('plot-ampliado').addEventListener('wheel', (ev) => {
+    const u = ampliado.graficos.find((g) => g.over.contains(ev.target));
+    if (!u || !ev.deltaY) return;
+    ev.preventDefault();
+    const centro = u.posToVal(ev.clientX - u.over.getBoundingClientRect().left, 'x');
+    zoomAmpliado(ev.deltaY < 0 ? 1 / ZOOM_RUEDA : ZOOM_RUEDA, centro);
+  }, { passive: false });
   // Escape cierra y Tab queda dentro del diálogo mientras está abierto.
   document.addEventListener('keydown', (ev) => {
     if (!ampliadoAbierto()) return;

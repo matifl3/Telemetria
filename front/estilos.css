@@ -767,7 +767,8 @@ html, body {
 /* "Ver en grande" de Telemetría: regla + gráfico(s) con zoom en X */
 .regla-ampliada { flex: none; border: 1px solid var(--borde); border-radius: 10px; padding: 2px 0; }
 #ch-regla-ampliado { width: 100%; height: 34px; display: block; }
-.plot-ampliado { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.plot-ampliado { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 12px; }
+body.sin-scroll { overflow: hidden; }
 .plot-ampliado:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; border-radius: 6px; }
 .grafico-card .btn-ampliar { font-size: 12px; padding: 2px 8px; cursor: pointer; align-self: center; }
 #ch-mapa-teorico { cursor: zoom-in; }
