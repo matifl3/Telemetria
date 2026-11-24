@@ -1,9 +1,9 @@
 'use strict';
 
 /* Gráficos de Comparación A − B (RF-013): A es la REF y B la vuelta elegida en
-   el panel lateral. Fuente `comparacion`. */
+   el detalle del reproductor. Fuente `comparacion`. */
 
-const SIN_B = 'Sin vuelta B: elegila en el panel lateral (bloque «Sesión»).';
+const SIN_B = 'Sin vuelta B: elegila en «Sesión» (expandí el reproductor con ⌄).';
 const hayComparacion = (d) => d && d.a && d.b && d.grilla && d.grilla.length > 0;
 
 const COMPARACION = { categoria: 'comparacion', fuente: 'comparacion', necesitaB: true, tamano: { w: 6, h: 6 } };

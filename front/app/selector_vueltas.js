@@ -316,7 +316,7 @@ const selectorVueltas = (() => {
     return null;
   }
 
-  /* Selector de B (panel lateral): vueltas visibles distintas de la REF. Sin B
+  /* Selector de B (bloque Sesión): vueltas visibles distintas de la REF. Sin B
      elegida, la primera opción lo dice. */
   function poblarSelB(sel) {
     const resumen = state.resumen;

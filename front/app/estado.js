@@ -24,6 +24,7 @@ const state = {
   playing: false,
   speedMult: 1,
   loop: true,
+  reproductorExpandido: false, // detalle (lectura actual y sesión) visible; arranca comprimido
   raf: null,
   lastTs: 0,
   ultVms: 0,

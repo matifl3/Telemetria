@@ -5,7 +5,7 @@
    métricas por curva vienen listas del backend. */
 
 const SIN_CURVAS = 'Sin curvas detectadas. Cargá el fast_lane.ai.';
-const SIN_AB_CURVAS = 'Elegí dos vueltas distintas (A vs B): B se elige en el panel lateral.';
+const SIN_AB_CURVAS = 'Elegí dos vueltas distintas (A vs B): B se elige en «Sesión» (expandí el reproductor con ⌄).';
 
 /* Envoltorio: guarda el DTO (umbrales de slip y nombres de curva) y avisa si
    no hay curvas. */

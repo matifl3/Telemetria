@@ -158,7 +158,7 @@ const tablero = (() => {
     if (error) { mensajeTarjeta(t.cuerpo, mensajeComando(error)); return; }
     const seleccion = state.resumen && state.resumen.seleccion;
     if (t.def.necesitaB && !(seleccion && seleccion.b)) {
-      mensajeTarjeta(t.cuerpo, 'Elegí una vuelta B en el panel lateral (bloque «Sesión»).');
+      mensajeTarjeta(t.cuerpo, 'Elegí una vuelta B en «Sesión» (expandí el reproductor con ⌄).');
       return;
     }
     try {
@@ -186,7 +186,7 @@ const tablero = (() => {
     }
     versionMontada = state.version;
     await Promise.all([...tarjetas.values()].map(montarTarjeta));
-    // Lecturas del panel lateral y cursores de los gráficos recién montados.
+    // Lecturas del reproductor y cursores de los gráficos recién montados.
     actualizarPorIdx({ moverCursor: true });
   }
 

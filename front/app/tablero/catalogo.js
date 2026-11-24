@@ -7,7 +7,7 @@ const CATEGORIAS_GRAFICOS = [
   { id: 'una-vuelta', nombre: 'Una vuelta', ayuda: 'Canales de cada vuelta visible a lo largo de la pista.' },
   { id: 'mapas', nombre: 'Mapas', ayuda: 'La pista vista desde arriba.' },
   { id: 'conjunto', nombre: 'Conjunto', ayuda: 'Usa todas las vueltas válidas del auto de la REF.' },
-  { id: 'comparacion', nombre: 'Comparación A/B', ayuda: 'A es la REF y B la vuelta elegida en el panel lateral.' },
+  { id: 'comparacion', nombre: 'Comparación A/B', ayuda: 'A es la REF y B la vuelta elegida en «Sesión» (detalle del reproductor).' },
   { id: 'curvas', nombre: 'Curvas', ayuda: 'Curvas detectadas en el fast_lane.ai, numeradas C1..Cn.' },
 ];
 

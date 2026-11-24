@@ -79,15 +79,11 @@ function crearReadouts() {
   }
 }
 
-/* Altos reales de la barra superior y de las pestañas: las pestañas se fijan
-   bajo la barra. Se miden con ResizeObserver porque las pestañas miden 0 hasta
-   entrar al análisis y cambian de alto al pasar a dos filas. */
+/* Alto real de la barra superior: la barra de pestañas y reproductor se fija
+   debajo. Se mide con ResizeObserver porque cambia de alto al pasar a dos filas. */
 function medirBarras() {
-  const raiz = document.documentElement.style;
   const barra = document.querySelector('.topbar');
-  const tabs = document.querySelector('.tabs');
-  if (barra) raiz.setProperty('--alto-topbar', `${barra.offsetHeight}px`);
-  if (tabs) raiz.setProperty('--alto-tabs', `${tabs.offsetHeight}px`);
+  if (barra) document.documentElement.style.setProperty('--alto-topbar', `${barra.offsetHeight}px`);
 }
 
 /* Las tarjetas del tablero se redibujan solas con su ResizeObserver; acá solo
@@ -97,7 +93,8 @@ function iniciarResize() {
   medirBarras();
   if (typeof ResizeObserver !== 'undefined') {
     const obs = new ResizeObserver(medirBarras);
-    for (const el of [document.querySelector('.topbar'), document.querySelector('.tabs')]) if (el) obs.observe(el);
+    const barra = document.querySelector('.topbar');
+    if (barra) obs.observe(barra);
   }
   window.addEventListener('resize', () => {
     medirBarras();

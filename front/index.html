@@ -57,42 +57,45 @@
     <section id="error-aviso" class="aviso oculto"></section>
 
     <section id="dashboard" class="dashboard oculto">
-      <aside class="panel lateral">
-        <div class="panel-titulo">Reproductor</div>
-        <div class="reproductor">
-          <button id="btn-play" class="btn icono" type="button" title="Play/Pausa (espacio)" aria-label="Reproducir vuelta" aria-pressed="false">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-          </button>
-          <input id="scrub" type="range" min="0" max="1000" value="0" step="1" aria-label="Posición en la vuelta" />
-          <span id="scrub-dist" class="mono">0 m</span>
-        </div>
-        <div class="velocidad-repro">
-          <label>Velocidad
-            <select id="sel-velocidad">
+      <section class="contenido">
+        <!-- Pestañas y reproductor en una sola barra fija; el detalle se expande debajo. -->
+        <div class="barra-vista">
+          <nav class="tabs" role="tablist" aria-label="Vistas de análisis">
+            <button class="tab activo" type="button" role="tab" id="tab-tablero" aria-selected="true" aria-controls="panel-tablero" data-tab="tablero">Tablero</button>
+            <button class="tab" type="button" role="tab" tabindex="-1" id="tab-vueltas" aria-selected="false" aria-controls="panel-vueltas" data-tab="vueltas">Vueltas</button>
+          </nav>
+          <div class="reproductor" role="group" aria-label="Reproductor">
+            <button id="btn-play" class="btn icono" type="button" title="Play/Pausa (espacio)" aria-label="Reproducir vuelta" aria-pressed="false">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <input id="scrub" type="range" min="0" max="1000" value="0" step="1" aria-label="Posición en la vuelta" />
+            <span id="scrub-dist" class="mono">0 m</span>
+            <select id="sel-velocidad" class="sel-velocidad" aria-label="Velocidad de reproducción" title="Velocidad de reproducción">
               <option value="0.25">0.25×</option>
               <option value="0.5">0.5×</option>
               <option value="1" selected>1×</option>
               <option value="2">2×</option>
               <option value="4">4×</option>
             </select>
-          </label>
-          <label class="check">
-            <input id="chk-loop" type="checkbox" checked /> Repetir
-          </label>
+            <label class="check" title="Repetir la vuelta al llegar al final">
+              <input id="chk-loop" type="checkbox" checked /> <span class="texto-repetir">Repetir</span>
+            </label>
+            <button id="btn-expandir-repro" class="btn icono btn-expandir" type="button" aria-expanded="false" aria-controls="detalle-repro" title="Mostrar lectura actual y sesión" aria-label="Mostrar lectura actual y sesión">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
         </div>
 
-        <div class="panel-titulo">Lectura actual</div>
-        <div id="readouts" class="readouts"></div>
-
-        <div class="panel-titulo">Sesión</div>
-        <div id="sesion-info" class="sesion-info" aria-live="polite"></div>
-      </aside>
-
-      <section class="contenido">
-        <nav class="tabs" role="tablist" aria-label="Vistas de análisis">
-          <button class="tab activo" type="button" role="tab" id="tab-tablero" aria-selected="true" aria-controls="panel-tablero" data-tab="tablero">Tablero</button>
-          <button class="tab" type="button" role="tab" tabindex="-1" id="tab-vueltas" aria-selected="false" aria-controls="panel-vueltas" data-tab="vueltas">Vueltas</button>
-        </nav>
+        <div id="detalle-repro" class="panel detalle-repro oculto">
+          <div class="detalle-bloque">
+            <div class="panel-titulo">Lectura actual</div>
+            <div id="readouts" class="readouts"></div>
+          </div>
+          <div class="detalle-bloque">
+            <div class="panel-titulo">Sesión</div>
+            <div id="sesion-info" class="sesion-info" aria-live="polite"></div>
+          </div>
+        </div>
 
         <div id="panel-tablero" class="tab-panel activo" role="tabpanel" aria-labelledby="tab-tablero">
           <div class="tablero-barra">

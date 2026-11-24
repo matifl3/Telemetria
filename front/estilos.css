@@ -192,7 +192,7 @@ html, body {
 /* Dashboard */
 .dashboard {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   padding: 18px 22px 40px;
   align-items: start;
@@ -206,8 +206,6 @@ html, body {
   padding: 16px;
   box-shadow: var(--sombra);
 }
-/* Fijo al desplazar; si no entra en pantallas bajas, se desplaza por dentro. */
-.lateral { position: sticky; top: calc(var(--alto-topbar, 70px) + 14px); max-height: calc(100vh - var(--alto-topbar, 70px) - 28px); overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
 .panel-titulo {
   font-size: 11px;
   text-transform: uppercase;
@@ -325,19 +323,25 @@ html, body {
 .rol-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .rol-btn:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
 
-/* Reproductor */
-.reproductor { display: flex; align-items: center; gap: 10px; }
-#scrub { flex: 1; accent-color: var(--acento); }
+/* Reproductor: una línea en la barra de pestañas */
+.reproductor { display: flex; align-items: center; gap: 10px; flex: 1 1 340px; min-width: 0; font-size: 12px; color: var(--muted); }
+.reproductor .btn.icono { padding: 7px 11px; }
+#scrub { flex: 1; min-width: 80px; accent-color: var(--acento); }
 #scrub-dist { font-size: 12px; min-width: 62px; text-align: right; color: var(--muted); }
-.velocidad-repro { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--muted); }
-.velocidad-repro select {
+.sel-velocidad {
   background: var(--panel-2); color: var(--texto); border: 1px solid var(--borde-control);
   border-radius: 8px; padding: 5px 8px; font-size: 12px;
 }
-.check { display: flex; align-items: center; gap: 6px; }
+.check { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn-expandir svg { transition: transform 200ms var(--ease-out); }
+.btn-expandir[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+/* Detalle expandible del reproductor: lectura actual y sesión en filas */
+.detalle-repro { display: flex; flex-direction: column; gap: 14px; padding: 12px 16px; }
+.detalle-bloque { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 
 /* Readouts */
-.readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.readouts { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
 .ro {
   display: flex;
   flex-direction: column;
@@ -352,11 +356,11 @@ html, body {
 .ro .ro-dato { display: flex; align-items: baseline; gap: 4px; min-width: 0; }
 .ro .ro-valor { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .ro .ro-unidad { font-size: 11px; color: var(--muted); }
-.ro.ro-ancha { grid-column: 1 / -1; }
+.ro.ro-ancha { grid-column: span 2; }
 
-/* Sesión: qué está cargado y qué se compara */
-.sesion-info { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
-.sesion-fila { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+/* Sesión: qué está cargado y qué se compara (en fila; baja de línea si no entra) */
+.sesion-info { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 18px; font-size: 12px; }
+.sesion-fila { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 170px; }
 .sesion-etiqueta { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
 .sesion-valor {
   display: flex;
@@ -369,7 +373,7 @@ html, body {
 .sesion-detalle { color: var(--muted); font-size: 11px; }
 .sesion-tiempo { flex: 0 0 auto; color: var(--acento); font-variant-numeric: tabular-nums; }
 .sesion-color { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 3px; }
-.sesion-info .btn { align-self: flex-start; min-height: 34px; padding: 6px 12px; font-size: 12px; }
+.sesion-info .btn { align-self: flex-end; min-height: 34px; padding: 6px 12px; font-size: 12px; }
 
 /* Contenido */
 .contenido { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
@@ -416,21 +420,23 @@ html, body {
 .mini-grafico { padding: 10px; background: var(--bg-2); border: 1px solid var(--borde); border-radius: 10px; }
 .mini-titulo { font-size: 12px; margin: 0 4px 6px; font-weight: 600; letter-spacing: 0.3px; }
 
-/* Pestañas */
-.tabs {
-  /* Fijas bajo la barra superior para cambiar de vista sin volver arriba. */
+/* Barra de pestañas + reproductor */
+.barra-vista {
+  /* Fija bajo la barra superior para cambiar de vista y reproducir sin volver arriba. */
   position: sticky;
   top: var(--alto-topbar, 70px);
   z-index: 7;
   display: flex;
-  gap: 6px;
+  align-items: center;
   flex-wrap: wrap;
+  gap: 6px 14px;
   background: var(--panel);
   border: 1px solid var(--borde);
   border-radius: 12px;
   padding: 6px;
   box-shadow: var(--sombra);
 }
+.tabs { display: flex; gap: 6px; }
 .tab {
   border: 1px solid transparent;
   background: transparent;
@@ -454,7 +460,7 @@ html, body {
 .tab-panel.activo { display: flex; }
 
 
-/* Selects de ajustes de tarjeta y de B (panel lateral) */
+/* Selects de ajustes de tarjeta y de B (bloque Sesión) */
 .tarjeta-panel select,
 .sel-b {
   background: var(--panel-2);
@@ -701,7 +707,7 @@ html, body {
 /* Barras de desplazamiento del tema dentro de tarjetas y menú */
 .tarjeta-cuerpo, .tarjeta-cuerpo *, .menu-lista { scrollbar-width: thin; scrollbar-color: #3a4556 transparent; }
 
-/* Selector de B en el panel lateral */
+/* Selector de B en el bloque Sesión */
 .sel-b { width: 100%; min-width: 0; }
 
 /* Menú «Agregar gráfico» */
@@ -898,11 +904,6 @@ body.sin-scroll { overflow: hidden; }
 @keyframes girar { to { transform: rotate(360deg); } }
 
 /* Responsive y preferencias del usuario (todo junto, de mayor a menor ancho) */
-@media (max-width: 980px) {
-  .dashboard { grid-template-columns: minmax(0, 1fr); }
-  .lateral { position: static; min-width: 0; max-height: none; overflow: visible; }
-}
-
 @media (max-width: 640px) {
   .topbar { flex-wrap: wrap; gap: 12px; padding: 12px 16px; }
   .topbar-acciones { width: 100%; flex-direction: column; align-items: stretch; gap: 8px; }
@@ -918,7 +919,12 @@ body.sin-scroll { overflow: hidden; }
   .vuelta-roles { margin-left: 20px; }
   /* En el celular las pestañas ocupan dos filas: fijarlas taparía el contenido
      (se revisa en la tanda de mejoras para celular). */
-  .tabs { position: static; }
+  .barra-vista { position: static; }
+  /* Reproductor en dos líneas: controles arriba, barra de posición a todo el ancho. */
+  .reproductor { flex-wrap: wrap; flex-basis: 100%; }
+  #scrub { order: 10; flex-basis: 100%; }
+  .reproductor .check { margin-left: auto; }
+  .detalle-repro { padding: 12px; }
   /* "Ver en grande" y el menú de gráficos a pantalla completa. */
   #grafico-ampliado, #zoom-teorico { padding: 0; }
   #grafico-ampliado .zoom-panel, #zoom-teorico .zoom-panel { width: 100vw; height: 100dvh; border-radius: 0; }
@@ -941,7 +947,7 @@ body.sin-scroll { overflow: hidden; }
   .colapsar, .vuelta-eye { min-width: 32px; min-height: 32px; }
   .rol-btn { min-height: 32px; min-width: 40px; }
   .zoom-acciones .btn, .tarjeta-btn, .menu-agregar { min-height: 32px; min-width: 32px; }
-  .velocidad-repro select, .tarjeta-panel select, .sel-b { min-height: 32px; }
+  .sel-velocidad, .tarjeta-panel select, .sel-b { min-height: 32px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

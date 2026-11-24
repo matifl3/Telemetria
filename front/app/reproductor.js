@@ -112,8 +112,21 @@ function actualizarPorIdx(opts = { moverCursor: true }) {
   if (opts.moverCursor) moverCursor();
 }
 
+/* Muestra u oculta la franja con la lectura actual y la sesión (solo en memoria). */
+function alternarDetalleReproductor() {
+  state.reproductorExpandido = !state.reproductorExpandido;
+  const abierto = state.reproductorExpandido;
+  $('detalle-repro').classList.toggle('oculto', !abierto);
+  const boton = $('btn-expandir-repro');
+  const texto = abierto ? 'Ocultar lectura actual y sesión' : 'Mostrar lectura actual y sesión';
+  boton.setAttribute('aria-expanded', String(abierto));
+  boton.setAttribute('aria-label', texto);
+  boton.title = texto;
+}
+
 function iniciarReproductor() {
   $('btn-play').addEventListener('click', togglePlay);
+  $('btn-expandir-repro').addEventListener('click', alternarDetalleReproductor);
   $('chk-loop').addEventListener('change', (e) => { state.loop = e.target.checked; });
   $('sel-velocidad').addEventListener('change', (e) => { state.speedMult = parseFloat(e.target.value); });
   $('scrub').addEventListener('input', (e) => irA((e.target.value / 1000) * state.longitudPista));

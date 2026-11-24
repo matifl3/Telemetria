@@ -216,7 +216,7 @@ const cargaArchivos = (() => {
     return fila;
   }
 
-  /* Bloque "Sesión" del panel lateral: archivos, pista, REF y B. */
+  /* Bloque "Sesión" del detalle del reproductor: archivos, pista, REF y B. */
   function renderSesion() {
     const cont = $('sesion-info');
     if (!cont) return;
