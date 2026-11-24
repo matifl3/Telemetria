@@ -51,7 +51,7 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 ## Próximos pasos
 - Replays de prueba (locales, no commitear): `Downloads/temp-20261108T163338Z-1-001/temp`
   (7 de Monza) y `Downloads/temp (1)-20261107T021753Z-1-001/temp (1)` (Misano).
-- v0.4.0: tag subido e instalador generado; falta publicar la release en GitHub. Lo
-  posterior (reproductor en línea, esquinas) no está en ninguna release.
+- v0.4.0 publicada. v0.5.0 (reproductor en línea, esquinas, tokens de diseño): tag
+  subido; falta instalador y publicar la release en GitHub.
 - Pendientes manuales: TV06, T123, DIST02/DIST03; ING02–ING04, ING28, ING35, ING47.
 - `spec/modificacion de pista/`: 14 tareas sin empezar.
