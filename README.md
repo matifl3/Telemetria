@@ -38,7 +38,7 @@ se conserva solo como referencia; no forma parte de la aplicación de escritorio
 - Windows SDK.
 - Node.js y npm para ejecutar la CLI de Tauri.
 
-La interfaz y uPlot están incluidos en el repositorio: no hace falta servidor ni
+La interfaz, uPlot y Gridstack 14.1.1 (MIT) están incluidos en el repositorio: no hace falta servidor ni
 conexión a Internet para analizar. Si Windows no tiene WebView2 Runtime, el
 instalador lo descarga durante la instalación; en ese caso se necesita Internet.
 
@@ -145,14 +145,16 @@ de Rust están en `core/tests/` y `src-tauri/tests/`.
 ```text
 core/       Parser, modelo, análisis y pruebas Rust; no depende de Tauri
 src-tauri/  Ventana, comandos y estado en memoria de Tauri
-front/      Interfaz HTML, CSS y JavaScript; uPlot vendorizado
+front/      Interfaz HTML, CSS y JavaScript; uPlot y Gridstack vendorizados
 doc/        Especificaciones y catálogo de gráficos
 spec/       Planes y requisitos de funcionalidades
 visualizador/  Versión web anterior, solo referencia histórica
 ```
 
 La lógica de parseo y análisis vive en `core/`; la interfaz recibe DTOs a través
-de los comandos de Tauri. La aplicación no persiste datos en disco.
+de los comandos de Tauri. La aplicación no persiste datos en disco; solo recuerda
+el diseño del tablero (qué gráficos hay, su posición y tamaño) en el almacenamiento
+local del WebView.
 
 ## Documentación
 

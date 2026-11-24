@@ -9,8 +9,8 @@ Rust (`core/tests/`, `src-tauri/tests/`).
 ## Stack y estructura
 - `core/` — parser, modelo y cálculos en Rust. No depende de Tauri.
 - `src-tauri/` — ventana, comandos (`comandos.rs`) y estado en memoria.
-- `front/` — HTML/CSS/JS plano, sin build ni framework; uPlot vendorizado en
-  `front/vendor/`. Tauri lo embebe tal cual.
+- `front/` — HTML/CSS/JS plano, sin build ni framework; uPlot y Gridstack
+  vendorizados en `front/vendor/`. Tauri lo embebe tal cual.
 - `visualizador/` — versión web anterior (v1). Solo referencia histórica: no
   se modifica ni forma parte de la app.
 
@@ -19,8 +19,9 @@ Rust (`core/tests/`, `src-tauri/tests/`).
 - Código simple, nombres descriptivos y comentarios solo donde aporten.
 - Diseño limpio y responsive; cualquier pantalla nueva debe verse bien en el móvil
   (ventana mínima 360 px).
-- Los gráficos son canvas 2D + uPlot (`front/app/graficos/`); seguir los patrones
-  existentes y registrarlo en `doc/Catalogo_Graficos.md`.
+- Los gráficos son canvas 2D + uPlot (`front/app/graficos/`), registrados en el
+  catálogo del tablero (`registrarGrafico`); seguir los patrones existentes y
+  anotarlos en `doc/Catalogo_Graficos.md`.
 
 ## Forma de trabajar
 - Haz solo lo que se pide: no añadas funcionalidades por tu cuenta.
@@ -57,7 +58,8 @@ porqué) y errores a evitar.
 - Comandos Tauri: `src-tauri/src/comandos.rs`, registrados en `src-tauri/src/lib.rs`;
   el front los llama solo desde `front/app/puente.js` (args en camelCase).
 - Front: `state` en `front/app/estado.js`; `renderPestanaActiva` e `init` en
-  `front/app/main.js`; una pestaña por archivo en `front/app/pestanas/`.
+  `front/app/main.js`; tablero en `front/app/tablero/` (grilla, tarjetas, menú,
+  diseño guardado) y gráficos por categoría en `front/app/graficos/`.
 - Constantes de calibración: `R_CURVA`, `R_RECTA`, … en `core/src/curvas.rs`;
   `GRID_*` en `core/src/grilla.rs`; `SLIP_*` en `front/app/estado.js`. Ajustar
   umbrales ahí; no tocar la lógica.
@@ -68,8 +70,9 @@ porqué) y errores a evitar.
   versión da error por diseño.
 - El archivo de pista (`fast_lane.ai`) es **obligatorio** para entrar al análisis:
   sin pista no hay detección de curvas ni mapas.
-- Sin persistencia: los datos viven **solo en memoria, por sesión**. Nada se
-  escribe en disco (ni `localStorage`).
+- Sin persistencia de datos: los datos viven **solo en memoria, por sesión**. Nada
+  se escribe en disco. Única excepción: el diseño del tablero en `localStorage`
+  (clave `ac-telemetry-lab.tablero.v1`), sin datos del replay.
 - Al publicar una versión, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` y
   `Cargo.lock` deben tener la misma versión (ver README).
 - Nunca commitear: `*.acreplay`, `Paquetes de telemetria/`, `datos/`, `salida/`,
