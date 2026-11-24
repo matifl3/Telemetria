@@ -6,11 +6,6 @@
 
 const vistasPorCv = { m: new WeakMap() };
 
-/* Descarta vistas de zoom/pan guardadas por canvas (cambio de proyección). */
-function resetearVistas() {
-  vistasPorCv.m = new WeakMap();
-}
-
 function prepararMapa(cv) {
   return prepararCanvas(cv, 460);
 }

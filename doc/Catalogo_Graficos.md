@@ -10,6 +10,13 @@ Ideas de gráficos para la app de análisis (`front/`), clasificadas por
 > Este documento es de **diseño**: describe qué gráficos se pueden hacer, con qué
 > datos y el esfuerzo estimado. No implica que ya estén implementados.
 
+> **Tablero (desde 2026-11-24).** Los gráficos ya no se agrupan en pestañas: cada
+> gráfico implementado (✅) es una entrada del catálogo del tablero
+> (`registrarGrafico` en `front/app/graficos/*.js`) que el usuario agrega desde
+> «+ Agregar gráfico», mueve y redimensiona. Las categorías del menú son Una
+> vuelta, Mapas, Conjunto, Comparación A/B y Curvas. Un gráfico nuevo se registra
+> ahí con su `id` estable (se guarda en el diseño del tablero) y se anota acá.
+
 ## Leyenda de estado
 
 | Símbolo | Significado |
@@ -49,21 +56,22 @@ pruebas (offset a confirmar).
 | Marcha | Escalones de cambio | `marcha` | 🟢 | Alta |
 | Volante | Ángulo de dirección (correcciones) | `steer_angle` | 🟢 | Alta |
 | Aceleración total | Módulo de aceleración (frenada/arranque) | `acc_total` | 🟢 | Media |
-| Regla de curvas | Franja fija sobre los gráficos de Telemetría: un tramo por curva (`C1..Cn`, colores del mapa de Curvas), alineada al eje X; resalta la curva del cursor. La lectura "curva" muestra `Cn` o `recta` | curvas de `fast_lane.ai` (`s_ini`, `s_fin`), distancia | ✅ | — |
-| Ver en grande (Telemetría) | Botón ⤢ en cada gráfico: lo abre en un diálogo con su regla de curvas y **zoom en X** (rueda del mouse alrededor del puntero, arrastrar para acercar, doble clic o "Vuelta completa" para volver, `+`/`−` centrados en el cursor, mínimo 50 m). Cursor sincronizado con el reproductor; el zoom no afecta a la pestaña. Pedales: un mini-gráfico por vuelta, todos con el mismo zoom | mismos canales que cada gráfico | ✅ | — |
+| Regla de curvas | Franja sobre cada gráfico de líneas del tablero: un tramo por curva (`C1..Cn`, colores del mapa de Curvas), alineada al eje X; resalta la curva del cursor. La lectura "curva" muestra `Cn` o `recta` | curvas de `fast_lane.ai` (`s_ini`, `s_fin`), distancia | ✅ | — |
+| Ver en grande | Botón ⤢ en cada gráfico de líneas del tablero: lo abre en un diálogo con su regla de curvas y **zoom en X** (rueda del mouse alrededor del puntero, arrastrar para acercar, doble clic o "Vuelta completa" para volver, `+`/`−` centrados en el cursor, mínimo 50 m). Cursor sincronizado con el reproductor; el zoom no afecta al tablero. Pedales: un mini-gráfico por vuelta, todos con el mismo zoom | mismos canales que cada gráfico | ✅ | — |
 
 
 ### 1.2 Mapas del trazado
 
 | Gráfico | Qué muestra | Datos | Estado | Prioridad |
 |---|---|---|---|---|
-| Mapa de pista | Trazada x/z con marcador + reproductor. La posición actual de cada vuelta va en una capa transparente (`capa-vivo`) que se redibuja sola al reproducir; sigue zoom/pan/3D | `pos_x`, `pos_z`, `s` | ✅ | — |
+| Trazada por vuelta | Gráfico aparte del mapa de pista: al agregarlo se crea una tarjeta por cada vuelta visible (hasta 10), cada una con su trazada en su color sobre la pista. Cada tarjeta guarda qué vuelta muestra por posición («2.ª visible»), no por identidad, para no guardar datos del replay | `pos_x`, `pos_z`, `s` | ✅ | — |
+| Mapa de pista | Vueltas visibles superpuestas y coloreadas por canal (heatmap), con marcador + reproductor. La posición actual de cada vuelta va en una capa transparente (`capa-vivo`) que se redibuja sola al reproducir; sigue zoom/pan/3D | `pos_x`, `pos_z`, `s` | ✅ | — |
 | Mapa coloreado por canal | La línea pintada según velocidad/gas/freno/marcha | `pos_x/z` + canal | 🟡 | Alta |
 | Mapa 3D | x/z + elevación (`pos_y`) coloreado | `pos_x/y/z` | 🟡 | Media |
 | Marcadores de frenada | Puntos donde se frena fuerte | `freno`, `pos_x/z` | 🟢 | Media |
 | Marcadores de cambio | ↑↓ de marcha sobre el trazado | `marcha` | 🟢 | Baja |
 
-> **Trazada por vuelta**: cada vuelta se dibuja en su propio mini-mapa sobre una
+> **Trazada por vuelta**: cada vuelta se dibuja en su propia tarjeta sobre una
 > banda gris que es la **silueta de todas las vueltas visibles**. La banda se
 > centra en la **posición media** de las vueltas (no en la REF), así cada trazada
 > — incluida la de referencia — queda donde se condujo realmente y no forzada al

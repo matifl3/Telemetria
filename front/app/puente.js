@@ -29,20 +29,28 @@ const puente = (() => {
     return invocar('cargar_pista', { ruta });
   }
 
-  /* --- datos por pestaña (con caché por versión de sesión) --- */
+  /* --- datos por fuente (DTO de cada «pestaña» del backend) ---
+     Caché por versión de sesión y por proyección (rotación/elevación del mapa).
+     Varias tarjetas que piden la misma fuente a la vez comparten el pedido. */
+
+  const enCurso = new Map();
 
   async function pedirPestana(pestana, rotacion = 0, elevacion = 0) {
     const version = state.version;
-    const cache = state.cacheDatos.get(pestana);
-    if (cache && cache.version === version && cache.rot === rotacion && cache.alt === elevacion) {
-      return cache.datos;
-    }
-    const respuesta = await invocar('datos_pestana', { pestana, rotacion, elevacion });
-    // La respuesta es el enum etiquetado {pestana, datos}; cacheamos los datos crudos.
-    if (state.version === version) {
-      state.cacheDatos.set(pestana, { version, rot: rotacion, alt: elevacion, datos: respuesta.datos });
-    }
-    return respuesta.datos;
+    const clave = `${pestana}|${rotacion}|${elevacion}`;
+    const cache = state.cacheDatos.get(clave);
+    if (cache && cache.version === version) return cache.datos;
+    const claveCurso = `${version}|${clave}`;
+    if (enCurso.has(claveCurso)) return enCurso.get(claveCurso);
+    const pedido = invocar('datos_pestana', { pestana, rotacion, elevacion })
+      .then((respuesta) => {
+        // La respuesta es el enum etiquetado {pestana, datos}; se cachean los datos crudos.
+        if (state.version === version) state.cacheDatos.set(clave, { version, datos: respuesta.datos });
+        return respuesta.datos;
+      })
+      .finally(() => enCurso.delete(claveCurso));
+    enCurso.set(claveCurso, pedido);
+    return pedido;
   }
 
   /* --- selección (devuelven siempre un DtoResumen fresco) --- */

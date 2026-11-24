@@ -99,8 +99,9 @@ const cargaArchivos = (() => {
       state.idx = 0;
       state.dis = 0;
       detenerReproduccion();
-      destroyCharts();
+      tablero.desmontarTodo();
       cerrarGraficoAmpliado();
+      cerrarZoomTeorico();
       const dash2 = $('dashboard');
       if (dash2) dash2.classList.add('oculto');
       const z2 = $('zona-carga');
@@ -196,10 +197,31 @@ const cargaArchivos = (() => {
     });
   }
 
+  /* B global: un selector con las vueltas visibles distintas de la REF. Es la
+     vuelta que usan los gráficos de Comparación y Curvas A/B del tablero. */
+  function filaSelectorB() {
+    const fila = document.createElement('div');
+    fila.className = 'sesion-fila';
+    const et = document.createElement('label');
+    et.className = 'sesion-etiqueta';
+    et.htmlFor = 'sel-b-global';
+    et.textContent = 'B (comparación)';
+    const sel = document.createElement('select');
+    sel.id = 'sel-b-global';
+    sel.className = 'sel-b';
+    selectorVueltas.poblarSelB(sel);
+    sel.disabled = sel.options.length <= 1 && !sel.value;
+    sel.addEventListener('change', () => selectorVueltas.fijarBDesdeSelect(sel));
+    fila.append(et, sel);
+    return fila;
+  }
+
   /* Bloque "Sesión" del panel lateral: archivos, pista, REF y B. */
   function renderSesion() {
     const cont = $('sesion-info');
     if (!cont) return;
+    // El bloque se rehace con cada resumen: si el foco estaba en el selector de B, se repone.
+    const focoEnB = document.activeElement && document.activeElement.id === 'sel-b-global';
     cont.innerHTML = '';
     const resumen = state.resumen;
     if (!resumen || !resumen.puede_analizar) return;
@@ -215,7 +237,7 @@ const cargaArchivos = (() => {
     }));
     const seleccion = resumen.seleccion || {};
     cont.appendChild(filaVuelta('REF', seleccion.referencia));
-    cont.appendChild(filaVuelta('B', seleccion.b));
+    cont.appendChild(filaSelectorB());
 
     const boton = document.createElement('button');
     boton.type = 'button';
@@ -223,6 +245,7 @@ const cargaArchivos = (() => {
     boton.textContent = 'Elegir vueltas';
     boton.addEventListener('click', () => cambiarTab('vueltas'));
     cont.appendChild(boton);
+    if (focoEnB) $('sel-b-global').focus({ preventScroll: true });
   }
 
   function detenerReproduccion() {

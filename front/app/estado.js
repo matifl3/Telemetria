@@ -12,7 +12,7 @@ const state = {
   avisosProcesados: new Set(),
   version: 0,             // invalida el caché de datos de pestaña
   cacheDatos: new Map(),  // pestaña → { version, rot, alt, datos }
-  tab: 'vuelta',
+  tab: 'tablero',
   archivos: { replay: null, pista: null }, // rutas cargadas (solo para mostrar)
   datosVuelta: null,      // DtoVuelta base (grilla + canales de vueltas visibles)
   colorPorId: new Map(),  // id "auto NumeroLocal" → color de paleta
@@ -27,9 +27,6 @@ const state = {
   raf: null,
   lastTs: 0,
   ultVms: 0,
-  charts: { lines: [], inputs: [] },
-  mapa: { visual: 'canal', canal: 'velocidad_kmh', bordes: true, frenada: true, cambios: false, tresD: false, rot: 0, alt: 3, zoom: 1, panX: 0, panY: 0, resetView: true },
-  mapaSectores: { tresD: false, rot: 0, alt: 3 },
-  ultimoConjunto: null,   // último DtoConjunto recibido (para ver en grande)
-  trazadasMapa: { key: '', mapas: null },   // cache de mapas por returnType sección
+  charts: { lines: [] },   // uPlot del tablero (el primero guía el cursor)
+  curvasDatos: null,      // último DtoCurvas (umbrales de slip y nombres de curva)
 };

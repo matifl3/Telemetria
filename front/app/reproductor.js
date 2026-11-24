@@ -83,7 +83,7 @@ function vueltaReferencia() {
   return refId ? vueltaPorId(refId) : vueltasVisibles()[0] || null;
 }
 
-/* Readouts + cursor + mapa: se llama en cada cambio de posición (RF-011). */
+/* Readouts + cursor + tarjetas del tablero: se llama en cada cambio de posición (RF-011). */
 function actualizarPorIdx(opts = { moverCursor: true }) {
   actualizarScrub();
   const ref = vueltaReferencia();
@@ -106,11 +106,10 @@ function actualizarPorIdx(opts = { moverCursor: true }) {
     const curva = curvaEn(curvas, state.grilla[state.idx] ?? state.dis);
     roCurva.textContent = !curvas.length ? '–' : curva ? curva.nombre : 'recta';
   }
-  if (state.tab === 'vuelta') dibujarReglaCurvas();
+  // Reglas de curvas, capas en vivo de los mapas y carga en vivo (sin repintar lo demás).
+  tablero.alCursor();
   dibujarReglaAmpliada();
   if (opts.moverCursor) moverCursor();
-  // Solo la capa en vivo y la figura de carga: el mapa base no se repinta.
-  if (state.tab === 'mapa') dibujarMapaPestana({ soloVivo: true });
 }
 
 function iniciarReproductor() {

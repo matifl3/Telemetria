@@ -9,7 +9,7 @@ App de escritorio Tauri + Rust. Principios innegociables: si una decisión los c
    *Verificable*: `core` compila y se testea sin Tauri; la UI solo recibe datos ya calculados.
 4. **Cada bug, su test** — todo fix de lógica llega con test de regresión.
    *Verificable*: `cargo test` en verde antes de dar por cerrado el cambio.
-5. **Sin persistencia** — nada se escribe en disco: los datos viven solo en memoria durante la sesión.
-   *Verificable*: el binario no guarda archivos ni estado entre ejecuciones.
+5. **Sin persistencia de datos** — los datos de telemetría y del análisis viven solo en memoria durante la sesión. Única excepción: el **diseño del tablero** (qué gráficos hay, su posición, tamaño y ajustes) se guarda en el `localStorage` del WebView.
+   *Verificable*: el binario no escribe archivos; `localStorage` solo contiene la clave del diseño, sin rutas, nombres de pilotos, tiempos ni datos del replay.
 6. **Todo en español** — código, comentarios, mensajes de UI y nombres de archivo.
    *Verificable*: el inglés solo aparece cuando viene del formato original (`.acreplay`, CSP).

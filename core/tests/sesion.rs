@@ -450,6 +450,9 @@ fn t87_flujo_integrado_carga_alterna_y_resume() {
     assert_invariantes(&sesion);
 }
 
+/// Constitución, principio 5: nada de los datos se persiste. La única excepción
+/// es el diseño del tablero, que solo `front/app/tablero/diseno.js` guarda en
+/// `localStorage` y siempre bajo su clave propia.
 #[test]
 fn t88_el_codigo_de_produccion_no_persiste() {
     let raiz = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -466,6 +469,7 @@ fn t88_el_codigo_de_produccion_no_persiste() {
         "debe haber fuentes para revisar"
     );
 
+    let diseno = raiz.join("front").join("app").join("tablero").join("diseno.js");
     let prohibidos = [
         "fs::write",
         "File::create",
@@ -478,12 +482,37 @@ fn t88_el_codigo_de_produccion_no_persiste() {
     for ruta in archivos {
         let texto = fs::read_to_string(&ruta).expect("fuente legible");
         for patron in prohibidos {
+            if patron == "localStorage" && ruta == diseno {
+                continue;
+            }
             assert!(
                 !texto.contains(patron),
                 "{} contiene una operación de persistencia: {patron}",
                 ruta.display()
             );
         }
+    }
+}
+
+/// La excepción del principio 5: `diseno.js` solo lee y escribe la clave del
+/// diseño del tablero (nunca otra clave ni otro almacenamiento).
+#[test]
+fn t88_el_diseno_del_tablero_usa_solo_su_clave() {
+    let raiz = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("core está dentro del repo");
+    let texto = fs::read_to_string(raiz.join("front").join("app").join("tablero").join("diseno.js"))
+        .expect("diseno.js legible");
+
+    assert!(texto.contains("const CLAVE = 'ac-telemetry-lab.tablero.v1';"));
+    let usos: Vec<&str> = texto.match_indices("localStorage.").map(|(i, _)| &texto[i..]).collect();
+    assert!(!usos.is_empty(), "diseno.js debe guardar el diseño");
+    for uso in usos {
+        assert!(
+            uso.starts_with("localStorage.getItem(CLAVE)") || uso.starts_with("localStorage.setItem(CLAVE,"),
+            "uso de localStorage fuera de la clave del diseño: {}",
+            &uso[..uso.len().min(60)]
+        );
     }
 }
 

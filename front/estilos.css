@@ -374,7 +374,7 @@ html, body {
 /* Contenido */
 .contenido { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 .graficos { display: flex; flex-direction: column; gap: 18px; }
-.grafico-card, .mapa-card {
+.grafico-card {
   background: var(--panel);
   border: 1px solid var(--borde);
   border-radius: var(--radio);
@@ -403,58 +403,18 @@ html, body {
 
 /* Canvas de gráficos: alto fijo por CSS (si no, el alto depende del ancho) */
 .grafico-card canvas { width: 100%; display: block; }
-#chart-carga-vivo { height: 320px; }
-#ch-barras-tiempos, #ch-velmedia { height: 240px; }
-#ch-histvel, #ch-histgear, #ch-fuel { height: 200px; }
-#ch-sectores { height: 260px; }
-#ch-mini-delta { height: 240px; }
 
-.mapa-card { position: relative; }
-#mapa-canvas { width: 100%; position: relative; }
 /* Capa de posición en vivo: se redibuja sola en cada cuadro, sin repintar el mapa. */
 .lienzo-mapa { position: relative; }
 .capa-vivo { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-#mapa { width: 100%; height: 460px; display: block; }
-
-/* Grilla de trazadas por vuelta */
-#mapa-trazadas { display: none; flex-wrap: wrap; gap: 16px; }
-.trazada-item {
-  flex: 1 1 340px;
-  min-width: min(100%, 300px);
-  background: var(--bg-2);
-  border: 1px solid var(--borde);
-  border-radius: 10px;
-  padding: 10px;
-}
-.trazada-titulo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--muted);
-  margin-bottom: 6px;
-}
-.trazada-dot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
-.trazada-nombre {
-  font-weight: 600;
-  color: var(--texto);
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.trazada-canvas { width: 100%; height: 300px; display: block; }
 
 /* uPlot dark tweaks */
 .uplot { font-family: inherit; }
 .u-legend { font-size: 12px; color: var(--muted); }
 .u-legend .u-marker { border-width: 0; }
 
-#chart-inputs { display: flex; flex-direction: column; gap: 12px; }
 .mini-grafico { padding: 10px; background: var(--bg-2); border: 1px solid var(--borde); border-radius: 10px; }
 .mini-titulo { font-size: 12px; margin: 0 4px 6px; font-weight: 600; letter-spacing: 0.3px; }
-#panel-vuelta .grafico-titulo { align-items: center; gap: 10px; }
 
 /* Pestañas */
 .tabs {
@@ -493,35 +453,10 @@ html, body {
 .tab-panel { display: none; flex-direction: column; gap: 18px; min-width: 0; }
 .tab-panel.activo { display: flex; }
 
-/* Regla de curvas (Telemetría): fija bajo la barra superior al desplazarse. */
-.regla-curvas {
-  position: sticky;
-  top: calc(var(--alto-topbar, 70px) + var(--alto-tabs, 0px) + 6px);
-  z-index: 5;
-  background: var(--panel);
-  border: 1px solid var(--borde);
-  border-radius: 10px;
-  padding: 2px 0;
-  box-shadow: var(--sombra);
-}
-#ch-regla-curvas { width: 100%; height: 34px; display: block; }
-#ch-mapa-sectores, #ch-mapa-teorico { height: 260px; }
 
-/* Fila de dos tarjetas (mapas lado a lado) */
-.fila-doble { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-
-/* Controles del mapa */
-.mapa-controles {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
-  font-size: 12px;
-  color: var(--muted);
-}
-.mapa-controles select,
-.panel-vs select {
+/* Selects de ajustes de tarjeta y de B (panel lateral) */
+.tarjeta-panel select,
+.sel-b {
   background: var(--panel-2);
   color: var(--texto);
   border: 1px solid var(--borde-control);
@@ -529,35 +464,23 @@ html, body {
   padding: 5px 8px;
   font-size: 12px;
 }
-.mapa-controles select:disabled { opacity: 0.45; }
-.mapa-hint { font-size: 12px; color: var(--muted); margin: 0 0 8px; line-height: 1.5; }
-.mapa-3d-controles {
-  display: none;
-  align-items: center;
-  gap: 18px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
-  font-size: 12px;
-  color: var(--muted);
-}
-.mapa-3d-controles input[type="range"] { accent-color: var(--acento); width: 130px; }
 
 /* Tabla resumen */
-#tabla-resumen { overflow-x: auto; }
-#tabla-resumen table { width: 100%; border-collapse: collapse; font-size: 12px; }
-#tabla-resumen th, #tabla-resumen td {
+.tabla-resumen { overflow-x: auto; }
+.tabla-resumen table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tabla-resumen th, .tabla-resumen td {
   text-align: left;
   padding: 6px 8px;
   border-bottom: 1px solid var(--borde);
   white-space: nowrap;
 }
-#tabla-resumen th {
+.tabla-resumen th {
   color: var(--muted);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.6px;
 }
-#tabla-resumen tr:hover td { background: var(--panel-2); }
+.tabla-resumen tr:hover td { background: var(--panel-2); }
 .delta { color: var(--freno); font-size: 12px; }
 
 /* Curvas: bloques por curva */
@@ -609,7 +532,7 @@ html, body {
 .stat label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
 
 /* Curvas: delta A/B por curva */
-.tabla-delta-wrap { overflow-x: auto; margin-top: 8px; }
+.tabla-delta-wrap { overflow-x: auto; }
 .tabla-delta { width: 100%; border-collapse: collapse; font-size: 12px; }
 .tabla-delta th, .tabla-delta td {
   text-align: left;
@@ -656,7 +579,7 @@ html, body {
 .traction-canvas { width: 100%; max-width: 240px; aspect-ratio: 1 / 1; height: auto; margin: 0 auto; display: block; }
 
 /* Vuelta teórica */
-#teorica { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.teorica { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
 .teorica-fila {
   display: flex;
   justify-content: space-between;
@@ -666,23 +589,170 @@ html, body {
 }
 .teorica-fila strong { color: var(--acento); font-size: 15px; }
 
-/* Comparación */
-.panel-vs {
+.vacio { color: var(--muted); }
+
+/* ===== Tablero (Gridstack) ===== */
+.tablero-barra { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.confirmar-vaciar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.tablero-vacio {
+  text-align: center;
+  padding: 48px 24px;
+  border: 2px dashed var(--borde);
+  border-radius: var(--radio);
+  color: var(--muted);
+}
+.tablero-vacio h2 { margin: 0 0 8px; font-size: 18px; color: var(--texto); }
+.tablero-vacio p { margin: 0 auto 18px; max-width: 520px; font-size: 14px; line-height: 1.6; }
+.grid-stack { min-height: 40px; }
+
+/* Tarjeta: la caja de Gridstack es la propia tarjeta (cabecera + regla + cuerpo). */
+.grid-stack > .grid-stack-item > .grid-stack-item-content.tarjeta {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
   background: var(--panel);
   border: 1px solid var(--borde);
   border-radius: var(--radio);
-  padding: 12px 16px;
   box-shadow: var(--sombra);
+  overflow: hidden;
+}
+.tarjeta:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.tarjeta-cab { display: flex; align-items: center; gap: 8px; min-height: 30px; cursor: grab; flex: none; }
+.ui-draggable-dragging .tarjeta-cab { cursor: grabbing; }
+.tarjeta-titulo {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
   font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tarjeta-acciones { display: flex; gap: 4px; flex: none; }
+.tarjeta-btn { min-width: 28px; min-height: 28px; padding: 2px 7px; font-size: 13px; line-height: 1; }
+.tarjeta-panel {
+  display: flex;
+  align-items: center;
+  gap: 8px 14px;
+  flex-wrap: wrap;
+  flex: none;
+  padding: 8px 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  font-size: 12px;
   color: var(--muted);
 }
-.panel-vs label { display: flex; align-items: center; gap: 8px; }
-#vs-a { color: var(--texto); }
-.vacio { color: var(--muted); }
+.tarjeta-panel.oculto { display: none; }
+.tarjeta-panel label { display: flex; align-items: center; gap: 6px; }
+.tarjeta-panel input[type="range"] { accent-color: var(--acento); width: 110px; }
+.tarjeta-panel :disabled { opacity: 0.45; }
+.tarjeta-mover-grupo { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.tarjeta-mover-etiqueta { margin-right: 2px; }
+.tarjeta-regla { width: 100%; height: 34px; display: block; flex: none; }
+.tarjeta-regla[hidden] { display: none; }
+.tarjeta-cuerpo {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  /* Sin scroll horizontal: los gráficos se ajustan al ancho; las tablas tienen el suyo. */
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tarjeta-cuerpo > .lienzo { flex: 1; min-height: 0; width: 100%; display: block; }
+.tarjeta-cuerpo > .lienzo-fijo { flex: none; width: 100%; height: 220px; display: block; }
+.tarjeta-cuerpo > .lienzo-mapa.mapa-principal { flex: 1; min-height: 0; }
+.mapa-principal > canvas:first-child { width: 100%; height: 100%; display: block; }
+.tarjeta-mensaje { margin: auto; padding: 12px; text-align: center; color: var(--muted); font-size: 13px; }
+.tarjeta-html { min-width: 0; font-size: 13px; }
+
+/* Arrastre y redimensión de Gridstack con los colores del tema */
+.grid-stack-placeholder > .placeholder-content {
+  background: rgba(34, 211, 238, 0.08) !important;
+  border: 1px dashed var(--acento);
+  border-radius: var(--radio);
+}
+.grid-stack-item > .ui-resizable-se {
+  width: 18px;
+  height: 18px;
+  right: 6px;
+  bottom: 6px;
+  background: none;
+  transform: none;
+  border-right: 2px solid var(--borde-control);
+  border-bottom: 2px solid var(--borde-control);
+  border-bottom-right-radius: 4px;
+  cursor: se-resize;
+}
+.grid-stack-item:hover > .ui-resizable-se { border-color: var(--acento); }
+
+/* Leyenda de uPlot compacta dentro de las tarjetas */
+.tarjeta-cuerpo .u-legend { font-size: 11px; line-height: 1.3; }
+.tarjeta-cuerpo .u-legend .u-series { padding: 1px 6px; }
+.tarjeta-cuerpo .u-legend .u-label { max-width: 24ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+.tarjeta-cuerpo .mini-grafico { padding: 6px 8px; }
+.tarjeta-cuerpo .mini-titulo { margin-bottom: 2px; }
+
+/* Barras de desplazamiento del tema dentro de tarjetas y menú */
+.tarjeta-cuerpo, .tarjeta-cuerpo *, .menu-lista { scrollbar-width: thin; scrollbar-color: #3a4556 transparent; }
+
+/* Selector de B en el panel lateral */
+.sel-b { width: 100%; min-width: 0; }
+
+/* Menú «Agregar gráfico» */
+.menu-graficos {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(5, 7, 10, 0.55);
+}
+.menu-graficos.oculto { display: none; }
+.menu-panel {
+  width: min(420px, 100vw);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--panel);
+  border-left: 1px solid var(--borde);
+  box-shadow: var(--sombra);
+}
+.menu-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.menu-cab h2 { margin: 0; font-size: 16px; }
+.menu-buscar {
+  background: var(--panel-2);
+  color: var(--texto);
+  border: 1px solid var(--borde-control);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 13px;
+}
+.menu-lista { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding-right: 4px; }
+.menu-categoria h3 { margin: 0 0 2px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--acento); }
+.menu-ayuda { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+.menu-categoria ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+}
+.menu-item-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.menu-item-nombre { font-size: 13px; font-weight: 600; }
+.menu-item-desc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.menu-agregar { flex: none; padding: 5px 10px; font-size: 12px; }
+.menu-vacio { color: var(--muted); font-size: 13px; }
 
 /* Mejoras UX: foco visible, scrub con progreso, responsive, reduced-motion */
 
@@ -770,8 +840,6 @@ html, body {
 .plot-ampliado { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 12px; }
 body.sin-scroll { overflow: hidden; }
 .plot-ampliado:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; border-radius: 6px; }
-.grafico-card .btn-ampliar { font-size: 12px; padding: 2px 8px; cursor: pointer; align-self: center; }
-#ch-mapa-teorico { cursor: zoom-in; }
 
 /* Panel Vueltas: secciones fijas y estado de carga */
 .panel-lista-vueltas { max-width: 980px; }
@@ -835,10 +903,6 @@ body.sin-scroll { overflow: hidden; }
   .lateral { position: static; min-width: 0; max-height: none; overflow: visible; }
 }
 
-@media (max-width: 900px) {
-  .fila-doble { grid-template-columns: 1fr; }
-}
-
 @media (max-width: 640px) {
   .topbar { flex-wrap: wrap; gap: 12px; padding: 12px 16px; }
   .topbar-acciones { width: 100%; flex-direction: column; align-items: stretch; gap: 8px; }
@@ -855,15 +919,12 @@ body.sin-scroll { overflow: hidden; }
   /* En el celular las pestañas ocupan dos filas: fijarlas taparía el contenido
      (se revisa en la tanda de mejoras para celular). */
   .tabs { position: static; }
-  .regla-curvas { top: var(--alto-topbar, 70px); }
-  #mapa { height: 320px; }
-  #chart-carga-vivo { height: 300px; }
-  .trazada-canvas { height: 220px; }
-  /* "Ver en grande" a pantalla completa. */
-  #panel-vuelta .grafico-titulo { flex-wrap: wrap; }
-  #grafico-ampliado { padding: 0; }
-  #grafico-ampliado .zoom-panel { width: 100vw; height: 100dvh; border-radius: 0; }
-  #grafico-ampliado .zoom-cab { flex-wrap: wrap; }
+  /* "Ver en grande" y el menú de gráficos a pantalla completa. */
+  #grafico-ampliado, #zoom-teorico { padding: 0; }
+  #grafico-ampliado .zoom-panel, #zoom-teorico .zoom-panel { width: 100vw; height: 100dvh; border-radius: 0; }
+  #grafico-ampliado .zoom-cab, #zoom-teorico .zoom-cab { flex-wrap: wrap; }
+  .menu-panel { width: 100vw; border-radius: 0; border-left: none; }
+  .tablero-barra .btn { flex: 1; }
 }
 
 /* Transiciones de hover solo en dispositivos con puntero fino (evita falsos positivos en touch) */
@@ -879,12 +940,13 @@ body.sin-scroll { overflow: hidden; }
 @media (pointer: coarse) {
   .colapsar, .vuelta-eye { min-width: 32px; min-height: 32px; }
   .rol-btn { min-height: 32px; min-width: 40px; }
-  .zoom-acciones .btn, .grafico-card .btn-ampliar { min-height: 32px; }
-  .velocidad-repro select, .mapa-controles select, .panel-vs select { min-height: 32px; }
+  .zoom-acciones .btn, .tarjeta-btn, .menu-agregar { min-height: 32px; min-width: 32px; }
+  .velocidad-repro select, .tarjeta-panel select, .sel-b { min-height: 32px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .btn, .tab, .vuelta-item, .zona-carga, .topbar, .traction-curva { transition: none !important; }
+  .grid-stack > .grid-stack-item { transition: none !important; }
   .btn:not(:disabled):active, .lista-vueltas .vuelta-item:active { transform: none; }
   .topbar { backdrop-filter: none; }
   .btn.cargando::after { animation-duration: 2s; }

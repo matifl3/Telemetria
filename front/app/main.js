@@ -1,45 +1,20 @@
 'use strict';
 
-/* Arranque y coordinación: readouts, pestañas, controles del mapa y dispatch. */
+/* Arranque y coordinación: readouts, pestañas (Tablero y Vueltas) y dispatch. */
 
 /* Envoltorio global: selector_vueltas llama `aplicarResumen` sin prefijo. */
 function aplicarResumen(resumen) {
   return cargaArchivos.aplicarResumen(resumen);
 }
 
-/* Despachador de render (T100): pide el DTO de la pestaña activa y renderiza. */
+/* Despachador de render (T100): el tablero pide sus fuentes; Vueltas usa el resumen. */
 async function renderPestanaActiva() {
   if (!state.resumen || !state.resumen.puede_analizar) return;
   const tab = state.tab;
   const version = state.version;
   try {
-    switch (tab) {
-      case 'vuelta': {
-        const datos = await puente.pedirPestana('vuelta');
-        if (version !== state.version || tab !== state.tab) return;
-        state.datosVuelta = datos;
-        actualizarScrub();
-        renderPestanaVuelta(datos);
-        break;
-      }
-      case 'vueltas':
-        selectorVueltas.render();
-        break;
-      case 'mapa':
-        await renderPestanaMapa(version);
-        break;
-      case 'conjunto':
-        await renderPestanaConjunto(version);
-        break;
-      case 'comparacion':
-        await renderPestanaComparacion(version);
-        break;
-      case 'curvas':
-        await renderPestanaCurvas(version);
-        break;
-      default:
-        break;
-    }
+    if (tab === 'tablero') await tablero.render();
+    else if (tab === 'vueltas') selectorVueltas.render();
   } catch (error) {
     if (version !== state.version || tab !== state.tab) return;
     mostrarError(mensajeComando(error));
@@ -104,78 +79,9 @@ function crearReadouts() {
   }
 }
 
-/* Controles de la pestaña Mapa: visual, canal, marcas y 3D. */
-function iniciarControlesMapa() {
-  const selVisual = $('mapa-visual');
-  const selCanal = $('mapa-canal');
-  const chkBordes = $('mapa-bordes');
-  const chkFrenada = $('mapa-frenada');
-  const chkCambios = $('mapa-cambios');
-  const chk3D = $('mapa-3d');
-  const rot = $('mapa-rot');
-  const alt = $('mapa-alt');
-  const controles3D = $('mapa-3d-controles');
-
-  if (selVisual) selVisual.addEventListener('change', () => {
-    state.mapa.visual = selVisual.value;
-    state.mapa.resetView = true;
-    const trazada = state.mapa.visual === 'trazada';
-    $('mapa-canvas').classList.toggle('oculto', trazada);
-    $('mapa-trazadas').classList.toggle('oculto', !trazada);
-    dibujarMapaPestana();
-  });
-  if (selCanal) selCanal.addEventListener('change', () => {
-    state.mapa.canal = selCanal.value;
-    dibujarMapaPestana();
-  });
-  if (chkBordes) chkBordes.addEventListener('change', () => { state.mapa.bordes = chkBordes.checked; dibujarMapaPestana(); });
-  if (chkFrenada) chkFrenada.addEventListener('change', () => { state.mapa.frenada = chkFrenada.checked; dibujarMapaPestana(); });
-  if (chkCambios) chkCambios.addEventListener('change', () => { state.mapa.cambios = chkCambios.checked; dibujarMapaPestana(); });
-  if (chk3D) chk3D.addEventListener('change', () => {
-    state.mapa.tresD = chk3D.checked;
-    if (controles3D) controles3D.classList.toggle('oculto', !state.mapa.tresD);
-    if (rot) rot.disabled = !state.mapa.tresD;
-    if (alt) alt.disabled = !state.mapa.tresD;
-    resetearVistas();
-    renderPestanaMapa();
-  });
-  if (rot) rot.addEventListener('input', () => {
-    state.mapa.rot = parseFloat(rot.value);
-    renderPestanaMapa();
-  });
-  if (alt) alt.addEventListener('input', () => {
-    state.mapa.alt = parseFloat(alt.value);
-    renderPestanaMapa();
-  });
-  const reset = $('mapa-reset');
-  if (reset) reset.addEventListener('click', () => {
-    state.mapa.zoom = 1; state.mapa.panX = 0; state.mapa.panY = 0; state.mapa.resetView = true;
-    resetearVistas();
-    dibujarMapaPestana();
-  });
-}
-
-/* Botón "Ver en grande" de la trazada teórica (solo tiene efecto en Conjunto). */
-function iniciarZoomTeorico() {
-  const btn = $('btn-zoom-teorico');
-  if (!btn) return;
-  btn.addEventListener('click', () => {
-    if (state.ultimoConjunto) abrirZoomTeorico(state.ultimoConjunto);
-  });
-}
-
-function iniciarSelectoresB() {
-  for (const idSel of ['sel-lap-b', 'sel-lap-b-curvas']) {
-    const sel = $(idSel);
-    if (!sel) continue;
-    sel.addEventListener('change', () => selectorVueltas.fijarBDesdeSelect(sel));
-  }
-}
-
 /* Altos reales de la barra superior y de las pestañas: las pestañas se fijan
-   bajo la barra y la regla de curvas bajo las pestañas. Se miden con
-   ResizeObserver porque las pestañas miden 0 hasta entrar al análisis y cambian
-   de alto al pasar a dos filas. */
+   bajo la barra. Se miden con ResizeObserver porque las pestañas miden 0 hasta
+   entrar al análisis y cambian de alto al pasar a dos filas. */
 function medirBarras() {
   const raiz = document.documentElement.style;
   const barra = document.querySelector('.topbar');
@@ -184,6 +90,8 @@ function medirBarras() {
   if (tabs) raiz.setProperty('--alto-tabs', `${tabs.offsetHeight}px`);
 }
 
+/* Las tarjetas del tablero se redibujan solas con su ResizeObserver; acá solo
+   quedan las barras y los diálogos «Ver en grande». */
 function iniciarResize() {
   let pendiente = null;
   medirBarras();
@@ -195,23 +103,19 @@ function iniciarResize() {
     medirBarras();
     clearTimeout(pendiente);
     pendiente = setTimeout(() => {
-      if (state.resumen && state.resumen.puede_analizar) renderPestanaActiva();
       redimensionarAmpliado();
+      dibujarZoomTeorico();
     }, 150);
   });
 }
 
 function init() {
   crearReadouts();
-  observarReglaCurvas();
-  iniciarGraficosTelemetria();
-  iniciarGraficoAmpliado();
   cargaArchivos.iniciar();
   iniciarTabs();
-  iniciarControlesMapa();
-  iniciarZoomTeorico();
+  tablero.iniciar();
+  iniciarGraficoAmpliado();
   iniciarReproductor();
-  iniciarSelectoresB();
   iniciarResize();
 }
 

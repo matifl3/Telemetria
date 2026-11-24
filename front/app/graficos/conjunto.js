@@ -1,47 +1,145 @@
 'use strict';
 
-/* Pestaña Conjunto (RF-011): agrégados del auto de la REF (12 paneles). */
+/* Gráficos de Conjunto: agregados de todas las vueltas válidas del auto de la
+   REF (fuente `conjunto`). Incluye el overlay de zoom de la trazada teórica,
+   que también usa el círculo de tracción de Curvas. */
 
-async function renderPestanaConjunto(version = state.version) {
-  destroyCharts();
-  const datos = await puente.pedirPestana('conjunto');
-  if (version !== state.version || state.tab !== 'conjunto') return;
-  if (!datos || !datos.tiempos.length) {
-    vaciarConjuntos();
-    return;
-  }
-  state.ultimoConjunto = datos;
-  dibujarBarrasTiempos(datos);
-  dibujarVelMedia(datos);
-  dibujarEnvolvente(datos);
-  dibujarHistVel(datos);
-  dibujarHistMarchas(datos);
-  dibujarFuel(datos);
-  dibujarDesvioLateral(datos);
-  dibujarSectores(datos);
-  dibujarMapaSectores(datos);
-  dibujarMapaTeorico(datos);
-  renderTablaResumen(datos);
-  renderTeorica(datos);
-  renderConsistencia(datos);
+const SIN_CONJUNTO = 'Sin vueltas válidas del auto de la REF para calcular el conjunto.';
+const hayConjunto = (datos) => datos && datos.tiempos && datos.tiempos.length > 0;
+
+/* Envoltorio: si no hay conjunto, la tarjeta muestra el aviso. */
+function siHayConjunto(montar) {
+  return (cuerpo, datos, aj, t) => {
+    if (!hayConjunto(datos)) { mensajeTarjeta(cuerpo, SIN_CONJUNTO); return {}; }
+    return montar(cuerpo, datos, aj, t);
+  };
 }
 
-function vaciarConjuntos() {
-  for (const id of ['ch-barras-tiempos', 'ch-velmedia', 'ch-histvel', 'ch-histgear', 'ch-fuel', 'ch-sectores', 'ch-mapa-sectores', 'ch-mapa-teorico']) {
-    const cv = $(id);
-    if (cv) { const c = cv.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); }
-  }
-  $('tabla-resumen').innerHTML = '';
-  $('teorica').innerHTML = '';
-  const tc = $('tabla-consistencia');
-  if (tc) tc.innerHTML = '';
-  const dv = $('chart-desvio-vel');
-  if (dv) dv.innerHTML = '';
-}
+const CONJUNTO = { categoria: 'conjunto', fuente: 'conjunto', tamano: { w: 6, h: 6 } };
+
+registrarGrafico({
+  ...CONJUNTO, id: 'tiempos-vuelta', nombre: 'Tiempos por vuelta', unidad: 'mejor al tope · σ = consistencia',
+  descripcion: 'Barra por vuelta con su diferencia a la mejor y la consistencia (σ).',
+  montar: siHayConjunto(graficoCanvas(dibujarBarrasTiempos)),
+});
+registrarGrafico({
+  ...CONJUNTO, id: 'velocidad-media', nombre: 'Velocidad media / máx por vuelta', unidad: 'km/h',
+  descripcion: 'Velocidad media y máxima de cada vuelta.',
+  montar: siHayConjunto(graficoCanvas(dibujarVelMedia)),
+});
+registrarGrafico({
+  ...CONJUNTO, id: 'envolvente', nombre: 'Envolvente de velocidad', unidad: 'mín / prom / máx',
+  descripcion: 'Velocidad mínima, promedio y máxima entre vueltas a lo largo de la pista.',
+  uplot: (datos) => {
+    if (!hayConjunto(datos)) return { vacio: SIN_CONJUNTO };
+    const env = datos.envolvente;
+    if (!env.s.length) return { vacio: 'Sin datos de envolvente.' };
+    return {
+      plots: [{
+        data: [env.s, env.minimo, env.promedio, env.maximo],
+        series: [
+          serieX(),
+          { label: 'mín', stroke: COLOR.freno, width: 1.5, points: { show: false }, spanGaps: true },
+          { label: 'promedio', stroke: COLOR.acento, width: 2, points: { show: false }, spanGaps: true },
+          { label: 'máx', stroke: COLOR.gas, width: 1.5, points: { show: false }, spanGaps: true },
+        ],
+        yLabel: 'km/h',
+      }],
+    };
+  },
+});
+registrarGrafico({
+  ...CONJUNTO, id: 'histograma-velocidad', nombre: 'Histograma de velocidad', unidad: 'km/h',
+  descripcion: 'Cuánto tiempo se pasa en cada rango de velocidad.',
+  montar: siHayConjunto(graficoCanvas(dibujarHistVel)),
+});
+registrarGrafico({
+  ...CONJUNTO, id: 'uso-marchas', nombre: 'Uso de marchas', unidad: 'frecuencia',
+  descripcion: 'Frecuencia de uso de cada marcha.',
+  montar: siHayConjunto(graficoCanvas(dibujarHistMarchas)),
+});
+registrarGrafico({
+  ...CONJUNTO, id: 'combustible', nombre: 'Combustible usado por vuelta', unidad: 'unidades crudas',
+  descripcion: 'Consumo de combustible de cada vuelta.',
+  montar: siHayConjunto(graficoCanvas(dibujarFuel)),
+});
+registrarGrafico({
+  ...CONJUNTO, id: 'desvio-lateral', nombre: 'Desvío lateral vs vuelta REF', unidad: 'm',
+  descripcion: 'Distancia de cada trazada a la de la REF a lo largo de la pista.',
+  uplot: (datos) => {
+    if (!hayConjunto(datos)) return { vacio: SIN_CONJUNTO };
+    if (!datos.desvios.length) return { vacio: 'Sin desvíos para comparar.' };
+    return {
+      plots: [{
+        data: [datos.grilla, ...datos.desvios.map((d) => d.valores)],
+        series: [
+          serieX(),
+          ...datos.desvios.map((d) => ({ label: etiquetaCorta(d.etiqueta), stroke: colorDeVuelta(d.id), width: 2, points: { show: false }, spanGaps: true })),
+        ],
+        yRango: [0, null],
+        yLabel: 'desvío (m)',
+      }],
+    };
+  },
+});
+registrarGrafico({
+  ...CONJUNTO, id: 'tiempo-sector', nombre: 'Tiempo por sector', unidad: '3 sectores de igual distancia',
+  descripcion: 'Barras por sector y vuelta, con la mejor marca de cada sector.',
+  montar: siHayConjunto(graficoCanvas(dibujarSectores, { tooltip: true })),
+});
+registrarGrafico({
+  ...CONJUNTO, id: 'mapa-sectores', nombre: 'Mapa por sectores', unidad: 'vuelta REF · 3 sectores',
+  descripcion: 'Trazada de la REF partida en 3 sectores de igual distancia.',
+  montar: siHayConjunto(graficoCanvas(dibujarMapaSectores)),
+});
+registrarGrafico({
+  ...CONJUNTO, id: 'trazada-teorica', nombre: 'Trazada de mejores sectores', unidad: 'mejor sector de cada vuelta',
+  descripcion: 'El mejor sector de cada vuelta unido en una sola trazada; se puede ver en grande con zoom.',
+  montar: siHayConjunto(graficoCanvas(dibujarMapaTeorico, { ampliar: (datos) => abrirZoomTeorico(datos) })),
+});
+registrarGrafico({
+  ...CONJUNTO, id: 'consistencia-curva', nombre: 'Consistencia por curva', unidad: 'de la más irregular a la más repetible',
+  descripcion: 'Qué varía más entre vueltas en cada curva.',
+  tamano: { w: 12, h: 7 },
+  montar: siHayConjunto(graficoHTML(renderConsistencia)),
+});
+registrarGrafico({
+  ...CONJUNTO, id: 'dispersion-velocidad', nombre: 'Dispersión de velocidad', unidad: 'desvío estándar entre vueltas · km/h',
+  descripcion: 'Dónde la velocidad cambia más de una vuelta a otra.',
+  uplot: (datos) => {
+    if (!hayConjunto(datos)) return { vacio: SIN_CONJUNTO };
+    const c = datos.consistencia;
+    if (!c || c.aviso) return { vacio: (c && c.aviso) || 'Sin datos de dispersión.' };
+    return {
+      plots: [{
+        data: [datos.grilla, c.desvio_velocidad],
+        series: [
+          serieX(),
+          { label: 'σ velocidad', stroke: COLOR.amarillo, width: 1.5, fill: 'rgba(250,204,21,0.12)', points: { show: false }, spanGaps: false },
+        ],
+        yLabel: 'σ km/h',
+      }],
+    };
+  },
+});
+registrarGrafico({
+  ...CONJUNTO, id: 'resumen-vueltas', nombre: 'Resumen por vuelta', unidad: '',
+  descripcion: 'Tabla con tiempo, velocidades, pedales, g lateral, RPM y combustible de cada vuelta.',
+  tamano: { w: 12, h: 6 },
+  montar: siHayConjunto(graficoHTML(renderTablaResumen)),
+});
+registrarGrafico({
+  ...CONJUNTO, id: 'vuelta-teorica', nombre: 'Vuelta teórica', unidad: 'mejor sector de cada vuelta',
+  descripcion: 'Suma de los mejores sectores frente a la mejor vuelta real.',
+  tamano: { w: 4, h: 4 },
+  montar: siHayConjunto(graficoHTML(renderTeorica)),
+});
+
+// ===== Dibujo =====
 
 /* Tiempos por vuelta (barra más corta = mejor, backend entrega orden ascendente). */
-function dibujarBarrasTiempos(datos) {
-  const c = prepCanvas('ch-barras-tiempos', 240);
+function dibujarBarrasTiempos(cv, datos) {
+  const c = prepararCanvas(cv, 240);
   if (!c) return;
   const { ctx, w, h } = c;
   const filas = datos.tiempos
@@ -63,8 +161,8 @@ function deltaTexto(delta) {
   return `( +${delta.toFixed(2)} )`;
 }
 
-function dibujarVelMedia(datos) {
-  const c = prepCanvas('ch-velmedia', 240);
+function dibujarVelMedia(cv, datos) {
+  const c = prepararCanvas(cv, 240);
   if (!c) return;
   const { ctx, w, h } = c;
   const filas = datos.velocidades.map((f) => ({
@@ -75,23 +173,8 @@ function dibujarVelMedia(datos) {
   }
 }
 
-function dibujarEnvolvente(datos) {
-  const cont = $('chart-env');
-  if (!cont) return;
-  const env = datos.envolvente;
-  if (!env.s.length) return;
-  lineChart(cont, 200, null, 'km/h',
-    [env.s, env.minimo, env.promedio, env.maximo],
-    [
-      serieX(),
-      { label: 'mín', stroke: COLOR.freno, width: 1.5, points: { show: false }, spanGaps: true },
-      { label: 'promedio', stroke: COLOR.acento, width: 2, points: { show: false }, spanGaps: true },
-      { label: 'máx', stroke: COLOR.gas, width: 1.5, points: { show: false }, spanGaps: true },
-    ]);
-}
-
-function dibujarHistVel(datos) {
-  const c = prepCanvas('ch-histvel', 200);
+function dibujarHistVel(cv, datos) {
+  const c = prepararCanvas(cv, 200);
   if (!c) return;
   const { ctx, w, h } = c;
   const conteo = datos.histograma_velocidad.conteos;
@@ -109,8 +192,8 @@ function dibujarHistVel(datos) {
   ctx.fillText(`${maxKmh.toFixed(0)} km/h`, w - pad - 50, h - 8);
 }
 
-function dibujarHistMarchas(datos) {
-  const c = prepCanvas('ch-histgear', 200);
+function dibujarHistMarchas(cv, datos) {
+  const c = prepararCanvas(cv, 200);
   if (!c) return;
   const { ctx, w, h } = c;
   const conteo = datos.histograma_marchas.conteos;
@@ -132,8 +215,8 @@ function dibujarHistMarchas(datos) {
   ctx.fillText('marcha', 4, 14);
 }
 
-function dibujarFuel(datos) {
-  const c = prepCanvas('ch-fuel', 200);
+function dibujarFuel(cv, datos) {
+  const c = prepararCanvas(cv, 200);
   if (!c) return;
   const { ctx, w, h } = c;
   const filas = datos.consumos
@@ -144,22 +227,11 @@ function dibujarFuel(datos) {
   }
 }
 
-function dibujarDesvioLateral(datos) {
-  const cont = $('chart-lat');
-  if (!cont || !datos.desvios.length) return;
-  lineChart(cont, 200, [0, null], 'desvío (m)',
-    [datos.grilla, ...datos.desvios.map((d) => d.valores)],
-    [
-      serieX(),
-      ...datos.desvios.map((d) => ({ label: d.etiqueta, stroke: colorDeVuelta(d.id), width: 2, points: { show: false }, spanGaps: true })),
-    ]);
-}
-
 /* Barras agrupadas por sector con tooltip; la mejor marca abajo. */
-function dibujarSectores(datos) {
-  const c = prepCanvas('ch-sectores', 260);
+function dibujarSectores(cv, datos, { tooltip }) {
+  const c = prepararCanvas(cv, 260);
   if (!c) return;
-  const { ctx, w, h, cv } = c;
+  const { ctx, w, h } = c;
   const mat = datos.sectores.map((s) => ({ id: s.id, etiqueta: s.etiqueta, valores: s.sectores.map((x) => x.tiempo_s) }));
   const todos = mat.flatMap((m) => m.valores).filter((v) => v != null && v > 0);
   if (!todos.length) { ctx.fillStyle = COLOR.apagado; ctx.fillText('sin tiempos de sector', 12, 20); return; }
@@ -190,19 +262,20 @@ function dibujarSectores(datos) {
   ctx.fillStyle = COLOR.apagado; ctx.font = '11px "Segoe UI"';
   ctx.fillText('tiempo por sector (s)', 4, 14);
   cv._rects = rects;
-  cv.onmousemove = (ev) => moverTooltipRects(ev, cv, $('tt-sectores'), (r) => `S${r.sector + 1} · ${r.etiqueta}: ${fmtTiempo(r.v)}`);
-  cv.onmouseleave = () => ocultarTooltip($('tt-sectores'));
+  cv.onmousemove = (ev) => moverTooltipRects(ev, cv, tooltip, (r) => `S${r.sector + 1} · ${r.etiqueta}: ${fmtTiempo(r.v)}`);
+  cv.onmouseleave = () => ocultarTooltip(tooltip);
 }
 
+/* Globo sobre la barra bajo el mouse; posición relativa al cuerpo de la tarjeta. */
 function moverTooltipRects(ev, cv, tt, texto) {
   if (!tt || !cv._rects) return;
-  const card = cv.closest('.grafico-card');
-  const rCard = card ? card.getBoundingClientRect() : { left: 0, top: 0 };
+  const caja = tt.parentElement;
+  const rCaja = caja ? caja.getBoundingClientRect() : { left: 0, top: 0 };
   const r = cv._rects.find((q) => ev.offsetX >= q.x && ev.offsetX <= q.x + q.w && ev.offsetY >= q.y && ev.offsetY <= q.y + q.h);
   if (!r) { tt.hidden = true; return; }
   tt.textContent = texto(r);
-  tt.style.left = `${ev.clientX - rCard.left + 14}px`;
-  tt.style.top = `${ev.clientY - rCard.top + 12}px`;
+  tt.style.left = `${ev.clientX - rCaja.left + (caja ? caja.scrollLeft : 0) + 14}px`;
+  tt.style.top = `${ev.clientY - rCaja.top + (caja ? caja.scrollTop : 0) + 12}px`;
   tt.hidden = false;
 }
 
@@ -211,12 +284,12 @@ function ocultarTooltip(tt) {
 }
 
 /* Mapa de la REF partido en 3 sectores de igual distancia. */
-function dibujarMapaSectores(datos) {
+function dibujarMapaSectores(cv, datos) {
   const mapaData = datos.mapa;
   if (!dadosBoundsValidos(mapaData)) return;
-  const c = prepCanvas('ch-mapa-sectores', 260);
+  const c = prepararCanvas(cv, 260);
   if (!c) return;
-  const { ctx, w, h, cv } = c;
+  const { ctx, w, h } = c;
   const ref = mapaData.trazas.find((t) => datos.vuelta_referencia && mismaId(t.id, datos.vuelta_referencia)) || mapaData.trazas[0];
   if (!ref) return;
   const vista = construirVistaFija(cv, mapaData.bounds);
@@ -224,7 +297,7 @@ function dibujarMapaSectores(datos) {
   dibujarBandaPista(ctx, vista.tf, mapaData.pista);
   const longitud = longitudPistaDe(datos);
   const corte = longitud > 0 ? longitud / N_SECTORES : 0;
-  const segmentos = SegmentosDeTraza(ref, vista.tf, corte);
+  const segmentos = segmentosDeTraza(ref, vista.tf, corte);
   for (let s = 0; s < N_SECTORES; s++) {
     const pts = segmentos[s];
     if (!pts.length) continue;
@@ -247,7 +320,7 @@ function longitudPistaDe(datos) {
   return g.length ? g[g.length - 1] : 0;
 }
 
-function SegmentosDeTraza(traza, tf, corte) {
+function segmentosDeTraza(traza, tf, corte) {
   const segmentos = new Array(N_SECTORES).fill(null).map(() => []);
   for (let i = 0; i < traza.s.length; i++) {
     const s = traza.s[i], p = traza.puntos[i];
@@ -309,16 +382,18 @@ function construirTrazadaTeorica(datos) {
   return { tramos, corte };
 }
 
-/* Trazada compuesta: el mejor sector de cada vuelta en una sola línea. */
-function dibujarMapaTeorico(datos) {
+/* Trazada compuesta: el mejor sector de cada vuelta en una sola línea.
+   Clic = verla en grande con zoom. */
+function dibujarMapaTeorico(cv, datos) {
   const mapaData = datos.mapa;
   if (!dadosBoundsValidos(mapaData)) return;
-  const c = prepCanvas('ch-mapa-teorico', 260);
+  const c = prepararCanvas(cv, 260);
   if (!c) return;
-  const { ctx, w, h, cv } = c;
+  const { ctx, w, h } = c;
   const vista = construirVistaFija(cv, mapaData.bounds);
   dibujarGrillaFondo(ctx, w, h);
   pintarTrazadaTeorica(ctx, vista, mapaData, datos, w, h);
+  cv.style.cursor = 'zoom-in';
   cv.onclick = () => abrirZoomTeorico(datos);
 }
 
@@ -380,9 +455,8 @@ function dibujarCentroPista(ctx, tf, pista) {
 }
 
 /* Tabla resumen por vuelta (DTO.tabla). */
-function renderTablaResumen(datos) {
-  const cont = $('tabla-resumen');
-  if (!cont) return;
+function renderTablaResumen(cont, datos) {
+  cont.classList.add('tabla-resumen');
   const filas = datos.tabla.map((f) => {
     const delta = f.delta_mejor_s;
     const extra = tiempoConDelta(f.tiempo_s, delta);
@@ -404,9 +478,8 @@ function tiempoConDelta(t, delta) {
   return txt;
 }
 
-function renderTeorica(datos) {
-  const cont = $('teorica');
-  if (!cont) return;
+function renderTeorica(cont, datos) {
+  cont.classList.add('teorica');
   const teo = datos.teorica;
   if (teo.total_s == null) { cont.innerHTML = '<em>Faltan tiempos para calcular la vuelta teórica.</em>'; return; }
   cont.innerHTML =
@@ -415,7 +488,35 @@ function renderTeorica(datos) {
     `<div class="teorica-fila"><span>Potencial a ganar</span><strong class="mono">${teo.potencial_s == null ? '–' : '-' + teo.potencial_s.toFixed(3) + ' s'}</strong></div>`;
 }
 
-// ===== Zoom de la trazada teórica (overlay) =====
+/* Consistencia entre vueltas del auto de la REF (ING46). */
+function renderConsistencia(cont, datos) {
+  const c = datos.consistencia;
+  if (!c) { cont.innerHTML = '<em class="vacio">Sin datos de consistencia.</em>'; return; }
+  if (c.aviso) { cont.innerHTML = `<em class="vacio">${c.aviso}</em>`; return; }
+  const excluidas = c.vueltas_excluidas
+    ? ` Se dejaron afuera ${c.vueltas_excluidas} vuelta(s) más lentas que el 107 % de la mejor.`
+    : '';
+  const num = (v, dec, u) => (v == null ? '–' : v.toFixed(dec) + u);
+  const filas = c.curvas.map((f) => `<tr>
+      <td>${f.nombre}</td>
+      <td class="mono">${num(f.desvio_t_curva_s, 3, ' s')}</td>
+      <td class="mono">${num(f.rango_inicio_frenada_m, 0, ' m')}</td>
+      <td class="mono">${num(f.rango_v_min_kmh, 1, ' km/h')}</td>
+      <td class="mono">${num(f.rango_gas_fondo_m, 0, ' m')}</td>
+      <td>${f.explicacion}</td>
+    </tr>`).join('');
+  cont.innerHTML = `<table class="tabla-delta">
+    <thead><tr><th>Curva</th>
+      <th title="Desvío estándar del tiempo dentro del arco de la curva">σ tiempo</th>
+      <th title="Diferencia entre la frenada más temprana y la más tardía">Rango frenada</th>
+      <th title="Diferencia entre la velocidad mínima más alta y la más baja">Rango v mín</th>
+      <th title="Diferencia entre el gas a fondo más temprano y el más tardío">Rango gas</th>
+      <th>Qué varía más</th></tr></thead>
+    <tbody>${filas}</tbody></table>
+    <p class="delta-leyenda">${c.vueltas_usadas} vueltas usadas.${excluidas}</p>`;
+}
+
+// ===== Zoom de la trazada teórica y del círculo de tracción (overlay) =====
 
 const zoomTeorico = { modo: 'teorica', activo: false, zoom: 1, panX: 0, panY: 0, datos: null, listo: false, arrastrando: false, lx: 0, ly: 0 };
 
@@ -436,20 +537,22 @@ function mostrarOverlayZoom() {
   if (!zoomTeorico.activo) zoomTeorico.focoPrevio = document.activeElement;
   ov.classList.remove('oculto');
   ov.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('sin-scroll');
   zoomTeorico.activo = true;
   $('zoom-cerrar').focus();
 }
 
 function cerrarZoomTeorico() {
   const ov = $('zoom-teorico');
-  if (!ov) return;
+  if (!ov || !zoomTeorico.activo) return;
   ov.classList.add('oculto');
   ov.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('sin-scroll');
   zoomTeorico.activo = false;
   zoomTeorico.arrastrando = false;
   const previo = zoomTeorico.focoPrevio;
   zoomTeorico.focoPrevio = null;
-  if (previo && previo.isConnected) previo.focus();
+  if (previo && previo.isConnected) previo.focus({ preventScroll: true });
 }
 
 function actualizarNivelZoom() {
@@ -519,46 +622,4 @@ function configurarZoomTeorico() {
   cv.addEventListener('pointerup', soltar);
   cv.addEventListener('pointercancel', soltar);
   cv.addEventListener('lostpointercapture', soltar);
-}
-
-/* Consistencia entre vueltas del auto de la REF (ING46). */
-function renderConsistencia(datos) {
-  const cont = $('tabla-consistencia');
-  const grafico = $('chart-desvio-vel');
-  const c = datos.consistencia;
-  if (!cont || !c) return;
-  const excluidas = c.vueltas_excluidas
-    ? ` Se dejaron afuera ${c.vueltas_excluidas} vuelta(s) más lentas que el 107 % de la mejor.`
-    : '';
-  if (c.aviso) {
-    cont.innerHTML = `<em class="vacio">${c.aviso}</em>`;
-    if (grafico) grafico.innerHTML = '<p class="hint" style="margin:6px">Sin datos de dispersión.</p>';
-    return;
-  }
-  const num = (v, dec, u) => (v == null ? '–' : v.toFixed(dec) + u);
-  const filas = c.curvas.map((f) => `<tr>
-      <td>${f.nombre}</td>
-      <td class="mono">${num(f.desvio_t_curva_s, 3, ' s')}</td>
-      <td class="mono">${num(f.rango_inicio_frenada_m, 0, ' m')}</td>
-      <td class="mono">${num(f.rango_v_min_kmh, 1, ' km/h')}</td>
-      <td class="mono">${num(f.rango_gas_fondo_m, 0, ' m')}</td>
-      <td>${f.explicacion}</td>
-    </tr>`).join('');
-  cont.innerHTML = `<table class="tabla-delta">
-    <thead><tr><th>Curva</th>
-      <th title="Desvío estándar del tiempo dentro del arco de la curva">σ tiempo</th>
-      <th title="Diferencia entre la frenada más temprana y la más tardía">Rango frenada</th>
-      <th title="Diferencia entre la velocidad mínima más alta y la más baja">Rango v mín</th>
-      <th title="Diferencia entre el gas a fondo más temprano y el más tardío">Rango gas</th>
-      <th>Qué varía más</th></tr></thead>
-    <tbody>${filas}</tbody></table>
-    <p class="delta-leyenda">${c.vueltas_usadas} vueltas usadas.${excluidas}</p>`;
-  if (grafico) {
-    lineChart(grafico, 160, null, 'σ km/h',
-      [datos.grilla, c.desvio_velocidad],
-      [
-        serieX(),
-        { label: 'σ velocidad', stroke: COLOR.amarillo, width: 1.5, fill: 'rgba(250,204,21,0.12)', points: { show: false }, spanGaps: false },
-      ]);
-  }
 }

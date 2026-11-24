@@ -1,60 +1,80 @@
 'use strict';
 
-/* Pestaña Curvas (RF-011/T119-121): arcos en el mapa, tiempos, tracción
-   por curva y delta A/B. Métricas por curva vienen listas del backend. */
+/* Gráficos de Curvas (RF-011/T119-121): arcos en el mapa, tiempos, tracción por
+   curva, métricas, delta A/B, fases, balance y slip. Fuente `curvas`; las
+   métricas por curva vienen listas del backend. */
 
-async function renderPestanaCurvas(version = state.version) {
-  destroyCharts();
-  const datos = await puente.pedirPestana('curvas');
-  if (version !== state.version || state.tab !== 'curvas') return;
-  if (!datos || !datos.curvas.length) {
-    vaciarCurvas();
-    return;
-  }
-  state.curvasDatos = datos;
-  dibujarMapaCurvas(datos);
-  dibujarTiemposCurvas(datos);
-  dibujarTractionCurvas(datos);
-  renderTablaCurvas(datos);
-  renderDeltaCurvas(datos);
-  renderFasesCurvas(datos);
-  renderBalanceSlip(datos);
-  actualizarPorIdx({ moverCursor: true });
+const SIN_CURVAS = 'Sin curvas detectadas. Cargá el fast_lane.ai.';
+const SIN_AB_CURVAS = 'Elegí dos vueltas distintas (A vs B): B se elige en el panel lateral.';
+
+/* Envoltorio: guarda el DTO (umbrales de slip y nombres de curva) y avisa si
+   no hay curvas. */
+function siHayCurvas(montar) {
+  return (cuerpo, datos, aj, t) => {
+    if (!datos || !datos.curvas || !datos.curvas.length) { mensajeTarjeta(cuerpo, SIN_CURVAS); return {}; }
+    state.curvasDatos = datos;
+    return montar(cuerpo, datos, aj, t);
+  };
 }
 
-function vaciarCurvas() {
-  const c = prepCanvas('ch-mapa-curvas', 260);
-  if (c) { c.ctx.fillStyle = COLOR.apagado; c.ctx.fillText('sin curvas detectadas', 12, 20); }
-  const t = $('tabla-curvas');
-  if (t) t.innerHTML = '<em>Sin curvas detectadas. Cargá el fast_lane.ai.</em>';
-  const tr = $('traction-curvas');
-  if (tr) tr.innerHTML = '';
-  const dc = prepCanvas('ch-delta-curvas', 220);
-  if (dc) { dc.ctx.fillStyle = COLOR.apagado; dc.ctx.fillText('Elegí dos vueltas distintas (A vs B).', 12, 20); }
-  const td = $('tabla-curva-delta');
-  if (td) td.innerHTML = '<em>Elegí dos vueltas distintas (A vs B).</em>';
-  for (const id of ['tabla-fases-curvas', 'tabla-balance-slip']) {
-    const el = $(id);
-    if (el) el.innerHTML = '';
-  }
-}
+const CURVAS = { categoria: 'curvas', fuente: 'curvas', tamano: { w: 6, h: 6 } };
 
-/* Referencia para índices y trazas de la pestaña curvas (mapa incluido). */
-function curvasTrazas(datos) {
-  return datos.mapa.trazas;
-}
+registrarGrafico({
+  ...CURVAS, id: 'mapa-curvas', nombre: 'Mapa por curvas', unidad: 'vuelta REF · arcos coloreados',
+  descripcion: 'Trazada de la REF con cada curva coloreada y numerada.',
+  montar: siHayCurvas(graficoCanvas(dibujarMapaCurvas)),
+});
+registrarGrafico({
+  ...CURVAS, id: 'tiempo-curva', nombre: 'Tiempo por curva', unidad: 'por vuelta',
+  descripcion: 'Barras por curva y vuelta con el tiempo dentro de cada arco.',
+  tamano: { w: 12, h: 5 },
+  montar: siHayCurvas(graficoCanvas(dibujarTiemposCurvas, { tooltip: true })),
+});
+registrarGrafico({
+  ...CURVAS, id: 'traccion-curva', nombre: 'Círculo de tracción por curva', unidad: 'acel/freno × lateral (g)',
+  descripcion: 'Un círculo g-g por curva con bloqueos y patinamientos; clic para ampliar.',
+  tamano: { w: 12, h: 8 },
+  montar: siHayCurvas(montarTractionCurvas),
+});
+registrarGrafico({
+  ...CURVAS, id: 'metricas-curva', nombre: 'Métricas por curva', unidad: 'una fila por vuelta',
+  descripcion: 'Velocidad mínima y de ápex, tiempo, frenada y reaceleración por curva.',
+  tamano: { w: 12, h: 8 },
+  montar: siHayCurvas(graficoHTML(renderTablaCurvas)),
+});
+registrarGrafico({
+  ...CURVAS, id: 'delta-curva', nombre: 'Delta por curva', unidad: 'A − B · ventana = arco',
+  descripcion: 'Diferencia A − B de tiempo y métricas en cada curva.',
+  necesitaB: true,
+  tamano: { w: 12, h: 8 },
+  montar: siHayCurvas(montarDeltaCurvas),
+});
+registrarGrafico({
+  ...CURVAS, id: 'fases-curva', nombre: 'Fases de curva', unidad: 'frenada · trail braking · coasting · gas a fondo · A vs B',
+  descripcion: 'Frenada, entrada, vértice y salida de A frente a B.',
+  necesitaB: true,
+  tamano: { w: 12, h: 7 },
+  montar: siHayCurvas(graficoHTML(renderFasesCurvas)),
+});
+registrarGrafico({
+  ...CURVAS, id: 'balance-slip', nombre: 'Balance y slip', unidad: 'sub/sobreviraje por fase · bloqueos y patinamiento',
+  descripcion: 'Diagnóstico de sub/sobreviraje por fase y eventos de slip por curva.',
+  tamano: { w: 12, h: 7 },
+  montar: siHayCurvas(graficoHTML(renderBalanceSlip)),
+});
 
+/* Referencia para índices y trazas de las curvas (mapa incluido). */
 function curvasRefTraza(datos) {
-  return trazaReferencia(curvasTrazas(datos));
+  return trazaReferencia(datos.mapa.trazas);
 }
 
 /* Mapa de la REF con cada arco coloreado PALETA y numerado. */
-function dibujarMapaCurvas(datos) {
+function dibujarMapaCurvas(cv, datos) {
   const ref = curvasRefTraza(datos);
   if (!ref) return;
-  const c = prepCanvas('ch-mapa-curvas', 260);
+  const c = prepararCanvas(cv, 260);
   if (!c) return;
-  const { ctx, w, h, cv } = c;
+  const { ctx, w, h } = c;
   const vista = construirVistaFija(cv, datos.mapa.bounds);
   dibujarGrillaFondo(ctx, w, h);
   dibujarTrazada(ctx, vista.tf, ref, 'rgba(148,163,184,0.28)', 2);
@@ -64,10 +84,10 @@ function dibujarMapaCurvas(datos) {
 }
 
 /* Barras agrupadas por curva (una por vuelta) con tooltip. */
-function dibujarTiemposCurvas(datos) {
-  const c = prepCanvas('ch-tiempos-curvas', 260);
+function dibujarTiemposCurvas(cv, datos, { tooltip }) {
+  const c = prepararCanvas(cv, 260);
   if (!c) return;
-  const { ctx, w, h, cv } = c;
+  const { ctx, w, h } = c;
   const tab = datos.vueltas.map((v) => ({ v, valores: v.metricas.map((m) => m.t_curva) }));
   const todos = tab.flatMap((m) => m.valores).filter((v) => v != null && v > 0);
   if (!todos.length) { ctx.fillStyle = COLOR.apagado; ctx.fillText('sin tiempos de curva', 12, 20); return; }
@@ -92,28 +112,28 @@ function dibujarTiemposCurvas(datos) {
   ctx.fillStyle = COLOR.apagado; ctx.font = '11px "Segoe UI"';
   ctx.fillText('tiempo por curva (s)', 4, 14);
   cv._rects = rects;
-  cv.onmousemove = (ev) => moverTooltipRects(ev, cv, $('tt-curvas'), (r) => {
-    const cx = state.curvasDatos.curvas[r.ci];
+  cv.onmousemove = (ev) => moverTooltipRects(ev, cv, tooltip, (r) => {
+    const cx = datos.curvas[r.ci];
     return `${cx.nombre} (${cx.sentido}) · ${r.vuelta}: ${fmtTiempo(r.v)}`;
   });
-  cv.onmouseleave = () => ocultarTooltip($('tt-curvas'));
+  cv.onmouseleave = () => ocultarTooltip(tooltip);
 }
 
-/* Círculo de tracción por curva: g-g común, marcadores slip, click = zoom. */
-function dibujarTractionCurvas(datos) {
-  const cont = $('traction-curvas');
-  if (!cont) return;
-  const lapsDeDatos = vueltasBaseFront();
+/* Círculo de tracción por curva: g-g común, marcadores slip, clic = zoom. */
+function montarTractionCurvas(cuerpo, datos) {
   const grilla = state.datosVuelta && state.datosVuelta.grilla;
-  if (!grilla || !grilla.length) return;
-  const porCurva = datos.curvas.map((cx) => puntosDeCurva(lapsDeDatos, grilla, cx));
+  if (!grilla || !grilla.length) { mensajeTarjeta(cuerpo, 'Sin vueltas visibles.'); return {}; }
+  const laps = vueltasBaseFront();
+  const porCurva = datos.curvas.map((cx) => puntosDeCurva(laps, grilla, cx));
   let maxG = 1.5;
   for (const pts of porCurva) {
     const esc = pts.flatMap((p) => [Math.abs(p.lat), Math.abs(p.lon)]).sort((a, b) => a - b);
     if (esc.length) maxG = Math.max(maxG, Math.ceil(esc[Math.floor(esc.length * 0.99)] * 2) / 2);
   }
-  cont.innerHTML = '';
-  datos.curvas.forEach((cx, k) => {
+  const cont = document.createElement('div');
+  cont.className = 'traction-grid';
+  cuerpo.appendChild(cont);
+  const lienzos = datos.curvas.map((cx, k) => {
     const card = document.createElement('div');
     card.className = 'traction-curva';
     // Tarjeta accionable también con teclado (Tab + Enter/Espacio).
@@ -126,16 +146,18 @@ function dibujarTractionCurvas(datos) {
     titulo.innerHTML = `<span>${cx.nombre}</span><span class="unidad">${cx.sentido.slice(0, 3)} · R${(cx.radio_min || 0).toFixed(0)} m</span>`;
     const cv = document.createElement('canvas');
     cv.className = 'traction-canvas';
-    card.appendChild(titulo);
-    card.appendChild(cv);
+    card.append(titulo, cv);
     cont.appendChild(card);
-    pintarCirculoTraction(prepararCanvas(cv, 150), porCurva[k], maxG);
     const abrir = () => abrirZoomTractionCurva(datos, k, porCurva[k], maxG);
     card.addEventListener('click', abrir);
     card.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); abrir(); }
     });
+    return cv;
   });
+  const redibujar = () => lienzos.forEach((cv, k) => { if (cv.clientWidth) pintarCirculoTraction(prepararCanvas(cv, 150), porCurva[k], maxG); });
+  redibujar();
+  return { redimensionar: redibujar };
 }
 
 /* Todas las vueltas visibles con sus canales (state.datosVuelta). */
@@ -225,8 +247,7 @@ function pintarCirculoTraction(c, pts, maxG) {
 /* Abre el overlay con la tracción de una curva en grande. */
 function abrirZoomTractionCurva(datos, k, pts, maxG) {
   const cx = datos.curvas[k];
-  const ov = $('zoom-teorico');
-  if (!ov) return;
+  if (!$('zoom-teorico')) return;
   zoomTeorico.modo = 'traccion';
   zoomTeorico.datos = { tipo: 'traccion', cx, pts, maxG, titulo: `Tracción · ${cx.nombre} (${cx.sentido}) · R ${(cx.radio_min || 0).toFixed(0)} m` };
   const titulo = $('zoom-titulo');
@@ -237,9 +258,8 @@ function abrirZoomTractionCurva(datos, k, pts, maxG) {
 }
 
 /* Bloques por curva: tarjeta de curva + fila de estadísticas por vuelta. */
-function renderTablaCurvas(datos) {
-  const cont = $('tabla-curvas');
-  if (!cont) return;
+function renderTablaCurvas(cont, datos) {
+  cont.classList.add('curvas-grid');
   const nC = datos.curvas.length;
   const mejores = new Array(nC).fill(Infinity);
   for (const v of datos.vueltas) v.metricas.forEach((m, i) => {
@@ -278,26 +298,29 @@ function renderTablaCurvas(datos) {
 
 /* ---------- Delta A/B por curva ---------- */
 
-async function renderDeltaCurvas(datos) {
-  const versus_a = $('vs-a-curvas');
-  const versus_b = $('sel-lap-b-curvas');
-  if (!versus_b) return;
-  const A = vueltaBetaPorId(datos.delta ? datos.delta.a.id : curvasRefTraza(datos)?.id);
+/* Barras de Δ tiempo por curva + tabla de métricas A − B. */
+function montarDeltaCurvas(cuerpo, datos) {
+  const A = datos.delta ? vueltaBetaPorId(datos.delta.a.id) : null;
   const B = datos.delta ? vueltaBetaPorId(datos.delta.b.id) : null;
-  if (versus_a) versus_a.textContent = A ? A.etiqueta : '–';
-  selectorVueltas.poblarSelB(versus_b);
-  const hay = A && B;
-  dibujarBarrasDeltaCurvas(A, B, datos, hay);
-  const cont = $('tabla-curva-delta');
-  if (cont) cont.innerHTML = hay ? tablaDeltaCurvasHTML(datos.delta) : '<em class="vacio">Elegí dos vueltas distintas (A vs B).</em>';
+  if (!A || !B) { mensajeTarjeta(cuerpo, SIN_AB_CURVAS); return {}; }
+  const cv = document.createElement('canvas');
+  cv.className = 'lienzo-fijo';
+  cv.setAttribute('role', 'img');
+  cv.setAttribute('aria-label', 'Delta de tiempo por curva');
+  const tabla = document.createElement('div');
+  tabla.className = 'tabla-delta-wrap';
+  tabla.innerHTML = tablaDeltaCurvasHTML(datos);
+  cuerpo.append(cv, tabla);
+  const redibujar = () => { if (cv.clientWidth) dibujarBarrasDeltaCurvas(cv, datos); };
+  redibujar();
+  return { redimensionar: redibujar };
 }
 
-function dibujarBarrasDeltaCurvas(A, B, datos, hay) {
-  const c = prepCanvas('ch-delta-curvas', 220);
+function dibujarBarrasDeltaCurvas(cv, datos) {
+  const c = prepararCanvas(cv, 220);
   if (!c) return;
   const { ctx, w, h } = c;
   ctx.font = '11px "Segoe UI"';
-  if (!hay) { ctx.fillStyle = COLOR.apagado; ctx.fillText('Elegí dos vueltas distintas (A vs B).', 12, 20); return; }
   const vals = datos.delta.curvas.map((d) => d.d_t).filter((v) => v != null);
   if (!vals.length) { ctx.fillStyle = COLOR.apagado; ctx.fillText('sin tiempos de curva', 12, 20); return; }
   const maxAbs = Math.max(0.001, ...vals.map(Math.abs));
@@ -319,10 +342,11 @@ function dibujarBarrasDeltaCurvas(A, B, datos, hay) {
   ctx.fillText(`Δ tiempo por curva (s)  ·  ${datos.delta.a.etiqueta} − ${datos.delta.b.etiqueta}  (rojo = A pierde)`, 4, 14);
 }
 
-function tablaDeltaCurvasHTML(delta) {
+function tablaDeltaCurvasHTML(datos) {
+  const delta = datos.delta;
   const fmtD = (v, dec) => fmtDelta(v, '', dec);
   const filas = delta.curvas.map((d) => {
-    const cx = state.curvasDatos.curvas[d.n - 1];
+    const cx = datos.curvas[d.n - 1];
     return `<tr><td>${d.nombre}</td><td>${cx ? cx.sentido.slice(0, 3) : '–'}</td>` +
       `<td class="mono ${claseDelta(d.d_t, 'menor')}">${fmtD(d.d_t, 2)}</td>` +
       `<td class="mono ${claseDelta(d.d_v_min, 'mayor')}">${fmtD(d.d_v_min, 1)}</td>` +
@@ -359,10 +383,9 @@ const redondeo = (v) => Number(Number(v).toFixed(2));
 const porciento = (v) => (v == null ? '–' : Math.round(v * 100) + ' %');
 
 /* Fases de cada curva para A y B, con su delta (ING43). */
-function renderFasesCurvas(datos) {
-  const cont = $('tabla-fases-curvas');
-  if (!cont) return;
-  if (!datos.delta) { cont.innerHTML = '<em class="vacio">Elegí dos vueltas distintas (A vs B).</em>'; return; }
+function renderFasesCurvas(cont, datos) {
+  cont.classList.add('tabla-delta-wrap');
+  if (!datos.delta) { cont.innerHTML = `<em class="vacio">${SIN_AB_CURVAS}</em>`; return; }
   const A = analisisPorId(datos, datos.delta.a.id);
   const B = analisisPorId(datos, datos.delta.b.id);
   if (!A || !B) { cont.innerHTML = '<em class="vacio">A y B tienen que estar visibles.</em>'; return; }
@@ -405,9 +428,8 @@ function renderFasesCurvas(datos) {
 }
 
 /* Balance sub/sobreviraje y eventos de slip por curva, para A y B (ING44, ING45). */
-function renderBalanceSlip(datos) {
-  const cont = $('tabla-balance-slip');
-  if (!cont) return;
+function renderBalanceSlip(cont, datos) {
+  cont.classList.add('tabla-delta-wrap');
   const ids = datos.delta ? [datos.delta.a.id, datos.delta.b.id] : (datos.analisis || []).slice(0, 1).map((a) => a.id);
   const vueltas = ids.map((id) => analisisPorId(datos, id)).filter(Boolean);
   if (!vueltas.length) { cont.innerHTML = '<em class="vacio">Sin vueltas visibles.</em>'; return; }

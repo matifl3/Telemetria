@@ -1,144 +1,171 @@
 'use strict';
 
-/* Pestaña Mapa (RF-011): banda + trazadas, canales, marcadores, 3D, auto en vivo. */
-
-async function renderPestanaMapa(version = state.version) {
-  const rot = state.mapa.tresD ? state.mapa.rot : 0;
-  const alt = state.mapa.tresD ? state.mapa.alt : 3;
-  const datos = await puente.pedirPestana('mapa', rot, alt);
-  const rotActual = state.mapa.tresD ? state.mapa.rot : 0;
-  const altActual = state.mapa.tresD ? state.mapa.alt : 3;
-  if (version !== state.version || state.tab !== 'mapa' || rot !== rotActual || alt !== altActual) return;
-  state.mapaDatos = datos;
-  destruirTrazadasObsoletas();
-  dibujarMapaPestana();
-  dibujarAutoCarga(state.idx);
-}
-
-/* Si la selección cambió, rehacer la grilla de mini-mapas. */
-function destruirTrazadasObsoletas() {
-  const cont = $('mapa-trazadas');
-  if (!cont || !state.mapaDatos) return;
-  const key = state.mapaDatos.trazas.map((t) => idVuelta(t.id)).join(',');
-  if (cont.dataset.key !== key) { cont.innerHTML = ''; cont.dataset.key = ''; }
-}
-
-function dibujarMapaPestana(opts = {}) {
-  const datos = state.mapaDatos;
-  if (!datos || !datos.trazas.length || !dadosBoundsValidos(datos)) return;
-  const cv = $('mapa');
-  if (!cv) return;
-  if (opts.soloVivo) { dibujarVivoMapa(); dibujarAutoCarga(state.idx); return; }
-  const trazada = state.mapa.visual === 'trazada';
-  const cajaMapa = $('mapa-canvas');
-  const cajaTrazadas = $('mapa-trazadas');
-  if (cajaMapa) { cajaMapa.classList.toggle('oculto', trazada); cajaMapa.style.display = ''; }
-  if (cajaTrazadas) cajaTrazadas.classList.toggle('oculto', !trazada);
-  if (trazada) { dibujarMapaTrazadas(datos); return; }
-  dibujarMapaCanal(datos);
-  dibujarAutoCarga(state.idx);
-}
+/* Mapas del tablero: mapa de pista (heatmap por canal), trazada por vuelta (una
+   tarjeta por vuelta) y la carga por rueda en vivo. Cada tarjeta de mapa tiene
+   sus propios ajustes, vista (zoom/pan) y capa de posición en vivo. */
 
 function dadosBoundsValidos(datos) {
-  const b = datos.bounds;
+  const b = datos && datos.bounds;
   return b && b.min_x != null && b.max_x != null && b.min_y != null && b.max_y != null;
 }
 
+const CANALES_MAPA = [
+  ['velocidad_kmh', 'Velocidad'], ['acelerador', 'Acelerador'], ['freno', 'Freno'],
+  ['marcha', 'Marcha'], ['acc_lat_g', 'G lateral'], ['altura', 'Elevación'],
+];
+
+/* Ajustes comunes a los mapas: marcas y proyección 3D. */
+const AJUSTES_MAPA = [
+  { clave: 'bordes', etiqueta: 'Pista de referencia', tipo: 'check', valor: true },
+  { clave: 'frenada', etiqueta: 'Marcas de frenada', tipo: 'check', valor: true },
+  { clave: 'cambios', etiqueta: 'Marcas de cambio', tipo: 'check', valor: false },
+  { clave: 'tresD', etiqueta: '3D', tipo: 'check', valor: false },
+  { clave: 'rot', etiqueta: 'Rotación', tipo: 'rango', min: -180, max: 180, paso: 1, valor: 0, activo: (aj) => aj.tresD },
+  { clave: 'alt', etiqueta: 'Elevación', tipo: 'rango', min: 0, max: 15, paso: 0.5, valor: 3, activo: (aj) => aj.tresD },
+];
+// La proyección 3D se calcula en el backend: cada rotación/elevación es otra fuente.
+const fuenteMapa = (aj) => ({ pestana: 'mapa', rot: aj.tresD ? aj.rot : 0, alt: aj.tresD ? aj.alt : 3 });
+
+/* Lienzo de mapa con su capa transparente de posición en vivo. */
+function crearLienzoMapa(cuerpo, etiqueta) {
+  const lienzo = document.createElement('div');
+  lienzo.className = 'lienzo-mapa mapa-principal';
+  const cv = document.createElement('canvas');
+  cv.setAttribute('role', 'img');
+  cv.setAttribute('aria-label', etiqueta);
+  cv.title = 'Rueda = zoom · arrastrar = mover · doble clic = encuadrar';
+  const capa = document.createElement('canvas');
+  capa.className = 'capa-vivo';
+  capa.setAttribute('aria-hidden', 'true');
+  lienzo.append(cv, capa);
+  cuerpo.appendChild(lienzo);
+  return { cv, capa };
+}
+
+// ===== Mapa de pista (heatmap) =====
+
+registrarGrafico({
+  id: 'mapa-pista',
+  nombre: 'Mapa de pista',
+  descripcion: 'Las vueltas visibles superpuestas, coloreadas por el canal elegido; rueda = zoom, arrastrar = mover, doble clic = encuadrar.',
+  categoria: 'mapas',
+  tamano: { w: 6, h: 8 },
+  ajustes: [
+    { clave: 'canal', etiqueta: 'Canal', tipo: 'select', opciones: CANALES_MAPA, valor: 'velocidad_kmh' },
+    ...AJUSTES_MAPA,
+  ],
+  fuente: fuenteMapa,
+  montar: montarMapaPista,
+});
+
+function montarMapaPista(cuerpo, datos, aj) {
+  if (!datos || !datos.trazas.length || !dadosBoundsValidos(datos)) {
+    mensajeTarjeta(cuerpo, 'Sin trazadas para dibujar el mapa.');
+    return {};
+  }
+  const m = { datos, aj, ...crearLienzoMapa(cuerpo, 'Mapa de pista') };
+  const dibujar = () => dibujarMapaCanal(m);
+  adjuntarInteraccionMapa(m.cv, dibujar);
+  dibujar();
+  return { redimensionar: dibujar, alCursor: () => dibujarVivoMapa(m) };
+}
+
 /* Vista única heatmap coloreada por el canal elegido. */
-function dibujarMapaCanal(datos) {
-  const cv = $('mapa');
-  const pcv = prepararMapa(cv);
+function dibujarMapaCanal(m) {
+  if (!m.cv.clientWidth) return;
+  const pcv = prepararMapa(m.cv);
   if (!pcv) return;
   const { ctx, w, h } = pcv;
-  const bounds = datos.bounds;
+  const { datos, aj } = m;
   dibujarGrillaFondo(ctx, w, h);
   const ref = trazaReferencia(datos.trazas);
-  const canal = state.mapa.canal;
-  const rango = rangoCanalDeTrazas(datos.trazas, canal);
-  dibujarBandaPista(ctx, construirVistaMapa(cv, bounds).tf, state.mapa.bordes ? datos.pista : null);
-  const vista = construirVistaMapa(cv, datos.bounds);
+  const rango = rangoCanalDeTrazas(datos.trazas, aj.canal);
+  const vista = construirVistaMapa(m.cv, datos.bounds);
+  dibujarBandaPista(ctx, vista.tf, aj.bordes ? datos.pista : null);
   for (const traza of datos.trazas) {
-    dibujarTrazaCanalizada(ctx, vista.tf, traza, canal, rango, ref && mismaId(traza.id, ref.id));
+    dibujarTrazaCanalizada(ctx, vista.tf, traza, aj.canal, rango, ref && mismaId(traza.id, ref.id));
   }
-  dibujarMarcadoresRef(ctx, vista.tf, ref, { frenada: state.mapa.frenada, cambios: state.mapa.cambios });
+  dibujarMarcadoresRef(ctx, vista.tf, ref, { frenada: aj.frenada, cambios: aj.cambios });
   dibujarNumeralesCurvas(ctx, vista.tf, ref, datos.curvas);
-  dibujarLeyendaCanal(ctx, w, h, rango.min, rango.max, canal);
-  dibujarVivoMapa();
-  if (!state.mapa.interaccion) {
-    state.mapa.interaccion = true;
-    adjuntarInteraccionMapa(cv, () => dibujarMapaCanal(state.mapaDatos));
-  }
+  dibujarLeyendaCanal(ctx, w, h, rango.min, rango.max, aj.canal);
+  dibujarVivoMapa(m);
 }
 
-/* Mini-mapa por vuelta: banda + trazada fina por vuelta. */
-function dibujarMapaTrazadas(datos) {
-  const cont = $('mapa-trazadas');
-  if (!cont) return;
-  cont.style.display = 'flex';
-  const trazas = datos.trazas;
-  const key = trazas.map((t) => idVuelta(t.id)).join(',') + '|' + (state.mapa.bordes ? 'b' : 'n');
-  if (cont.dataset.key !== key) {
-    cont.innerHTML = '';
-    cont.dataset.key = key;
-    for (const traza of trazas) {
-      const item = document.createElement('div');
-      item.className = 'trazada-item';
-      const nombre = trazaReferencia(trazas) && mismaId(traza.id, trazaReferencia(trazas).id) ? traza.etiqueta + ' (REF)' : traza.etiqueta;
-      item.innerHTML =
-        `<div class="trazada-titulo"><span class="trazada-dot" style="background:${colorDeVuelta(traza.id)}"></span>` +
-        `<span class="trazada-nombre">${nombre}</span></div>`;
-      const lienzo = document.createElement('div');
-      lienzo.className = 'lienzo-mapa';
-      const cv = document.createElement('canvas');
-      cv.className = 'trazada-canvas';
-      const capa = document.createElement('canvas');
-      capa.className = 'capa-vivo';
-      capa.setAttribute('aria-hidden', 'true');
-      lienzo.append(cv, capa);
-      item.appendChild(lienzo);
-      adjuntarInteraccionMapa(cv, () => dibujarMapaTrazadas(state.mapaDatos));
-      cont.appendChild(item);
-    }
+// ===== Trazada por vuelta (una tarjeta por vuelta) =====
+
+/* Cada tarjeta muestra la n-ésima vuelta visible. Se guarda la posición y no la
+   vuelta en sí: el diseño guardado no lleva datos del replay (constitución §5). */
+const MAX_TRAZADAS = 10;
+const ORDENES_TRAZADA = Array.from({ length: MAX_TRAZADAS }, (_, i) => [String(i + 1), `${i + 1}.ª visible`]);
+
+registrarGrafico({
+  id: 'trazada-vuelta',
+  nombre: 'Trazada por vuelta',
+  descripcion: 'Agrega un mapa por cada vuelta visible: la pista de fondo y la trazada de esa vuelta en su color.',
+  categoria: 'mapas',
+  tamano: { w: 4, h: 7 },
+  // El menú agrega una tarjeta por cada vuelta visible (ver tablero.agregarDesdeMenu).
+  unaPorVuelta: true,
+  maxPorVuelta: MAX_TRAZADAS,
+  ajustes: [
+    { clave: 'orden', etiqueta: 'Vuelta', tipo: 'select', opciones: ORDENES_TRAZADA, valor: '1' },
+    ...AJUSTES_MAPA,
+  ],
+  fuente: fuenteMapa,
+  montar: montarTrazadaVuelta,
+});
+
+function montarTrazadaVuelta(cuerpo, datos, aj, tarjeta) {
+  const n = parseInt(aj.orden, 10) || 1;
+  const traza = datos && dadosBoundsValidos(datos) ? datos.trazas[n - 1] : null;
+  if (!traza) {
+    tarjeta.fijarSubtitulo(`${n}.ª vuelta visible`);
+    mensajeTarjeta(cuerpo, `No hay una ${n}.ª vuelta visible. Mostrá más vueltas en la pestaña Vueltas.`);
+    return {};
   }
-  const canvases = cont.querySelectorAll('.trazada-canvas');
-  for (let i = 0; i < trazas.length; i++) {
-    const cv = canvases[i];
-    if (!cv) continue;
-    const pcv = prepararCanvas(cv, 300);
-    if (!pcv) continue;
-    dibujarGrillaFondo(pcv.ctx, pcv.w, pcv.h);
-    const vista = construirVistaMapa(cv, datos.bounds);
-    dibujarBandaPista(pcv.ctx, vista.tf, state.mapa.bordes ? datos.pista : null);
-    dibujarTrazada(pcv.ctx, vista.tf, trazas[i], colorDeVuelta(trazas[i].id), 3);
-    dibujarMarcadoresRef(pcv.ctx, vista.tf, trazas[i], { frenada: state.mapa.frenada, cambios: state.mapa.cambios });
-    dibujarNumeralesCurvas(pcv.ctx, vista.tf, trazas[i], datos.curvas);
-  }
-  dibujarVivoMapa();
+  const ref = trazaReferencia(datos.trazas);
+  const esRef = ref && mismaId(traza.id, ref.id);
+  tarjeta.fijarSubtitulo(etiquetaCorta(traza.etiqueta) + (esRef ? ' · REF' : ''), colorDeVuelta(traza.id));
+  const m = { datos, aj, traza, ...crearLienzoMapa(cuerpo, `Trazada de ${traza.etiqueta}`) };
+  const dibujar = () => dibujarTrazadaVuelta(m);
+  adjuntarInteraccionMapa(m.cv, dibujar);
+  dibujar();
+  return { redimensionar: dibujar, alCursor: () => dibujarVivoMapa(m) };
 }
 
-/* Posición en vivo sobre la capa transparente de cada mapa visible. */
-function dibujarVivoMapa() {
-  const datos = state.mapaDatos;
-  if (!datos || !datos.trazas.length || !dadosBoundsValidos(datos)) return;
-  if (state.mapa.visual === 'trazada') {
-    const items = $('mapa-trazadas') ? $('mapa-trazadas').querySelectorAll('.trazada-item') : [];
-    datos.trazas.forEach((traza, i) => {
-      const item = items[i];
-      // Una sola vuelta por mini-mapa: su punto va destacado aunque no sea la REF.
-      if (item) pintarCapaVivo(item.querySelector('.capa-vivo'), item.querySelector('.trazada-canvas'), [traza], traza.id);
-    });
+/* Banda de pista + trazada fina de una vuelta. */
+function dibujarTrazadaVuelta(m) {
+  if (!m.cv.clientWidth) return;
+  const pcv = prepararMapa(m.cv);
+  if (!pcv) return;
+  const { ctx, w, h } = pcv;
+  const { datos, aj, traza } = m;
+  dibujarGrillaFondo(ctx, w, h);
+  const vista = construirVistaMapa(m.cv, datos.bounds);
+  dibujarBandaPista(ctx, vista.tf, aj.bordes ? datos.pista : null);
+  dibujarTrazada(ctx, vista.tf, traza, colorDeVuelta(traza.id), 3);
+  dibujarMarcadoresRef(ctx, vista.tf, traza, { frenada: aj.frenada, cambios: aj.cambios });
+  dibujarNumeralesCurvas(ctx, vista.tf, traza, datos.curvas);
+  dibujarVivoMapa(m);
+}
+
+/* Posición en vivo sobre la capa transparente (sin repintar el mapa base). */
+function dibujarVivoMapa(m) {
+  if (m.traza) {
+    // Una sola vuelta por mapa: su punto va destacado aunque no sea la REF.
+    pintarCapaVivo(m.capa, m.cv, [m.traza], m.traza.id, m.datos.bounds);
   } else {
-    const ref = trazaReferencia(datos.trazas);
-    pintarCapaVivo($('mapa-vivo'), $('mapa'), datos.trazas, ref ? ref.id : null);
+    const ref = trazaReferencia(m.datos.trazas);
+    pintarCapaVivo(m.capa, m.cv, m.datos.trazas, ref ? ref.id : null, m.datos.bounds);
   }
 }
 
 /* La capa usa la misma vista (zoom/pan/3D) que el mapa de abajo. */
-function pintarCapaVivo(capa, base, trazas, refId) {
+function pintarCapaVivo(capa, base, trazas, refId, bounds) {
   if (!capa || !base || !base.clientWidth) return;
   const c = prepararCanvas(capa, base.clientHeight);
   if (!c) return;
-  const vista = construirVistaMapa(base, state.mapaDatos.bounds);
+  const vista = construirVistaMapa(base, bounds);
   dibujarPosicionVivo(c.ctx, vista.tf, trazas, refId);
 }
 
@@ -148,6 +175,19 @@ function dibujarLeyendaCanal(ctx, w, h, min, max, canal) {
   ctx.fillText(canal, 10, h - 32);
   dibujarEscalaColor(ctx, w, h, min, max);
 }
+
+// ===== Carga por rueda en vivo =====
+
+registrarGrafico({
+  id: 'carga-vivo',
+  nombre: 'Carga por rueda en vivo',
+  unidad: 'vuelta REF',
+  descripcion: 'Auto visto desde arriba: carga de cada rueda y punto de balance de pesos en el instante del reproductor.',
+  categoria: 'mapas',
+  fuente: 'vuelta',
+  tamano: { w: 4, h: 7 },
+  montar: graficoCanvas((cv) => dibujarAutoCarga(cv, state.idx), { vivo: true }),
+});
 
 /* Ruedas en la figura: `lado` −1 izquierda / +1 derecha; `eje` −1 delante / +1 detrás. */
 const RUEDAS_CARGA = [
@@ -190,8 +230,8 @@ function escalaCarga(ref) {
 /* Carga por rueda en vivo (vuelta REF): auto visto desde arriba con cada rueda
    coloreada por su carga y, en el centro, el punto de balance de pesos con su
    estela de los últimos segundos. Usa la vista base (datosVuelta). */
-function dibujarAutoCarga(i) {
-  const c = prepCanvas('chart-carga-vivo', 320);
+function dibujarAutoCarga(cv, i) {
+  const c = prepararCanvas(cv, 320);
   if (!c || !state.datosVuelta) return;
   const { ctx, w, h } = c;
   const ref = vueltaReferencia();
