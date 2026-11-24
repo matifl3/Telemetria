@@ -1,23 +1,22 @@
 'use strict';
 
-/* Pestaña Telemetría (id interno "vuelta", RF-011): chips de canales, regla de
-   curvas, gráficos sincronizados y pedales por vuelta. */
+/* Pestaña Telemetría (id interno "vuelta", RF-011): regla de curvas, gráficos
+   sincronizados y pedales por vuelta, cada uno con su "Ver en grande". */
 
-/* Gráficos de la pestaña. La misma definición la usan el render, los chips y
-   "Ver en grande". `alto` es el alto mínimo (el de siempre con los 8 visibles). */
+/* Gráficos de la pestaña. La misma definición la usan el render y "Ver en
+   grande". `alto` es el alto en la pestaña (px). */
 const GRAFICOS_TELEMETRIA = [
-  { clave: 'velocidad', chip: 'Velocidad', contenedor: 'chart-speed', alto: 250, yLabel: 'km/h', canal: 'velocidad_kmh' },
-  { clave: 'rpm', chip: 'RPM', contenedor: 'chart-rpm', alto: 170, yLabel: 'rpm', canal: 'rpm' },
-  { clave: 'marcha', chip: 'Marcha', contenedor: 'chart-gear', alto: 140, yLabel: 'marcha', canal: 'marcha', escalonado: true },
-  { clave: 'volante', chip: 'Volante', contenedor: 'chart-steer', alto: 150, yLabel: 'volante (rad)', canal: 'volante' },
-  { clave: 'acel', chip: 'Acel.', contenedor: 'chart-acc', alto: 150, yRango: [0, null], yLabel: 'g', canal: 'acc_total_g' },
-  { clave: 'rumbo', chip: 'Rumbo', contenedor: 'chart-yaw', alto: 140, yLabel: 'rumbo (°)', canal: 'rumbo_grados' },
-  { clave: 'carga', chip: 'Carga', contenedor: 'chart-load', alto: 170, yRango: [0, null], yLabel: 'carga (N)' },
-  { clave: 'pedales', chip: 'Pedales', contenedor: 'chart-inputs', alto: 140, yRango: [0, 1.05], yLabel: '0–1' },
+  { clave: 'velocidad', nombre: 'Velocidad', contenedor: 'chart-speed', alto: 250, yLabel: 'km/h', canal: 'velocidad_kmh' },
+  { clave: 'rpm', nombre: 'RPM', contenedor: 'chart-rpm', alto: 170, yLabel: 'rpm', canal: 'rpm' },
+  { clave: 'marcha', nombre: 'Marcha', contenedor: 'chart-gear', alto: 140, yLabel: 'marcha', canal: 'marcha', escalonado: true },
+  { clave: 'volante', nombre: 'Volante', contenedor: 'chart-steer', alto: 150, yLabel: 'volante (rad)', canal: 'volante' },
+  { clave: 'acel', nombre: 'Acel.', contenedor: 'chart-acc', alto: 150, yRango: [0, null], yLabel: 'g', canal: 'acc_total_g' },
+  { clave: 'rumbo', nombre: 'Rumbo', contenedor: 'chart-yaw', alto: 140, yLabel: 'rumbo (°)', canal: 'rumbo_grados' },
+  { clave: 'carga', nombre: 'Carga', contenedor: 'chart-load', alto: 170, yRango: [0, null], yLabel: 'carga (N)' },
+  { clave: 'pedales', nombre: 'Pedales', contenedor: 'chart-inputs', alto: 140, yRango: [0, 1.05], yLabel: '0–1' },
 ];
 
-const ALTO_MAX_GRAFICO = 520;    // tope por gráfico al repartir el alto
-const EXTRA_TARJETA = 92;        // título + leyenda + márgenes de cada tarjeta (px)
+const ALTO_MAX_MINI = 520;       // tope de cada mini-gráfico de pedales en grande (px)
 const EXTRA_MINI = 85;           // título, leyenda, relleno y separación de cada mini-gráfico (px)
 
 const definicionGrafico = (clave) => GRAFICOS_TELEMETRIA.find((g) => g.clave === clave) || null;
@@ -75,47 +74,23 @@ function cajasPedales(cont, datos, altoMini) {
 /* Alto de cada mini-gráfico de pedales cuando la tarjeta dispone de `total` px. */
 function altoMiniPedales(total, nVueltas) {
   const n = Math.max(1, nVueltas);
-  return Math.max(140, Math.min(ALTO_MAX_GRAFICO, Math.floor(total / n) - EXTRA_MINI));
-}
-
-/* Reparte el alto de la ventana entre los gráficos visibles: con pocos, cada uno
-   crece (hasta ALTO_MAX_GRAFICO); con todos, quedan en su alto mínimo. */
-function altosRepartidos(activos) {
-  const css = getComputedStyle(document.documentElement);
-  const fijo = (parseFloat(css.getPropertyValue('--alto-topbar')) || 70)
-    + (parseFloat(css.getPropertyValue('--alto-tabs')) || 0)
-    + ($('chips-graficos') ? $('chips-graficos').offsetHeight : 0)
-    + (document.querySelector('.regla-curvas') ? document.querySelector('.regla-curvas').offsetHeight : 40)
-    + 40;
-  const porTarjeta = (window.innerHeight - fijo) / Math.max(1, activos.length) - EXTRA_TARJETA;
-  const altos = new Map();
-  for (const def of activos) altos.set(def.clave, Math.max(def.alto, Math.min(ALTO_MAX_GRAFICO, Math.floor(porTarjeta))));
-  return altos;
+  return Math.max(140, Math.min(ALTO_MAX_MINI, Math.floor(total / n) - EXTRA_MINI));
 }
 
 function renderPestanaVuelta(datos) {
   destroyCharts();
-  actualizarChipsGraficos();
   if (!datos || !datos.grilla.length) return;
-  const activos = GRAFICOS_TELEMETRIA.filter((g) => !state.graficosOcultos.has(g.clave));
-  const altos = altosRepartidos(activos);
 
   for (const def of GRAFICOS_TELEMETRIA) {
     const tarjeta = tarjetaGrafico(def.clave);
     const cont = $(def.contenedor);
-    const activo = activos.includes(def);
-    if (tarjeta) tarjeta.hidden = !activo;
     if (!cont) continue;
     cont.innerHTML = '';
-    if (!activo) continue;
     const boton = tarjeta && tarjeta.querySelector('[data-ampliar]');
 
     if (def.clave === 'pedales') {
-      // El alto asignado a la tarjeta se reparte entre los mini-gráficos.
-      const total = Math.max(def.alto * datos.vueltas.length, altos.get(def.clave) + EXTRA_TARJETA);
-      const altoMini = altoMiniPedales(total, datos.vueltas.length);
-      for (const p of cajasPedales(cont, datos, altoMini)) {
-        graficoMinusculo(p.div, altoMini, def.yRango, def.yLabel, p.data, p.series);
+      for (const p of cajasPedales(cont, datos, def.alto)) {
+        graficoMinusculo(p.div, def.alto, def.yRango, def.yLabel, p.data, p.series);
       }
       if (boton) boton.disabled = !datos.vueltas.length;
       continue;
@@ -124,7 +99,7 @@ function renderPestanaVuelta(datos) {
     const d = datosGrafico(def, datos);
     if (boton) boton.disabled = !d;
     if (!d) { cont.innerHTML = '<p class="hint vacio">Sin vuelta REF: no hay carga por rueda para mostrar.</p>'; continue; }
-    lineChart(cont, altos.get(def.clave), def.yRango, def.yLabel, d.data, d.series);
+    lineChart(cont, def.alto, def.yRango, def.yLabel, d.data, d.series);
   }
 
   // El primer gráfico se crea antes de que aparezca la barra de desplazamiento y
@@ -146,61 +121,12 @@ function renderPestanaVuelta(datos) {
   requestAnimationFrame(() => { if (state.tab === 'vuelta') dibujarReglaCurvas(); });
 }
 
-// ===== Chips de canales =====
-
-/* Crea los chips una sola vez; después solo se actualiza su estado (así el foco
-   no se pierde al volver a dibujar la pestaña). */
-function iniciarChipsGraficos() {
-  const lista = $('chips-lista');
-  if (!lista) return;
-  for (const def of GRAFICOS_TELEMETRIA) {
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'chip-grafico';
-    chip.dataset.grafico = def.clave;
-    chip.textContent = def.chip;
-    chip.addEventListener('click', () => alternarGrafico(def.clave));
-    lista.appendChild(chip);
-  }
-  $('chips-todos').addEventListener('click', () => {
-    state.graficosOcultos.clear();
-    renderPestanaVuelta(state.datosVuelta);
-  });
-  // Un solo listener para los ⤢ de todas las tarjetas.
+/* Un solo listener para los ⤢ de todas las tarjetas. */
+function iniciarGraficosTelemetria() {
   $('panel-vuelta').addEventListener('click', (ev) => {
     const boton = ev.target.closest('[data-ampliar]');
     if (boton && !boton.disabled) abrirGraficoAmpliado(boton.dataset.ampliar, boton);
   });
-  actualizarChipsGraficos();
-}
-
-function alternarGrafico(clave) {
-  const ocultos = state.graficosOcultos;
-  if (ocultos.has(clave)) ocultos.delete(clave);
-  else if (ocultos.size < GRAFICOS_TELEMETRIA.length - 1) ocultos.add(clave);
-  else return; // debe quedar al menos un gráfico visible
-  renderPestanaVuelta(state.datosVuelta);
-}
-
-function actualizarChipsGraficos() {
-  const ocultos = state.graficosOcultos;
-  const ultimo = ocultos.size === GRAFICOS_TELEMETRIA.length - 1;
-  document.querySelectorAll('.chip-grafico').forEach((chip) => {
-    const activo = !ocultos.has(chip.dataset.grafico);
-    chip.setAttribute('aria-pressed', String(activo));
-    const bloqueado = activo && ultimo;
-    chip.setAttribute('aria-disabled', String(bloqueado));
-    chip.title = bloqueado ? 'Debe quedar al menos un gráfico visible' : '';
-  });
-  const todos = $('chips-todos');
-  if (todos) todos.disabled = ocultos.size === 0;
-}
-
-/* Nueva sesión o "Limpiar": todos los gráficos visibles y sin overlay abierto. */
-function reiniciarGraficosTelemetria() {
-  state.graficosOcultos.clear();
-  actualizarChipsGraficos();
-  cerrarGraficoAmpliado();
 }
 
 /* La regla se dibuja cuando el canvas toma tamaño: al primer render el panel

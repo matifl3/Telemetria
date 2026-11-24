@@ -43,9 +43,9 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
   `touch-action: none` en mapas, títulos de tarjeta `<h2>`, pestañas con tabindex itinerante.
 - Colores de canvas/uPlot vía `COLOR.*` (utils.js, lee `:root`); las ruedas FL/FR/RL/RR
   conservan hex propios (categóricos).
-- Telemetría: `GRAFICOS_TELEMETRIA` (vuelta.js) alimenta render, chips y "Ver en grande"
-  (`graficos/ampliado.js`, zoom X solo en el overlay). Chips en `state.graficosOcultos`;
-  regla y cursor usan `graficoGuia()` (primer gráfico visible, no Velocidad fija).
+- Telemetría: `GRAFICOS_TELEMETRIA` (vuelta.js) alimenta el render y "Ver en grande"
+  (`graficos/ampliado.js`, zoom X solo en el overlay). Los chips para elegir gráficos se
+  hicieron y se retiraron a pedido del usuario (2026-11-24).
 ## Aprendizajes y errores a evitar
 - Compilar: `cmd /c "call <vcvars64.bat> && cargo build -p ac-telemetry-lab"` (vcvars evita el
   `link.exe` de Git). vcvars en `D:\BuildTools\VC\Auxiliary\Build\` (si D: está conectado) o en
@@ -75,5 +75,5 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - Pendientes manuales: TV06, T123 (paridad de 32 paneles), DIST02/DIST03;
   ING02–ING04, ING28, ING35, ING47 (validar signos y calibración con replay real).
 - `spec/modificacion de pista/`: 14 tareas sin empezar.
-- Rama `telemetria/ampliar-y-canales`: TG01–TG09 hechas (ver en grande + chips); falta PR a `main`.
+- Rama `telemetria/ampliar-y-canales`: "Ver en grande" hecho (chips retirados); falta PR a `main`.
 - Hay cambios en `main` posteriores a v0.3.0 sin release.

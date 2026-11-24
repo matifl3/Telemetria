@@ -204,7 +204,7 @@ function iniciarResize() {
 function init() {
   crearReadouts();
   observarReglaCurvas();
-  iniciarChipsGraficos();
+  iniciarGraficosTelemetria();
   iniciarGraficoAmpliado();
   cargaArchivos.iniciar();
   iniciarTabs();

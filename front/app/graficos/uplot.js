@@ -72,8 +72,7 @@ function alCursor(u) {
   actualizarPorIdx({ moverCursor: false });
 }
 
-/* Gráfico que guía la regla de curvas y el cursor: el primero visible de la
-   pestaña (Velocidad puede estar oculta por los chips). */
+/* Gráfico que guía la regla de curvas y el cursor: el primero de la pestaña. */
 function graficoGuia() {
   if (state.charts.lines.length) return state.charts.lines[0].u;
   return state.charts.inputs[0] || null;

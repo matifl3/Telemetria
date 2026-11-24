@@ -42,12 +42,12 @@ Diseño completo en `spec/telemetria-graficos/plan.md`.
   "Vuelta completa" para volver, `+`/`−` centrados en el cursor, mínimo 50 m;
   regla redibujada al cambiar la escala y con el reproductor.
   *Hecho cuando:* se puede inspeccionar una curva en detalle con ratón y sin él.
-- [x] **TG06 · Chips de canales.** Fila con 8 chips `aria-pressed` + "Todos";
+- [ ] ~~**TG06 · Chips de canales.**~~ *Retirada (2026-11-24): el usuario pidió sacar la selección de gráficos.* Fila con 8 chips `aria-pressed` + "Todos";
   `state.graficosOcultos` (vacío = los 8 visibles); no se puede desactivar el último;
   se reinicia con "Limpiar" o una nueva sesión.
   *Hecho cuando:* activar/desactivar un chip muestra u oculta su gráfico sin
   pedir datos al backend.
-- [x] **TG07 · Reparto del alto.** Cada gráfico activo recibe
+- [ ] ~~**TG07 · Reparto del alto.**~~ *Retirada junto con TG06.* Cada gráfico activo recibe
   `max(altoMinimo, disponible / n)` con tope ~520 px; Pedales reparte entre sus
   mini-gráficos.
   *Hecho cuando:* con 2 gráficos activos ocupan la ventana y con 8 se ve como
@@ -73,5 +73,9 @@ de 520 px).
 Verificado en la app (CDP) con un replay de Monza: los 8 gráficos se ven igual
 que antes; chips, reparto del alto, regla guiada por el primer gráfico visible,
 overlay con zoom (+/−, doble clic, mínimo 50 m), Esc con devolución del foco,
-Pedales ampliado y 360 px sin scroll horizontal. `cargo test --workspace` en
+Pedales ampliado y 360 px sin scroll horizontal.
+
+Después se retiró la selección de gráficos (TG06–TG07) a pedido del usuario:
+la pestaña vuelve a mostrar siempre los 8 gráficos con sus altos fijos; queda
+solo "Ver en grande". `cargo test --workspace` en
 verde y `cargo build -p ac-telemetry-lab` correcto.

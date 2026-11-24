@@ -24,7 +24,7 @@ function abrirGraficoAmpliado(clave, origen) {
   if (!ampliadoAbierto()) ampliado.origen = origen || document.activeElement;
   ampliado.clave = clave;
   const titulo = tarjeta && tarjeta.querySelector('.grafico-titulo-texto');
-  $('ampliado-titulo').textContent = titulo ? titulo.textContent : def.chip;
+  $('ampliado-titulo').textContent = titulo ? titulo.textContent : def.nombre;
   const ov = $('grafico-ampliado');
   ov.classList.remove('oculto');
   ov.setAttribute('aria-hidden', 'false');

@@ -15,6 +15,10 @@ Fuentes normativas:
 
 ---
 
+> **Actualización 2026-11-24:** la parte 2 (chips de canales y reparto del
+> alto, §4 y TG06–TG07) se implementó y luego se retiró a pedido del usuario.
+> Queda vigente solo "Ver en grande" (§3).
+
 ## 0. Resumen ejecutivo
 
 Dos cambios, solo de front (sin Rust, sin DTO, sin comandos):
