@@ -70,3 +70,7 @@ Memoria entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aport
 - Pendientes manuales: TV06, T123 (paridad de 32 paneles), DIST02/DIST03;
   ING02–ING04, ING28, ING35, ING47 (validar signos y calibración con replay real).
 - `spec/modificacion de pista/`: 14 tareas sin empezar.
+- `spec/telemetria-graficos/` (rama `telemetria/ampliar-y-canales`): plan TG01–TG09 para
+  "Ver en grande" con zoom X + chips de canales en Telemetría. Sin implementar; decisiones
+  de §9 pendientes (sobre todo crear `front/app/graficos/ampliado.js`).
+- Hay cambios en `main` posteriores a v0.3.0 sin release.
